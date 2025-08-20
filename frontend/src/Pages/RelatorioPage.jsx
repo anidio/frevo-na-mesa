@@ -1,0 +1,134 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+const RelatorioPage = () => {
+    const [relatorio, setRelatorio] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        const fetchRelatorio = async () => {
+            try {
+                const response = await fetch('http://localhost:8080/api/relatorios/hoje');
+                if (response.ok) {
+                    const data = await response.json();
+                    setRelatorio(data);
+                }
+            } catch (error) {
+                console.error("Erro ao buscar relatório:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchRelatorio();
+    }, []);
+
+    const handleFecharCaixa = async () => {
+        const confirm = window.confirm(
+            "ATENÇÃO!\n\nVocê tem certeza que deseja fechar o caixa?\n\nEsta ação é IRREVERSÍVEL e irá apagar todos os pedidos e mesas para iniciar um novo dia."
+        );
+
+        if (confirm) {
+            try {
+                const response = await fetch('http://localhost:8080/api/caixa/fechar', {
+                    method: 'POST',
+                });
+
+                if (response.ok) {
+                    alert("Caixa fechado e sistema reiniciado com sucesso!");
+                    navigate('/'); // Redireciona para a Home
+                } else {
+                    alert("Erro ao fechar o caixa.");
+                }
+            } catch (error) {
+                console.error("Erro de comunicação:", error);
+                alert("Erro de comunicação com o servidor.");
+            }
+        }
+    };
+
+    if (loading) {
+        return <div className="p-8 text-center font-semibold">Gerando relatório do dia...</div>;
+    }
+
+    if (!relatorio || relatorio.faturamentoTotal === 0) {
+        return (
+            <div className="w-full p-4 md:p-8 max-w-4xl mx-auto">
+                 <div className="flex justify-between items-center">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-800 mb-2">Relatório do Dia</h1>
+                        <p className="text-gray-500">Nenhuma venda registrada hoje ainda.</p>
+                    </div>
+                    <button 
+                        onClick={handleFecharCaixa}
+                        className="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 transition-colors"
+                    >
+                        Fechar Caixa e Reiniciar Dia
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="w-full p-4 md:p-8 max-w-4xl mx-auto space-y-8">
+            <div className="flex justify-between items-center">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-800">Relatório do Dia</h1>
+                    <p className="text-lg text-gray-500">Resumo de vendas para: {new Date(relatorio.data).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</p>
+                </div>
+                <button 
+                    onClick={handleFecharCaixa}
+                    className="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 transition-colors"
+                >
+                    Fechar Caixa e Reiniciar Dia
+                </button>
+            </div>
+
+            {/* --- RESUMO FINANCEIRO --- */}
+            <div className="bg-white p-6 rounded-lg shadow-md space-y-4">
+                <h2 className="text-xl font-bold text-gray-700 border-b pb-2">Resumo Financeiro</h2>
+                <div className="flex justify-between items-center text-2xl font-bold text-green-600">
+                    <span>Faturamento Total:</span>
+                    <span>R$ {relatorio.faturamentoTotal.toFixed(2).replace('.', ',')}</span>
+                </div>
+                <div className="pt-4">
+                    <h3 className="text-lg font-semibold text-gray-600">Detalhes por Pagamento:</h3>
+                    <div className="mt-2 space-y-1 text-gray-700">
+                        {Object.entries(relatorio.faturamentoPorTipoPagamento).map(([tipo, valor]) => (
+                            <div key={tipo} className="flex justify-between">
+                                <span>{tipo.replace('_', ' ')}:</span>
+                                <span className="font-semibold">R$ {valor.toFixed(2).replace('.', ',')}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* --- DETALHAMENTO POR MESA --- */}
+            <div className="space-y-4">
+                <h2 className="text-xl font-bold text-gray-700">Mesas Atendidas</h2>
+                {relatorio.mesasAtendidas.map(mesa => (
+                    <div key={mesa.numeroMesa} className="bg-white p-4 rounded-lg shadow-md">
+                        <h3 className="font-bold text-lg">Mesa {mesa.numeroMesa} {mesa.nomeCliente && `(${mesa.nomeCliente})`}</h3>
+                        {mesa.pedidos.map((pedido, index) => (
+                            <div key={pedido.id} className="mt-2 pl-4 border-l-2">
+                                <p className="font-semibold">Pedido #{index + 1} - {pedido.tipoPagamento.replace('_', ' ')} - Total: R$ {pedido.totalPedido.toFixed(2).replace('.', ',')}</p>
+                                <ul className="list-disc pl-5 mt-1 text-sm text-gray-600">
+                                    {pedido.itens.map((item, itemIndex) => (
+                                        <li key={itemIndex}>
+                                            {item.quantidade}x {item.nomeProduto}
+                                            {item.observacao && <span className="italic text-orange-700"> (Obs: {item.observacao})</span>}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ))}
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+export default RelatorioPage;
