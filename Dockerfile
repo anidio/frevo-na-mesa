@@ -4,10 +4,6 @@ FROM openjdk:17-jdk-slim
 # Define o diretório de trabalho dentro do contêiner
 WORKDIR /app
 
-# Copia o "wrapper" do Maven para dentro do contêiner. Isso ajuda a baixar as dependências.
-COPY .mvn/ .mvn
-COPY mvnw pom.xml ./
-
 # Dá permissão de execução para o script do Maven Wrapper
 RUN chmod +x ./mvnw
 
@@ -18,7 +14,7 @@ RUN ./mvnw dependency:go-offline
 COPY src ./src
 
 # Executa o build do Maven para gerar o arquivo .jar
-RUN ./mvnw clean package -DskipTests
+RUN mvn clean package -DskipTests
 
 # Expõe a porta 8080 para que o mundo exterior possa acessá-la
 EXPOSE 8080
