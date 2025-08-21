@@ -186,7 +186,7 @@ const DetalheMesaPage = () => {
     fetchMesa();
     const fetchCardapio = async () => {
       try {
-        const response = await fetch('${API_URL}/api/produtos');
+        const response = await fetch(`${API_URL}/api/produtos`);
         if (response.ok) setCardapio(await response.json());
       } catch (error) {
         console.error("Erro ao buscar cardápio:", error);
@@ -228,7 +228,7 @@ const DetalheMesaPage = () => {
       itens: pedido.map(item => ({ produtoId: item.id, quantidade: item.quantidade, observacao: item.observacao })),
     };
     try {
-      const response = await fetch('${API_URL}/api/pedidos', {
+      const response = await fetch(`${API_URL}/api/pedidos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dadosDoPedido),

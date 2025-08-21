@@ -11,7 +11,7 @@ const RelatorioPage = () => {
     useEffect(() => {
         const fetchRelatorio = async () => {
             try {
-                const response = await fetch('${API_URL}/api/relatorios/hoje');
+                const response = await fetch(`${API_URL}/api/relatorios/hoje`);
                 if (response.ok) {
                     const data = await response.json();
                     setRelatorio(data);
@@ -32,7 +32,7 @@ const RelatorioPage = () => {
 
         if (confirm) {
             try {
-                const response = await fetch('${API_URL}/api/caixa/fechar', {
+                const response = await fetch(`${API_URL}/api/caixa/fechar`, {
                     method: 'POST',
                 });
 

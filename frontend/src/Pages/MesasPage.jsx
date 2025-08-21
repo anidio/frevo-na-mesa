@@ -22,7 +22,7 @@ const MesasPage = () => {
 
   const fetchData = async () => {
     try {
-      const response = await fetch('${API_URL}/api/mesas');
+      const response = await fetch(`${API_URL}/api/mesas`);
       if (response.ok) {
         const data = await response.json();
         data.sort((a, b) => a.numero - b.numero);
@@ -47,7 +47,7 @@ const MesasPage = () => {
       return;
     }
     try {
-      const response = await fetch('${API_URL}/api/mesas', {
+      const response = await fetch(`${API_URL}/api/mesas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ numero: parseInt(novoNumero) }),

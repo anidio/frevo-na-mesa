@@ -44,7 +44,7 @@ const GerenciarCardapioPage = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const response = await fetch('${API_URL}/api/produtos');
+            const response = await fetch(`${API_URL}/api/produtos`);
             if (response.ok) {
                 const data = await response.json();
                 setCardapio(data);
@@ -110,7 +110,7 @@ const GerenciarCardapioPage = () => {
             return;
         }
         const isEditing = produtoEmEdicao !== null;
-        const url = isEditing ? `${API_URL}/api/produtos/${produtoEmEdicao.id}` : '${API_URL}/api/produtos';
+        const url = isEditing ? `${API_URL}/api/produtos/${produtoEmEdicao.id}` : `${API_URL}/api/produtos`;
         const method = isEditing ? 'PUT' : 'POST';
         try {
             const response = await fetch(url, {

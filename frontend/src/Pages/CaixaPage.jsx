@@ -61,8 +61,8 @@ const CaixaPage = () => {
   const fetchData = async () => {
     try {
       const [dashboardRes, mesasRes] = await Promise.all([
-        fetch('${API_URL}/api/caixa/dashboard'),
-        fetch('${API_URL}/api/mesas')
+        fetch(`${API_URL}/api/caixa/dashboard`),
+        fetch(`${API_URL}/api/mesas`)
       ]);
       const dashboard = await dashboardRes.json();
       const todasAsMesas = await mesasRes.json();
