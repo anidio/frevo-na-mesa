@@ -24,4 +24,4 @@ RUN ./mvnw clean package -DskipTests
 EXPOSE 8080
 
 # O comando para iniciar a aplicação quando o contêiner rodar
-ENTRYPOINT ["java", "-jar", "target/frevonamesa-0.0.1-SNAPSHOT.jar"]
+ENTRYPOINT ["sh", "-c", "java -jar target/*.jar"]
