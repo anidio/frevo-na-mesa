@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
 const RelatorioPage = () => {
     const [relatorio, setRelatorio] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -9,7 +11,7 @@ const RelatorioPage = () => {
     useEffect(() => {
         const fetchRelatorio = async () => {
             try {
-                const response = await fetch('http://localhost:8080/api/relatorios/hoje');
+                const response = await fetch('${API_URL}/api/relatorios/hoje');
                 if (response.ok) {
                     const data = await response.json();
                     setRelatorio(data);
@@ -30,7 +32,7 @@ const RelatorioPage = () => {
 
         if (confirm) {
             try {
-                const response = await fetch('http://localhost:8080/api/caixa/fechar', {
+                const response = await fetch('${API_URL}/api/caixa/fechar', {
                     method: 'POST',
                 });
 

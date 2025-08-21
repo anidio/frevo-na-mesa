@@ -3,6 +3,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
 // Ícones para os cards
 const MenuBookIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">

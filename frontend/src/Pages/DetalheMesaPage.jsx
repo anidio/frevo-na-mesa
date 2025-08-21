@@ -4,6 +4,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
 const categorias = ['Todos', 'Entradas', 'Pratos', 'Sobremesas', 'Bebidas'];
 
 // --- COMPONENTE HEADER ---
@@ -22,7 +24,7 @@ const DetalheMesaHeader = ({ mesa, onMesaUpdate }) => {
   const handleSalvarNome = async () => {
     if (nomeCliente !== (mesa.nomeCliente || '')) {
       try {
-        const response = await fetch(`http://localhost:8080/api/mesas/${mesa.id}/cliente`, {
+        const response = await fetch(`${API_URL}/api/mesas/${mesa.id}/cliente`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ nomeCliente: nomeCliente }),
@@ -45,7 +47,7 @@ const DetalheMesaHeader = ({ mesa, onMesaUpdate }) => {
       return;
     }
     try {
-      const response = await fetch(`http://localhost:8080/api/mesas/${mesa.id}`, {
+      const response = await fetch(`${API_URL}/api/mesas/${mesa.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ numero: parseInt(numeroEditado) }),
@@ -80,7 +82,7 @@ const DetalheMesaHeader = ({ mesa, onMesaUpdate }) => {
     else return;
 
     try {
-      const response = await fetch(`http://localhost:8080/api/mesas/${mesa.id}/status`, {
+      const response = await fetch(`${API_URL}/api/mesas/${mesa.id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: novoStatus }),
@@ -171,7 +173,7 @@ const DetalheMesaPage = () => {
 
   const fetchMesa = async () => {
     try {
-      const response = await fetch(`http://localhost:8080/api/mesas/${id}`);
+      const response = await fetch(`${API_URL}/api/mesas/${id}`);
       if (response.ok) setMesa(await response.json());
       else setMesa(null);
     } catch (error) {
@@ -184,7 +186,7 @@ const DetalheMesaPage = () => {
     fetchMesa();
     const fetchCardapio = async () => {
       try {
-        const response = await fetch('http://localhost:8080/api/produtos');
+        const response = await fetch('${API_URL}/api/produtos');
         if (response.ok) setCardapio(await response.json());
       } catch (error) {
         console.error("Erro ao buscar cardápio:", error);
@@ -226,7 +228,7 @@ const DetalheMesaPage = () => {
       itens: pedido.map(item => ({ produtoId: item.id, quantidade: item.quantidade, observacao: item.observacao })),
     };
     try {
-      const response = await fetch('http://localhost:8080/api/pedidos', {
+      const response = await fetch('${API_URL}/api/pedidos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dadosDoPedido),

@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { toast } from 'react-toastify';
 
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
 // --- COMPONENTES INTERNOS ---
 
 // Componente customizado para a notificação de confirmação
@@ -42,7 +44,7 @@ const GerenciarCardapioPage = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const response = await fetch('http://localhost:8080/api/produtos');
+            const response = await fetch('${API_URL}/api/produtos');
             if (response.ok) {
                 const data = await response.json();
                 setCardapio(data);
@@ -108,7 +110,7 @@ const GerenciarCardapioPage = () => {
             return;
         }
         const isEditing = produtoEmEdicao !== null;
-        const url = isEditing ? `http://localhost:8080/api/produtos/${produtoEmEdicao.id}` : 'http://localhost:8080/api/produtos';
+        const url = isEditing ? `${API_URL}/api/produtos/${produtoEmEdicao.id}` : '${API_URL}/api/produtos';
         const method = isEditing ? 'PUT' : 'POST';
         try {
             const response = await fetch(url, {

@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify'; // Importa a função toast
 import MesaCard from '../components/MesaCard';
 
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
 const GarcomIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
         <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -20,7 +22,7 @@ const MesasPage = () => {
 
   const fetchData = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/mesas');
+      const response = await fetch('${API_URL}/api/mesas');
       if (response.ok) {
         const data = await response.json();
         data.sort((a, b) => a.numero - b.numero);
@@ -45,7 +47,7 @@ const MesasPage = () => {
       return;
     }
     try {
-      const response = await fetch('http://localhost:8080/api/mesas', {
+      const response = await fetch('${API_URL}/api/mesas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ numero: parseInt(novoNumero) }),

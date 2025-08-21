@@ -5,6 +5,8 @@ import { toast } from 'react-toastify'; // Importa a função toast
 import MesaCard from '../components/MesaCard';
 import PagamentoModal from '../components/PagamentoModal';
 
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
 // --- ÍCONES ---
 const HeaderIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
@@ -59,8 +61,8 @@ const CaixaPage = () => {
   const fetchData = async () => {
     try {
       const [dashboardRes, mesasRes] = await Promise.all([
-        fetch('http://localhost:8080/api/caixa/dashboard'),
-        fetch('http://localhost:8080/api/mesas')
+        fetch('${API_URL}/api/caixa/dashboard'),
+        fetch('${API_URL}/api/mesas')
       ]);
       const dashboard = await dashboardRes.json();
       const todasAsMesas = await mesasRes.json();
@@ -95,7 +97,7 @@ const CaixaPage = () => {
 
   const handleConfirmarPagamento = async (mesaId, tipoPagamento) => {
     try {
-      const response = await fetch(`http://localhost:8080/api/mesas/${mesaId}/pagar`, {
+      const response = await fetch(`${API_URL}/api/mesas/${mesaId}/pagar`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tipoPagamento: tipoPagamento }),
