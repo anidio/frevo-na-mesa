@@ -1,11 +1,10 @@
 // src/pages/CaixaPage.jsx
 
 import React, { useState, useEffect } from 'react';
-import { toast } from 'react-toastify'; // Importa a função toast
+import { toast } from 'react-toastify';
 import MesaCard from '../components/MesaCard';
 import PagamentoModal from '../components/PagamentoModal';
-
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+import apiClient from '../services/apiClient'; // IMPORTANTE: Usando o novo apiClient
 
 // --- ÍCONES ---
 const HeaderIcon = () => (
@@ -60,16 +59,16 @@ const CaixaPage = () => {
 
   const fetchData = async () => {
     try {
-      const [dashboardRes, mesasRes] = await Promise.all([
-        fetch(`${API_URL}/api/caixa/dashboard`),
-        fetch(`${API_URL}/api/mesas`)
+      // MUDANÇA AQUI: Usando o apiClient que envia o token
+      const [dashboard, todasAsMesas] = await Promise.all([
+        apiClient.get('/api/caixa/dashboard'),
+        apiClient.get('/api/mesas')
       ]);
-      const dashboard = await dashboardRes.json();
-      const todasAsMesas = await mesasRes.json();
       setDashboardData(dashboard);
       setMesas(todasAsMesas);
     } catch (error) {
       console.error("Erro ao buscar dados do caixa:", error);
+      toast.error("Não foi possível carregar os dados do caixa. Verifique se está logado.");
     } finally {
       setLoading(false);
     }
@@ -85,8 +84,6 @@ const CaixaPage = () => {
     if (mesa.status === 'OCUPADA') {
       setMesaParaPagamento(mesa);
     } else if (mesa.status === 'PAGA') {
-      // DE: alert(...)
-      // PARA:
       toast.info(`A Mesa ${mesa.numero} já foi paga e está aguardando liberação do garçom.`);
     }
   };
@@ -97,27 +94,16 @@ const CaixaPage = () => {
 
   const handleConfirmarPagamento = async (mesaId, tipoPagamento) => {
     try {
-      const response = await fetch(`${API_URL}/api/mesas/${mesaId}/pagar`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tipoPagamento: tipoPagamento }),
+      // MUDANÇA AQUI: Usando apiClient.patch para enviar o token
+      await apiClient.patch(`/api/mesas/${mesaId}/pagar`, {
+        tipoPagamento: tipoPagamento
       });
 
-      if (response.ok) {
-        // DE: alert(...)
-        // PARA:
-        toast.success(`Pagamento da Mesa ${mesaId} (${tipoPagamento}) confirmado com sucesso!`);
-        handleCloseModal();
-        fetchData();
-      } else {
-        // DE: alert(...)
-        // PARA:
-        toast.error('Erro ao processar o pagamento.');
-      }
+      toast.success(`Pagamento da Mesa ${mesaId} (${tipoPagamento}) confirmado com sucesso!`);
+      handleCloseModal();
+      fetchData();
     } catch (error) {
       console.error("Erro ao confirmar pagamento:", error);
-      // DE: alert(...)
-      // PARA:
       toast.error('Erro de comunicação com o servidor.');
     }
   };

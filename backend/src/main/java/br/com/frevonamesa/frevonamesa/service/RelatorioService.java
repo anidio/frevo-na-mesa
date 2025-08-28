@@ -3,8 +3,12 @@ package br.com.frevonamesa.frevonamesa.service;
 import br.com.frevonamesa.frevonamesa.dto.*;
 import br.com.frevonamesa.frevonamesa.model.Mesa;
 import br.com.frevonamesa.frevonamesa.model.Pedido;
+import br.com.frevonamesa.frevonamesa.model.Restaurante;
 import br.com.frevonamesa.frevonamesa.repository.PedidoRepository;
+import br.com.frevonamesa.frevonamesa.repository.RestauranteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -21,19 +25,30 @@ public class RelatorioService {
     @Autowired
     private PedidoRepository pedidoRepository;
 
+    @Autowired
+    private RestauranteRepository restauranteRepository;
+
+    private Restaurante getRestauranteLogado() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return restauranteRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("Restaurante não encontrado: " + email));
+    }
+
     public RelatorioDiarioDTO gerarRelatorioDoDia() {
-        // Define o intervalo de hoje (da meia-noite até o fim do dia)
+        Restaurante restaurante = getRestauranteLogado();
         LocalDateTime inicioDoDia = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
         LocalDateTime fimDoDia = LocalDateTime.of(LocalDate.now(), LocalTime.MAX);
 
-        // Busca todos os pedidos pagos hoje
-        List<Pedido> pedidosPagosHoje = pedidoRepository.findAllByDataHoraBetweenAndTipoPagamentoIsNotNull(inicioDoDia, fimDoDia);
+        // Busca todos os pedidos pagos hoje E que pertencem ao restaurante logado
+        List<Pedido> pedidosPagosHoje = pedidoRepository.findAllByDataHoraBetweenAndTipoPagamentoIsNotNull(inicioDoDia, fimDoDia)
+                .stream()
+                .filter(pedido -> pedido.getMesa().getRestaurante().getId().equals(restaurante.getId()))
+                .collect(Collectors.toList());
 
-        // Agrupa os pedidos por mesa
+        // O resto da lógica para montar o DTO permanece a mesma, pois já está baseada na lista filtrada
         Map<Mesa, List<Pedido>> pedidosPorMesa = pedidosPagosHoje.stream()
                 .collect(Collectors.groupingBy(Pedido::getMesa));
 
-        // Monta o DTO de cada mesa
         List<RelatorioMesaDTO> mesasAtendidas = pedidosPorMesa.entrySet().stream()
                 .map(entry -> {
                     Mesa mesa = entry.getKey();
@@ -64,7 +79,6 @@ public class RelatorioService {
                     return mesaDto;
                 }).collect(Collectors.toList());
 
-        // Calcula os totais de faturamento
         BigDecimal faturamentoTotal = pedidosPagosHoje.stream()
                 .map(Pedido::getTotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -75,7 +89,6 @@ public class RelatorioService {
                         Collectors.reducing(BigDecimal.ZERO, Pedido::getTotal, BigDecimal::add)
                 ));
 
-        // Monta o DTO final
         RelatorioDiarioDTO relatorioFinal = new RelatorioDiarioDTO();
         relatorioFinal.setData(LocalDate.now());
         relatorioFinal.setFaturamentoTotal(faturamentoTotal);

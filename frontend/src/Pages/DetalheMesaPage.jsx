@@ -1,80 +1,33 @@
-// src/pages/DetalheMesaPage.jsx
+// src/Pages/DetalheMesaPage.jsx
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+import apiClient from '../services/apiClient'; // USANDO O API CLIENT
 
 const categorias = ['Todos', 'Entradas', 'Pratos', 'Sobremesas', 'Bebidas'];
 
 // --- COMPONENTE HEADER ---
-// Este componente lida com toda a lógica e aparência do cabeçalho da página.
 const DetalheMesaHeader = ({ mesa, onMesaUpdate }) => {
   const navigate = useNavigate();
   const [nomeCliente, setNomeCliente] = useState('');
-  const [isEditingNumero, setIsEditingNumero] = useState(false);
-  const [numeroEditado, setNumeroEditado] = useState(mesa.numero);
-
+  
   useEffect(() => {
     setNomeCliente(mesa.nomeCliente || '');
-    setNumeroEditado(mesa.numero);
   }, [mesa]);
 
   const handleSalvarNome = async () => {
     if (nomeCliente !== (mesa.nomeCliente || '')) {
       try {
-        const response = await fetch(`${API_URL}/api/mesas/${mesa.id}/cliente`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nomeCliente: nomeCliente }),
-        });
-        if (response.ok) {
-          toast.success("Nome do cliente salvo!");
-          onMesaUpdate();
-        } else {
-          toast.error('Erro ao salvar o nome do cliente.');
-        }
+        await apiClient.patch(`/api/mesas/${mesa.id}/cliente`, { nomeCliente });
+        toast.success("Nome do cliente salvo!");
+        onMesaUpdate();
       } catch (error) {
         toast.error("Erro de comunicação ao salvar nome.");
       }
     }
   };
   
-  const handleSalvarNumero = async () => {
-    if (String(numeroEditado) === String(mesa.numero)) {
-      setIsEditingNumero(false);
-      return;
-    }
-    try {
-      const response = await fetch(`${API_URL}/api/mesas/${mesa.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ numero: parseInt(numeroEditado) }),
-      });
-      if (response.ok) {
-        toast.success("Número da mesa atualizado!");
-        onMesaUpdate();
-      } else {
-        const errorMsg = await response.text();
-        toast.error(`Erro: ${errorMsg}`);
-        setNumeroEditado(mesa.numero);
-      }
-    } catch (error) {
-      toast.error("Erro de comunicação.");
-    } finally {
-      setIsEditingNumero(false);
-    }
-  };
-
-  const handleNumeroKeyDown = (event) => {
-    if (event.key === 'Enter') handleSalvarNumero();
-    else if (event.key === 'Escape') {
-      setIsEditingNumero(false);
-      setNumeroEditado(mesa.numero);
-    }
-  };
-
   const handleActionClick = async () => {
     let novoStatus;
     if (mesa.status === 'LIVRE') novoStatus = 'OCUPADA';
@@ -82,18 +35,10 @@ const DetalheMesaHeader = ({ mesa, onMesaUpdate }) => {
     else return;
 
     try {
-      const response = await fetch(`${API_URL}/api/mesas/${mesa.id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: novoStatus }),
-      });
-      if (response.ok) {
-        toast.success(`Mesa marcada como ${novoStatus}!`);
-        if (novoStatus === 'LIVRE') navigate('/mesas');
-        else onMesaUpdate();
-      } else {
-        toast.error('Erro ao atualizar status da mesa.');
-      }
+      await apiClient.patch(`/api/mesas/${mesa.id}/status`, { status: novoStatus });
+      toast.success(`Mesa marcada como ${novoStatus}!`);
+      if (novoStatus === 'LIVRE') navigate('/mesas');
+      else onMesaUpdate();
     } catch (error) {
       toast.error('Erro de comunicação com o servidor.');
     }
@@ -122,11 +67,7 @@ const DetalheMesaHeader = ({ mesa, onMesaUpdate }) => {
         </Link>
         <div className="h-8 border-l border-gray-300"></div>
         <div className="flex items-baseline gap-2">
-          {isEditingNumero ? (
-            <input type="number" value={numeroEditado} onChange={(e) => setNumeroEditado(e.target.value)} onBlur={handleSalvarNumero} onKeyDown={handleNumeroKeyDown} autoFocus className="text-3xl font-bold text-gray-800 bg-orange-50 rounded-md w-24 text-center outline-none" />
-          ) : (
-            <h1 className="text-3xl font-bold text-gray-800 cursor-pointer hover:bg-gray-100 p-1 rounded-md" onClick={() => setIsEditingNumero(true)} title="Clique para editar o número">Mesa {mesa.numero}</h1>
-          )}
+          <h1 className="text-3xl font-bold text-gray-800">Mesa {mesa.numero}</h1>
           <input type="text" placeholder="Nome do Cliente" className="text-lg font-semibold text-gray-600 border-b-2 border-transparent focus:border-orange-500 bg-transparent outline-none transition-colors w-48" value={nomeCliente} onChange={(e) => setNomeCliente(e.target.value)} onBlur={handleSalvarNome} />
         </div>
         <span className={`px-3 py-1 text-sm font-bold rounded-md border ${statusTagClasses[mesa.status]}`}>{mesa.status}</span>
@@ -171,53 +112,26 @@ const DetalheMesaPage = () => {
   const [termoBusca, setTermoBusca] = useState('');
   const { id } = useParams();
 
-  const fetchMesa = async () => {
+  const fetchMesaEProdutos = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/mesas/${id}`);
-      if (response.ok) setMesa(await response.json());
-      else setMesa(null);
+      // Usando Promise.all para buscar ambos em paralelo
+      const [mesaData, cardapioData] = await Promise.all([
+        apiClient.get(`/api/mesas/${id}`),
+        apiClient.get('/api/produtos')
+      ]);
+      setMesa(mesaData);
+      setCardapio(cardapioData);
     } catch (error) {
-      console.error("Erro ao buscar detalhes da mesa:", error);
+      console.error("Erro ao buscar dados:", error);
+      toast.error("Não foi possível carregar os dados da mesa ou do cardápio.");
       setMesa(null);
     }
   };
 
   useEffect(() => {
-    fetchMesa();
-    const fetchCardapio = async () => {
-      try {
-        const response = await fetch(`${API_URL}/api/produtos`);
-        if (response.ok) setCardapio(await response.json());
-      } catch (error) {
-        console.error("Erro ao buscar cardápio:", error);
-      }
-    };
-    fetchCardapio();
+    fetchMesaEProdutos();
   }, [id]);
-
-  const handleAdicionarProduto = (produto, quantidade) => {
-    setPedido(pedidoAtual => {
-      const produtoExistente = pedidoAtual.find(item => item.id === produto.id);
-      if (produtoExistente) {
-        return pedidoAtual.map(item => item.id === produto.id ? { ...item, quantidade: item.quantidade + quantidade } : item);
-      } else {
-        return [...pedidoAtual, { ...produto, quantidade, observacao: '' }];
-      }
-    });
-  };
-
-  const handleRemoverItem = (itemId) => {
-    setPedido(pedidoAtual => pedidoAtual.filter(item => item.id !== itemId));
-  };
   
-  const handleAtualizarObservacao = (itemId, observacao) => {
-    setPedido(pedidoAtual => 
-      pedidoAtual.map(item => 
-        item.id === itemId ? { ...item, observacao: observacao } : item
-      )
-    );
-  };
-
   const handleEnviarPedido = async () => {
     if (pedido.length === 0) {
       toast.warn("Adicione pelo menos um item ao pedido.");
@@ -228,22 +142,28 @@ const DetalheMesaPage = () => {
       itens: pedido.map(item => ({ produtoId: item.id, quantidade: item.quantidade, observacao: item.observacao })),
     };
     try {
-      const response = await fetch(`${API_URL}/api/pedidos`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dadosDoPedido),
-      });
-      if (response.ok) {
-        toast.success("Pedido enviado com sucesso!");
-        setPedido([]);
-        fetchMesa();
-      } else {
-        toast.error("Erro ao enviar o pedido. Tente novamente.");
-      }
+      await apiClient.post('/api/pedidos', dadosDoPedido);
+      toast.success("Pedido enviado com sucesso!");
+      setPedido([]);
+      fetchMesaEProdutos(); // Recarrega os dados da mesa para mostrar o novo pedido
     } catch (error) {
-      toast.error("Erro de comunicação com o servidor.");
+      toast.error("Erro ao enviar o pedido. Tente novamente.");
     }
   };
+
+  // Funções de manipulação do pedido (sem alterações na lógica)
+  const handleAdicionarProduto = (produto, quantidade) => {
+    setPedido(pedidoAtual => {
+      const produtoExistente = pedidoAtual.find(item => item.id === produto.id);
+      if (produtoExistente) {
+        return pedidoAtual.map(item => item.id === produto.id ? { ...item, quantidade: item.quantidade + quantidade } : item);
+      } else {
+        return [...pedidoAtual, { ...produto, quantidade, observacao: '' }];
+      }
+    });
+  };
+  const handleRemoverItem = (itemId) => setPedido(p => p.filter(item => item.id !== itemId));
+  const handleAtualizarObservacao = (itemId, obs) => setPedido(p => p.map(item => item.id === itemId ? { ...item, observacao: obs } : item));
 
   const totalPedidoAtual = pedido.reduce((acc, item) => acc + (item.preco * item.quantidade), 0);
   const totalPedidosAnteriores = mesa ? mesa.valorTotal : 0;
@@ -258,10 +178,10 @@ const DetalheMesaPage = () => {
   if (!mesa) {
     return <div className="p-8 text-center"><p className="font-semibold text-gray-600">Carregando...</p></div>;
   }
-
+  
   return (
     <div className="w-full p-4 md:p-6 max-w-screen-xl mx-auto">
-      <DetalheMesaHeader mesa={mesa} onStatusChange={fetchMesa} />
+      <DetalheMesaHeader mesa={mesa} onMesaUpdate={fetchMesaEProdutos} />
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">

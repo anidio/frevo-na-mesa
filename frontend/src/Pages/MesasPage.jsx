@@ -1,11 +1,10 @@
-// src/pages/MesasPage.jsx
+// src/Pages/MesasPage.jsx
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify'; // Importa a função toast
+import { toast } from 'react-toastify';
 import MesaCard from '../components/MesaCard';
-
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+import apiClient from '../services/apiClient'; // Importa o novo apiClient
 
 const GarcomIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
@@ -22,14 +21,14 @@ const MesasPage = () => {
 
   const fetchData = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/mesas`);
-      if (response.ok) {
-        const data = await response.json();
-        data.sort((a, b) => a.numero - b.numero);
-        setMesas(data);
-      }
+      // USA O API CLIENT PARA A CHAMADA GET
+      const data = await apiClient.get('/api/mesas');
+      data.sort((a, b) => a.numero - b.numero);
+      setMesas(data);
     } catch (error) {
       console.error("Erro ao buscar mesas:", error);
+      toast.error("Você precisa estar logado para ver as mesas.");
+      // Futuramente, redirecionaremos para a página de login aqui
     } finally {
       setLoading(false);
     }
@@ -41,36 +40,20 @@ const MesasPage = () => {
 
   const handleAdicionarMesa = async () => {
     if (!novoNumero || isNaN(parseInt(novoNumero))) {
-      // DE: alert(...)
-      // PARA:
       toast.warn('Por favor, insira um número de mesa válido.');
       return;
     }
     try {
-      const response = await fetch(`${API_URL}/api/mesas`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ numero: parseInt(novoNumero) }),
-      });
+      // USA O API CLIENT PARA A CHAMADA POST
+      await apiClient.post('/api/mesas', { numero: parseInt(novoNumero) });
 
-      if (response.ok) {
-        // DE: alert(...)
-        // PARA:
-        toast.success('Mesa adicionada com sucesso!');
-        setIsModalOpen(false);
-        setNovoNumero('');
-        fetchData();
-      } else {
-        const errorMsg = await response.text();
-        // DE: alert(...)
-        // PARA:
-        toast.error(`Erro ao adicionar mesa: ${errorMsg}`);
-      }
+      toast.success('Mesa adicionada com sucesso!');
+      setIsModalOpen(false);
+      setNovoNumero('');
+      fetchData(); // Recarrega os dados após adicionar
     } catch (error) {
       console.error("Erro de comunicação ao adicionar mesa:", error);
-      // DE: alert(...)
-      // PARA:
-      toast.error("Erro de comunicação ao adicionar mesa.");
+      toast.error(`Erro ao adicionar mesa: ${error.message}`);
     }
   };
 

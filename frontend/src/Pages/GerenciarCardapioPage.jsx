@@ -2,12 +2,9 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { toast } from 'react-toastify';
+import apiClient from '../services/apiClient'; // 1. IMPORTAR O API CLIENT
 
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-
-// --- COMPONENTES INTERNOS ---
-
-// Componente customizado para a notificação de confirmação
+// --- COMPONENTE INTERNO ---
 const ConfirmacaoToast = ({ closeToast, onConfirm, mensagem }) => (
     <div>
         <p className="font-semibold">{mensagem}</p>
@@ -44,13 +41,12 @@ const GerenciarCardapioPage = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const response = await fetch(`${API_URL}/api/produtos`);
-            if (response.ok) {
-                const data = await response.json();
-                setCardapio(data);
-            }
+            // 2. USAR O API CLIENT PARA BUSCAR OS PRODUTOS
+            const data = await apiClient.get('/api/produtos');
+            setCardapio(data);
         } catch (error) {
             console.error("Erro ao buscar cardápio:", error);
+            toast.error("Não foi possível carregar o cardápio.");
         } finally {
             setLoading(false);
         }
@@ -63,25 +59,20 @@ const GerenciarCardapioPage = () => {
     const handleDeletar = (produtoId, produtoNome) => {
         const performDelete = async () => {
              try {
-                const response = await fetch(`http://localhost:8080/api/produtos/${produtoId}`, {
-                    method: 'DELETE',
-                });
-                if (response.ok) {
-                    toast.success(`"${produtoNome}" foi deletado com sucesso!`);
-                    fetchData();
-                } else {
-                    toast.error('Erro ao deletar o produto.');
-                }
+                // 3. USAR O API CLIENT PARA DELETAR
+                await apiClient.delete(`/api/produtos/${produtoId}`);
+                toast.success(`"${produtoNome}" foi deletado com sucesso!`);
+                fetchData();
             } catch (error) {
                 toast.error('Erro de comunicação com o servidor.');
             }
         };
 
         toast.warn(
-            <ConfirmacaoToast 
+            <ConfirmacaoToast
                 mensagem={`Deletar "${produtoNome}"?`}
                 onConfirm={performDelete}
-            />, 
+            />,
             { autoClose: false, closeOnClick: false, draggable: false }
         );
     };
@@ -96,7 +87,7 @@ const GerenciarCardapioPage = () => {
         }
         setIsModalOpen(true);
     };
-    
+
     const handleCloseModal = () => setIsModalOpen(false);
 
     const handleInputChange = (e) => {
@@ -110,24 +101,23 @@ const GerenciarCardapioPage = () => {
             return;
         }
         const isEditing = produtoEmEdicao !== null;
-        const url = isEditing ? `${API_URL}/api/produtos/${produtoEmEdicao.id}` : `${API_URL}/api/produtos`;
-        const method = isEditing ? 'PUT' : 'POST';
+
         try {
-            const response = await fetch(url, {
-                method: method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formState),
-            });
-            if (response.ok || response.status === 201) {
-                toast.success(`Produto ${isEditing ? 'atualizado' : 'adicionado'} com sucesso!`);
-                handleCloseModal();
-                fetchData();
+            if (isEditing) {
+                // 4. USAR O API CLIENT PARA ATUALIZAR (MÉTODO PUT)
+                // O apiClient não tem PUT, então podemos adicioná-lo ou usar o POST se o backend aceitar
+                // Vamos adicionar o PUT ao apiClient para ser mais correto.
+                await apiClient.put(`/api/produtos/${produtoEmEdicao.id}`, formState);
             } else {
-                toast.error(`Erro ao ${isEditing ? 'atualizar' : 'adicionar'} produto.`);
+                // 5. USAR O API CLIENT PARA CRIAR (MÉTODO POST)
+                await apiClient.post('/api/produtos', formState);
             }
+            toast.success(`Produto ${isEditing ? 'atualizado' : 'adicionado'} com sucesso!`);
+            handleCloseModal();
+            fetchData();
         } catch (error) {
             console.error('Erro de comunicação:', error);
-            toast.error('Erro de comunicação com o servidor.');
+            toast.error(`Erro ao ${isEditing ? 'atualizar' : 'adicionar'} produto.`);
         }
     };
 

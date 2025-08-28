@@ -1,9 +1,9 @@
+// src/Pages/HomePage.jsx
+
 import React from 'react';
 import { Link } from 'react-router-dom';
+import AuthStatus from '../components/AuthStatus'; // O caminho aqui está correto
 
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-
-// Ícones e Componentes específicos desta página
 // Ícone principal do Frevo na Mesa
 const FrevoUmbrellaIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -57,8 +57,12 @@ const ProfileCard = ({ title, description, features, icon, linkText, linkTo  }) 
 
 const HomePage = () => {
   return (
-    <div className="w-full p-8 max-w-4xl mx-auto">
-      {/* Seção do cabeçalho */}
+    <div className="relative w-full p-8 max-w-4xl mx-auto">
+      
+      <div className="absolute top-4 right-4 md:top-8 md:right-8 z-10">
+        <AuthStatus />
+      </div>
+
       <div className="text-center mb-12">
         <div className="flex justify-center mb-2 text-orange-500 text-5xl hover:drop-shadow-glow-orange">
           <FrevoUmbrellaIcon />
@@ -68,7 +72,6 @@ const HomePage = () => {
         <p className="text-md text-gray-500 mt-2">Escolha seu perfil para começar</p>
       </div>
 
-      {/* Cards de Perfil */}
       <div className="flex flex-col md:flex-row justify-center items-center md:space-x-8 space-y-8 md:space-y-0 mb-12">
         <ProfileCard
           title="App do Garçom"

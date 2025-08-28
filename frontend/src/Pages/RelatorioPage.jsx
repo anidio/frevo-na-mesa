@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+import { toast } from 'react-toastify';
+import apiClient from '../services/apiClient'; // 1. IMPORTAR O API CLIENT
 
 const RelatorioPage = () => {
     const [relatorio, setRelatorio] = useState(null);
@@ -11,13 +11,12 @@ const RelatorioPage = () => {
     useEffect(() => {
         const fetchRelatorio = async () => {
             try {
-                const response = await fetch(`${API_URL}/api/relatorios/hoje`);
-                if (response.ok) {
-                    const data = await response.json();
-                    setRelatorio(data);
-                }
+                // 2. USAR O API CLIENT PARA BUSCAR O RELATÓRIO
+                const data = await apiClient.get('/api/relatorios/hoje');
+                setRelatorio(data);
             } catch (error) {
                 console.error("Erro ao buscar relatório:", error);
+                toast.error("Não foi possível carregar o relatório.");
             } finally {
                 setLoading(false);
             }
@@ -27,24 +26,18 @@ const RelatorioPage = () => {
 
     const handleFecharCaixa = async () => {
         const confirm = window.confirm(
-            "ATENÇÃO!\n\nVocê tem certeza que deseja fechar o caixa?\n\nEsta ação é IRREVERSÍVEL e irá apagar todos os pedidos e mesas para iniciar um novo dia."
+            "ATENÇÃO!\n\nVocê tem certeza que deseja fechar o caixa?\n\nEsta ação é IRREVERSÍVEL e irá apagar todos os pedidos e mesas do SEU RESTAURANTE para iniciar um novo dia."
         );
 
         if (confirm) {
             try {
-                const response = await fetch(`${API_URL}/api/caixa/fechar`, {
-                    method: 'POST',
-                });
-
-                if (response.ok) {
-                    alert("Caixa fechado e sistema reiniciado com sucesso!");
-                    navigate('/'); // Redireciona para a Home
-                } else {
-                    alert("Erro ao fechar o caixa.");
-                }
+                // 3. USAR O API CLIENT PARA FECHAR O CAIXA
+                await apiClient.post('/api/caixa/fechar');
+                toast.success("Caixa fechado e sistema reiniciado com sucesso!");
+                navigate('/'); // Redireciona para a Home
             } catch (error) {
                 console.error("Erro de comunicação:", error);
-                alert("Erro de comunicação com o servidor.");
+                toast.error("Erro de comunicação com o servidor.");
             }
         }
     };
@@ -59,9 +52,9 @@ const RelatorioPage = () => {
                  <div className="flex justify-between items-center">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-800 mb-2">Relatório do Dia</h1>
-                        <p className="text-gray-500">Nenhuma venda registrada hoje ainda.</p>
+                        <p className="text-gray-500">Nenhuma venda registrada hoje ainda para o seu restaurante.</p>
                     </div>
-                    <button 
+                    <button
                         onClick={handleFecharCaixa}
                         className="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 transition-colors"
                     >
@@ -79,7 +72,7 @@ const RelatorioPage = () => {
                     <h1 className="text-3xl font-bold text-gray-800">Relatório do Dia</h1>
                     <p className="text-lg text-gray-500">Resumo de vendas para: {new Date(relatorio.data).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</p>
                 </div>
-                <button 
+                <button
                     onClick={handleFecharCaixa}
                     className="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 transition-colors"
                 >

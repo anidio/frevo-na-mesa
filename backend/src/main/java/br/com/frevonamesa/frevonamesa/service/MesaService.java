@@ -1,16 +1,15 @@
 package br.com.frevonamesa.frevonamesa.service;
 
 import br.com.frevonamesa.frevonamesa.dto.MesaRequestDTO;
-import br.com.frevonamesa.frevonamesa.model.Pedido;
-import br.com.frevonamesa.frevonamesa.model.StatusMesa;
-import br.com.frevonamesa.frevonamesa.model.TipoPagamento;
+import br.com.frevonamesa.frevonamesa.model.*;
+import br.com.frevonamesa.frevonamesa.repository.MesaRepository;
 import br.com.frevonamesa.frevonamesa.repository.PedidoRepository;
+import br.com.frevonamesa.frevonamesa.repository.RestauranteRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
-
-import br.com.frevonamesa.frevonamesa.model.Mesa;
-import br.com.frevonamesa.frevonamesa.repository.MesaRepository;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -26,29 +25,49 @@ public class MesaService {
     @Autowired
     private MesaRepository mesaRepository;
 
+    @Autowired
+    private RestauranteRepository restauranteRepository;
+
+    private Restaurante getRestauranteLogado() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return restauranteRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("Restaurante não encontrado com o email: " + email));
+    }
+
     public List<Mesa> listarTodas() {
-        return mesaRepository.findAll();
+        Restaurante restauranteLogado = getRestauranteLogado();
+        return mesaRepository.findByRestauranteId(restauranteLogado.getId());
     }
 
     public Optional<Mesa> buscarPorId(Long id) {
-        return mesaRepository.findById(id);
+        Restaurante restaurante = getRestauranteLogado();
+        Optional<Mesa> mesaOpt = mesaRepository.findById(id);
+
+        // Validação de segurança: Retorna a mesa apenas se ela pertencer ao restaurante logado
+        if (mesaOpt.isPresent() && mesaOpt.get().getRestaurante().getId().equals(restaurante.getId())) {
+            return mesaOpt;
+        }
+        return Optional.empty(); // Se não pertence, retorna como se não tivesse encontrado
     }
 
     @Transactional
     public Mesa atualizarStatus(Long id, StatusMesa novoStatus) {
+        Restaurante restaurante = getRestauranteLogado();
         Mesa mesa = mesaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Mesa não encontrada!"));
+
+        // Validação de segurança
+        if (!mesa.getRestaurante().getId().equals(restaurante.getId())) {
+            throw new SecurityException("Acesso negado: Esta mesa não pertence ao seu restaurante.");
+        }
 
         mesa.setStatus(novoStatus);
 
         if (novoStatus == StatusMesa.LIVRE) {
-            // 1. Zera o valor total para o próximo cliente
             mesa.setValorTotal(BigDecimal.ZERO);
-            // 2. Limpa o nome do cliente para o próximo atendimento
             mesa.setNomeCliente(null);
-            // 3. Desvincula os pedidos antigos desta instância da mesa para o próximo atendimento.
-            //    Os pedidos CONTINUARÃO no banco de dados para o relatório.
-            mesa.getPedidos().clear();
+            // Os pedidos permanecem no banco para o histórico, mas são desvinculados da mesa para o próximo cliente.
+            // A lógica de remoção/limpeza de pedidos antigos seria feita no "fechamento do caixa".
         }
 
         return mesaRepository.save(mesa);
@@ -56,17 +75,24 @@ public class MesaService {
 
     @Transactional
     public Mesa processarPagamento(Long id, TipoPagamento tipo) {
+        Restaurante restaurante = getRestauranteLogado();
         Mesa mesa = mesaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Mesa não encontrada!"));
+
+        // Validação de segurança
+        if (!mesa.getRestaurante().getId().equals(restaurante.getId())) {
+            throw new SecurityException("Acesso negado: Esta mesa não pertence ao seu restaurante.");
+        }
 
         if (mesa.getStatus() != StatusMesa.OCUPADA) {
             throw new RuntimeException("Apenas mesas ocupadas podem ter o pagamento processado.");
         }
 
         for (Pedido pedido : mesa.getPedidos()) {
-            // No futuro, poderíamos verificar se o pedido já foi pago
-            pedido.setTipoPagamento(tipo);
-            pedidoRepository.save(pedido);
+            if (pedido.getTipoPagamento() == null) { // Paga apenas os pedidos que ainda não foram pagos
+                pedido.setTipoPagamento(tipo);
+                pedidoRepository.save(pedido);
+            }
         }
 
         mesa.setStatus(StatusMesa.PAGA);
@@ -75,8 +101,14 @@ public class MesaService {
 
     @Transactional
     public Mesa atualizarNomeCliente(Long id, String nomeCliente) {
+        Restaurante restaurante = getRestauranteLogado();
         Mesa mesa = mesaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Mesa não encontrada!"));
+
+        // Validação de segurança
+        if (!mesa.getRestaurante().getId().equals(restaurante.getId())) {
+            throw new SecurityException("Acesso negado: Esta mesa não pertence ao seu restaurante.");
+        }
 
         mesa.setNomeCliente(nomeCliente);
         return mesaRepository.save(mesa);
@@ -84,37 +116,41 @@ public class MesaService {
 
     @Transactional
     public Mesa criarMesa(MesaRequestDTO dto) {
-        // Regra de Negócio: Verifica se já existe uma mesa com este número
-        if (mesaRepository.existsByNumero(dto.getNumero())) {
-            throw new RuntimeException("Já existe uma mesa com o número " + dto.getNumero());
+        Restaurante restauranteLogado = getRestauranteLogado();
+
+        if (mesaRepository.existsByNumeroAndRestauranteId(dto.getNumero(), restauranteLogado.getId())) {
+            throw new RuntimeException("Já existe uma mesa com o número " + dto.getNumero() + " para este restaurante.");
         }
 
         Mesa novaMesa = new Mesa();
         novaMesa.setNumero(dto.getNumero());
         novaMesa.setStatus(StatusMesa.LIVRE);
         novaMesa.setValorTotal(BigDecimal.ZERO);
-        novaMesa.setPedidos(new ArrayList<>()); // Inicializa a lista de pedidos vazia
+        novaMesa.setPedidos(new ArrayList<>());
+        novaMesa.setRestaurante(restauranteLogado);
 
         return mesaRepository.save(novaMesa);
     }
 
     @Transactional
     public Mesa atualizarNumeroMesa(Long id, int novoNumero) {
-        // Busca a mesa que queremos editar
+        Restaurante restauranteLogado = getRestauranteLogado();
         Mesa mesaParaAtualizar = mesaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Mesa com ID " + id + " não encontrada!"));
 
-        // Se o número não mudou, não faz nada
+        // Validação de segurança
+        if (!mesaParaAtualizar.getRestaurante().getId().equals(restauranteLogado.getId())) {
+            throw new SecurityException("Acesso negado: Esta mesa não pertence ao seu restaurante.");
+        }
+
         if (mesaParaAtualizar.getNumero() == novoNumero) {
             return mesaParaAtualizar;
         }
 
-        // REGRA DE NEGÓCIO: Verifica se o novo número já está em uso por OUTRA mesa
-        if (mesaRepository.existsByNumero(novoNumero)) {
+        if (mesaRepository.existsByNumeroAndRestauranteId(novoNumero, restauranteLogado.getId())) {
             throw new RuntimeException("O número de mesa " + novoNumero + " já está em uso!");
         }
 
-        // Se a validação passar, atualiza o número e salva
         mesaParaAtualizar.setNumero(novoNumero);
         return mesaRepository.save(mesaParaAtualizar);
     }

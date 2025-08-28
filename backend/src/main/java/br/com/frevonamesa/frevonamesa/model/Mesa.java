@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalTime;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -15,6 +16,11 @@ public class Mesa {
     @Id // Marca o campo como a chave primária (identificador único)
     @GeneratedValue(strategy = GenerationType.IDENTITY) // Pede ao banco para gerar o ID automaticamente
     private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "restaurante_id", nullable = false)
+    @JsonBackReference // Evita loops infinitos ao converter para JSON
+    private Restaurante restaurante;
 
     private int numero;
     private String nomeCliente;
