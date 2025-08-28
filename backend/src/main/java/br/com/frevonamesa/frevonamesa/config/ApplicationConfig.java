@@ -1,6 +1,6 @@
 package br.com.frevonamesa.frevonamesa.config;
 
-import br.com.frevonamesa.frevonamesa.model.Restaurante; // Importe o modelo Restaurante
+import br.com.frevonamesa.frevonamesa.model.Restaurante;
 import br.com.frevonamesa.frevonamesa.repository.RestauranteRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -8,13 +8,13 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-import org.springframework.security.core.userdetails.User; // Importe o User do Spring
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.util.ArrayList; // Importe ArrayList
+import java.util.ArrayList;
 
 @Configuration
 public class ApplicationConfig {
@@ -27,11 +27,10 @@ public class ApplicationConfig {
 
     @Bean
     public UserDetailsService userDetailsService() {
-        // CORREÇÃO: Agora estamos convertendo o Restaurante em um UserDetails
         return username -> {
             Restaurante restaurante = restauranteRepository.findByEmail(username)
                     .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado com o email: " + username));
-
+            // Converte o nosso 'Restaurante' para o 'User' que o Spring Security entende
             return new User(restaurante.getEmail(), restaurante.getSenha(), new ArrayList<>());
         };
     }
