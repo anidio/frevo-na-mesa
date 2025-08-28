@@ -10,20 +10,24 @@ import RelatorioPage from './Pages/RelatorioPage.jsx';
 import AdminPage from './Pages/AdminPage.jsx';
 import LoginPage from './Pages/LoginPage.jsx';
 import RegisterPage from './Pages/RegisterPage.jsx';
-import ProtectedRoute from './components/ProtectedRoute.jsx'; // 1. Importe o ProtectedRoute
+import ProtectedRoute from './components/ProtectedRoute.jsx';
 
 const App = () => {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Rotas públicas que não usam o MainLayout */}
+        {/* Rotas 100% públicas que não usam o layout principal */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/registrar" element={<RegisterPage />} />
 
-        {/* 2. Rotas protegidas que precisam de login */}
-        <Route element={<ProtectedRoute />}>
-          <Route path="/" element={<MainLayout />}>
-            <Route index element={<HomePage />} />
+        {/* Rotas que usam o layout principal */}
+        <Route path="/" element={<MainLayout />}>
+          {/* A página inicial é pública e renderizada diretamente */}
+          <Route index element={<HomePage />} />
+
+          {/* As rotas a seguir são aninhadas dentro do ProtectedRoute */}
+          {/* Elas só serão acessíveis se o usuário estiver logado */}
+          <Route element={<ProtectedRoute />}>
             <Route path="mesas" element={<MesasPage />} />
             <Route path="mesas/:id" element={<DetalheMesaPage />} />
             <Route path="caixa" element={<CaixaPage />} />
