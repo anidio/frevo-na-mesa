@@ -3,14 +3,14 @@ package br.com.frevonamesa.frevonamesa.config.jwt;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.security.Keys; // Importe a classe Keys
-import jakarta.annotation.PostConstruct; // Importe PostConstruct
+import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
-import java.security.Key; // Importe a interface Key
-import java.util.Base64; // Importe Base64
+import java.security.Key;
+import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -19,15 +19,17 @@ import java.util.function.Function;
 @Component
 public class JwtUtil {
 
-    @Value("${jwt.secret}")
-    private String secretString;
+    // Comentamos a leitura da variável de ambiente para o teste
+    // @Value("${jwt.secret}")
+    // private String secretString;
 
-    private Key key; // Vamos usar um objeto Key em vez da string
+    // DEFINIMOS A CHAVE DIRETAMENTE NO CÓDIGO PARA O TESTE
+    private final String secretString = "bWluaGEtY2hhdmUtc2VjcmV0YS1zdXBlci1sb25nYS1lLXNlZ3VyYS1wYXJhLW8tZnJldm8tbmEtbWVzYS0xMjM0NTY=";
 
-    // Este método é executado logo após a inicialização do componente
+    private Key key;
+
     @PostConstruct
     public void init() {
-        // Converte a sua string secreta em uma chave segura que a biblioteca entende
         byte[] keyBytes = Base64.getDecoder().decode(secretString);
         this.key = Keys.hmacShaKeyFor(keyBytes);
     }
@@ -46,7 +48,6 @@ public class JwtUtil {
     }
 
     private Claims extractAllClaims(String token) {
-        // Usa o objeto 'key' para fazer o parse
         return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
     }
 
@@ -65,7 +66,6 @@ public class JwtUtil {
                 .setSubject(subject)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 10)) // 10 horas
-                // Usa o objeto 'key' para assinar o token
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
