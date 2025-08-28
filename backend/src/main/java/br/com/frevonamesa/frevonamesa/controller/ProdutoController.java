@@ -21,22 +21,10 @@ public class ProdutoController {
         return produtoService.listarTodos();
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletarProduto(@PathVariable Long id) {
-        try {
-            produtoService.deletarProduto(id);
-            // HTTP 204 No Content é a resposta padrão para um DELETE bem-sucedido
-            return ResponseEntity.noContent().build();
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
-    }
-
     @PostMapping
     public ResponseEntity<Produto> criarProduto(@RequestBody ProdutoDTO produtoDTO) {
         try {
             Produto produtoSalvo = produtoService.criarProduto(produtoDTO);
-            // Retorna 201 Created com o objeto salvo no corpo
             return ResponseEntity.status(201).body(produtoSalvo);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
@@ -48,6 +36,16 @@ public class ProdutoController {
         try {
             Produto produtoAtualizado = produtoService.atualizarProduto(id, produtoDTO);
             return ResponseEntity.ok(produtoAtualizado);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deletarProduto(@PathVariable Long id) {
+        try {
+            produtoService.deletarProduto(id);
+            return ResponseEntity.noContent().build();
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }

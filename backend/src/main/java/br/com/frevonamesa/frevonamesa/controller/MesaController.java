@@ -1,17 +1,16 @@
 package br.com.frevonamesa.frevonamesa.controller;
 
-import java.util.List;
-
 import br.com.frevonamesa.frevonamesa.dto.MesaClienteDTO;
 import br.com.frevonamesa.frevonamesa.dto.MesaRequestDTO;
 import br.com.frevonamesa.frevonamesa.dto.MesaStatusDTO;
 import br.com.frevonamesa.frevonamesa.dto.PagamentoDTO;
+import br.com.frevonamesa.frevonamesa.model.Mesa;
+import br.com.frevonamesa.frevonamesa.service.MesaService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import br.com.frevonamesa.frevonamesa.model.Mesa;
-import br.com.frevonamesa.frevonamesa.service.MesaService;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/mesas")
@@ -20,7 +19,7 @@ public class MesaController {
     @Autowired
     private MesaService mesaService;
 
-    @GetMapping // Requisições do tipo GET (buscar dados)
+    @GetMapping
     public List<Mesa> listarMesas() {
         return mesaService.listarTodas();
     }
@@ -28,8 +27,18 @@ public class MesaController {
     @GetMapping("/{id}")
     public ResponseEntity<Mesa> buscarMesaPorId(@PathVariable Long id) {
         return mesaService.buscarPorId(id)
-                .map(mesa -> ResponseEntity.ok(mesa)) // Se encontrar, retorna 200 OK com a mesa
-                .orElse(ResponseEntity.notFound().build()); // Se não encontrar, retorna 404 Not Found
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping
+    public ResponseEntity<?> criarMesa(@RequestBody MesaRequestDTO mesaDTO) {
+        try {
+            Mesa novaMesa = mesaService.criarMesa(mesaDTO);
+            return ResponseEntity.status(201).body(novaMesa);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @PatchMapping("/{id}/status")
@@ -62,23 +71,12 @@ public class MesaController {
         }
     }
 
-    @PostMapping
-    public ResponseEntity<?> criarMesa(@RequestBody MesaRequestDTO mesaDTO) {
-        try {
-            Mesa novaMesa = mesaService.criarMesa(mesaDTO);
-            return ResponseEntity.status(201).body(novaMesa); // 201 Created
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage()); // 400 Bad Request com a mensagem de erro
-        }
-    }
-
     @PatchMapping("/{id}")
-    public ResponseEntity<?> atualizarMesa(@PathVariable Long id, @RequestBody MesaRequestDTO mesaDTO) {
+    public ResponseEntity<?> atualizarNumeroMesa(@PathVariable Long id, @RequestBody MesaRequestDTO mesaDTO) {
         try {
             Mesa mesaAtualizada = mesaService.atualizarNumeroMesa(id, mesaDTO.getNumero());
             return ResponseEntity.ok(mesaAtualizada);
         } catch (RuntimeException e) {
-            // Retorna um erro 400 (Bad Request) com a mensagem de validação
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
