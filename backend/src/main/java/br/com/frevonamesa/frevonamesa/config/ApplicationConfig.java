@@ -8,13 +8,14 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.core.authority.SimpleGrantedAuthority; // 1. ADICIONE ESTA IMPORTAÇÃO
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.util.ArrayList;
+import java.util.List; // 2. ADICIONE ESTA IMPORTAÇÃO
 
 @Configuration
 public class ApplicationConfig {
@@ -30,8 +31,14 @@ public class ApplicationConfig {
         return username -> {
             Restaurante restaurante = restauranteRepository.findByEmail(username)
                     .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado com o email: " + username));
-            // Converte o nosso 'Restaurante' para o 'User' que o Spring Security entende
-            return new User(restaurante.getEmail(), restaurante.getSenha(), new ArrayList<>());
+
+            // 3. AQUI ESTÁ A MUDANÇA CRÍTICA
+            // Em vez de uma lista vazia, damos ao usuário a permissão "ROLE_USER"
+            return new User(
+                    restaurante.getEmail(),
+                    restaurante.getSenha(),
+                    List.of(new SimpleGrantedAuthority("ROLE_USER"))
+            );
         };
     }
 
