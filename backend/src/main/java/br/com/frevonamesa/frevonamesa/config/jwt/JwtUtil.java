@@ -19,12 +19,8 @@ import java.util.function.Function;
 @Component
 public class JwtUtil {
 
-    // Comentamos a leitura da variável de ambiente para o teste
-    // @Value("${jwt.secret}")
-    // private String secretString;
-
-    // DEFINIMOS A CHAVE DIRETAMENTE NO CÓDIGO PARA O TESTE
-    private final String secretString = "bWluaGEtY2hhdmUtc2VjcmV0YS1zdXBlci1sb25nYS1lLXNlZ3VyYS1wYXJhLW8tZnJldm8tbmEtbWVzYS0xMjM0NTY=";
+    @Value("${jwt.secret}")
+    private String secretString;
 
     private Key key;
 
