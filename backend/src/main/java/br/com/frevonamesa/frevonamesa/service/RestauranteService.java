@@ -1,11 +1,18 @@
 package br.com.frevonamesa.frevonamesa.service;
 
 import br.com.frevonamesa.frevonamesa.dto.RestauranteDTO;
+import br.com.frevonamesa.frevonamesa.model.Mesa; // 1. Importar Mesa
 import br.com.frevonamesa.frevonamesa.model.Restaurante;
+import br.com.frevonamesa.frevonamesa.model.StatusMesa; // 2. Importar StatusMesa
+import br.com.frevonamesa.frevonamesa.repository.MesaRepository; // 3. Importar MesaRepository
 import br.com.frevonamesa.frevonamesa.repository.RestauranteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal; // 4. Importar BigDecimal
+import java.util.ArrayList; // 5. Importar ArrayList
+import java.util.stream.IntStream; // 6. Importar IntStream
 
 @Service
 public class RestauranteService {
@@ -16,7 +23,8 @@ public class RestauranteService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    // O método loadUserByUsername foi removido daqui e colocado na ApplicationConfig
+    @Autowired
+    private MesaRepository mesaRepository; // 7. Injetar o repositório de mesas
 
     public Restaurante cadastrar(RestauranteDTO restauranteDTO) {
         if (restauranteRepository.findByEmail(restauranteDTO.getEmail()).isPresent()) {
@@ -31,6 +39,20 @@ public class RestauranteService {
                 senhaCriptografada
         );
 
-        return restauranteRepository.save(novoRestaurante);
+        // Salva o novo restaurante primeiro para que ele tenha um ID
+        Restaurante restauranteSalvo = restauranteRepository.save(novoRestaurante);
+
+        // 8. LÓGICA ADICIONADA: Cria 10 mesas padrão para o novo restaurante
+        IntStream.rangeClosed(1, 10).forEach(numero -> {
+            Mesa novaMesa = new Mesa();
+            novaMesa.setNumero(numero);
+            novaMesa.setStatus(StatusMesa.LIVRE);
+            novaMesa.setValorTotal(BigDecimal.ZERO);
+            novaMesa.setPedidos(new ArrayList<>());
+            novaMesa.setRestaurante(restauranteSalvo); // Associa ao restaurante que acabamos de salvar
+            mesaRepository.save(novaMesa);
+        });
+
+        return restauranteSalvo;
     }
 }

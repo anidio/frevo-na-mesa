@@ -43,11 +43,10 @@ public class MesaService {
         Restaurante restaurante = getRestauranteLogado();
         Optional<Mesa> mesaOpt = mesaRepository.findById(id);
 
-        // Validação de segurança: Retorna a mesa apenas se ela pertencer ao restaurante logado
         if (mesaOpt.isPresent() && mesaOpt.get().getRestaurante().getId().equals(restaurante.getId())) {
             return mesaOpt;
         }
-        return Optional.empty(); // Se não pertence, retorna como se não tivesse encontrado
+        return Optional.empty();
     }
 
     @Transactional
@@ -56,7 +55,6 @@ public class MesaService {
         Mesa mesa = mesaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Mesa não encontrada!"));
 
-        // Validação de segurança
         if (!mesa.getRestaurante().getId().equals(restaurante.getId())) {
             throw new SecurityException("Acesso negado: Esta mesa não pertence ao seu restaurante.");
         }
@@ -64,10 +62,18 @@ public class MesaService {
         mesa.setStatus(novoStatus);
 
         if (novoStatus == StatusMesa.LIVRE) {
+            // Zera os valores para o próximo cliente
             mesa.setValorTotal(BigDecimal.ZERO);
             mesa.setNomeCliente(null);
-            // Os pedidos permanecem no banco para o histórico, mas são desvinculados da mesa para o próximo cliente.
-            // A lógica de remoção/limpeza de pedidos antigos seria feita no "fechamento do caixa".
+            mesa.setHoraAbertura(null);
+
+            // Desvincula os pedidos antigos da mesa, sem apagá-los do sistema.
+            // Isso garante que eles não aparecerão mais na tela da mesa, mas continuarão existindo para os relatórios.
+            for (Pedido pedido : new ArrayList<>(mesa.getPedidos())) {
+                pedido.setMesa(null); // Define a referência da mesa como nula no pedido
+                pedidoRepository.save(pedido); // Salva o pedido desvinculado
+            }
+            mesa.getPedidos().clear(); // Limpa a lista de pedidos da instância atual da mesa
         }
 
         return mesaRepository.save(mesa);
@@ -79,7 +85,6 @@ public class MesaService {
         Mesa mesa = mesaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Mesa não encontrada!"));
 
-        // Validação de segurança
         if (!mesa.getRestaurante().getId().equals(restaurante.getId())) {
             throw new SecurityException("Acesso negado: Esta mesa não pertence ao seu restaurante.");
         }
@@ -89,7 +94,7 @@ public class MesaService {
         }
 
         for (Pedido pedido : mesa.getPedidos()) {
-            if (pedido.getTipoPagamento() == null) { // Paga apenas os pedidos que ainda não foram pagos
+            if (pedido.getTipoPagamento() == null) {
                 pedido.setTipoPagamento(tipo);
                 pedidoRepository.save(pedido);
             }
@@ -105,7 +110,6 @@ public class MesaService {
         Mesa mesa = mesaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Mesa não encontrada!"));
 
-        // Validação de segurança
         if (!mesa.getRestaurante().getId().equals(restaurante.getId())) {
             throw new SecurityException("Acesso negado: Esta mesa não pertence ao seu restaurante.");
         }
@@ -138,7 +142,6 @@ public class MesaService {
         Mesa mesaParaAtualizar = mesaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Mesa com ID " + id + " não encontrada!"));
 
-        // Validação de segurança
         if (!mesaParaAtualizar.getRestaurante().getId().equals(restauranteLogado.getId())) {
             throw new SecurityException("Acesso negado: Esta mesa não pertence ao seu restaurante.");
         }
