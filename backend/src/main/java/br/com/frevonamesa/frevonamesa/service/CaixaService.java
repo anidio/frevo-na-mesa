@@ -3,6 +3,7 @@ package br.com.frevonamesa.frevonamesa.service;
 import br.com.frevonamesa.frevonamesa.dto.CaixaDashboardDTO;
 import br.com.frevonamesa.frevonamesa.dto.RelatorioDiarioDTO;
 import br.com.frevonamesa.frevonamesa.model.Mesa;
+import br.com.frevonamesa.frevonamesa.model.Pedido;
 import br.com.frevonamesa.frevonamesa.model.Restaurante;
 import br.com.frevonamesa.frevonamesa.model.StatusMesa;
 import br.com.frevonamesa.frevonamesa.repository.MesaRepository;
@@ -15,6 +16,8 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.IntStream;
 
 @Service
@@ -23,14 +26,13 @@ public class CaixaService {
 
     @Autowired
     private MesaRepository mesaRepository;
-
     @Autowired
     private PedidoRepository pedidoRepository;
-
     @Autowired
-    private RestauranteRepository restauranteRepository; // Para buscar o restaurante
+    private RestauranteRepository restauranteRepository;
+    @Autowired
+    private RelatorioService relatorioService;
 
-    // Método auxiliar para pegar o restaurante logado
     private Restaurante getRestauranteLogado() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return restauranteRepository.findByEmail(email)
@@ -42,37 +44,47 @@ public class CaixaService {
         Long restauranteId = restaurante.getId();
         CaixaDashboardDTO dashboard = new CaixaDashboardDTO();
 
-        // Conta mesas abertas (status OCUPADA) apenas para este restaurante
         long mesasOcupadas = mesaRepository.countByStatusAndRestauranteId(StatusMesa.OCUPADA, restauranteId);
         dashboard.setMesasAbertas(mesasOcupadas);
 
-        // Conta mesas pagas (status PAGA) apenas para este restaurante
         long mesasPagas = mesaRepository.countByStatusAndRestauranteId(StatusMesa.PAGA, restauranteId);
         dashboard.setMesasPagas(mesasPagas);
 
-        // Calcula o valor total em aberto apenas das mesas deste restaurante
         BigDecimal totalEmAberto = mesaRepository.findAllByStatusAndRestauranteId(StatusMesa.OCUPADA, restauranteId).stream()
                 .map(Mesa::getValorTotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         dashboard.setTotalEmAberto(totalEmAberto);
+
+        RelatorioDiarioDTO relatorio = relatorioService.gerarRelatorioDoDia();
+        dashboard.setTotalDoDia(relatorio.getFaturamentoTotal());
 
         return dashboard;
     }
 
     public void fecharCaixa() {
         Restaurante restaurante = getRestauranteLogado();
-        Long restauranteId = restaurante.getId();
 
-        // 1. Deleta todos os pedidos associados às mesas deste restaurante (precisaria de uma lógica mais complexa)
-        // Por simplicidade, vamos manter a lógica atual de apagar tudo, mas idealmente seria filtrado
+        // 1. Encontra todos os pedidos do restaurante logado
+        List<Mesa> mesasDoRestaurante = mesaRepository.findByRestauranteId(restaurante.getId());
+        List<Pedido> pedidosParaDeletar = new ArrayList<>();
+        for (Mesa mesa : mesasDoRestaurante) {
+            pedidosParaDeletar.addAll(mesa.getPedidos());
+        }
 
-        // CUIDADO: A lógica abaixo reinicia TUDO. Para um sistema multi-restaurante real,
-        // precisaríamos deletar apenas os pedidos/mesas do restaurante logado.
-        // Vamos focar em fazer o dashboard funcionar primeiro.
+        // 2. Deleta os pedidos e mesas apenas deste restaurante
+        pedidoRepository.deleteAll(pedidosParaDeletar);
+        mesaRepository.deleteAll(mesasDoRestaurante);
 
-        pedidoRepository.deleteAll(); // Simplificação por enquanto
-        mesaRepository.deleteAll(); // Simplificação por enquanto
-
-        // Recria 10 mesas para o restaurante que fechou o caixa (lógica a ser implementada)
+        // 3. (Opcional) Recria mesas vazias para este restaurante
+        // Esta lógica pode ser ajustada conforme a necessidade do negócio
+        IntStream.rangeClosed(1, 10).forEach(numero -> {
+            Mesa novaMesa = new Mesa();
+            novaMesa.setNumero(numero);
+            novaMesa.setStatus(StatusMesa.LIVRE);
+            novaMesa.setValorTotal(BigDecimal.ZERO);
+            novaMesa.setPedidos(new ArrayList<>());
+            novaMesa.setRestaurante(restaurante); // Associa ao restaurante correto
+            mesaRepository.save(novaMesa);
+        });
     }
 }
