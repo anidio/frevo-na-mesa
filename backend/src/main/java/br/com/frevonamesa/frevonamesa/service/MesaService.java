@@ -34,6 +34,32 @@ public class MesaService {
                 .orElseThrow(() -> new UsernameNotFoundException("Restaurante não encontrado com o email: " + email));
     }
 
+    @Transactional
+    public Mesa atualizarStatus(Long id, StatusMesa novoStatus) {
+        Restaurante restaurante = getRestauranteLogado();
+        Mesa mesa = mesaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Mesa não encontrada!"));
+
+        if (!mesa.getRestaurante().getId().equals(restaurante.getId())) {
+            throw new SecurityException("Acesso negado: Esta mesa não pertence ao seu restaurante.");
+        }
+
+        mesa.setStatus(novoStatus);
+
+        // AQUI ESTÁ A CORREÇÃO:
+        // Quando a mesa fica livre, apenas resetamos seus valores.
+        // NUNCA mais desvinculamos os pedidos antigos. O histórico é mantido.
+        if (novoStatus == StatusMesa.LIVRE) {
+            mesa.setValorTotal(BigDecimal.ZERO);
+            mesa.setNomeCliente(null);
+            mesa.setHoraAbertura(null);
+            // NÃO mexemos mais na lista de pedidos aqui.
+        }
+
+        return mesaRepository.save(mesa);
+    }
+
+    // O resto do arquivo continua igual...
     public List<Mesa> listarTodas() {
         Restaurante restauranteLogado = getRestauranteLogado();
         return mesaRepository.findByRestauranteId(restauranteLogado.getId());
@@ -50,36 +76,6 @@ public class MesaService {
     }
 
     @Transactional
-    public Mesa atualizarStatus(Long id, StatusMesa novoStatus) {
-        Restaurante restaurante = getRestauranteLogado();
-        Mesa mesa = mesaRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Mesa não encontrada!"));
-
-        if (!mesa.getRestaurante().getId().equals(restaurante.getId())) {
-            throw new SecurityException("Acesso negado: Esta mesa não pertence ao seu restaurante.");
-        }
-
-        mesa.setStatus(novoStatus);
-
-        if (novoStatus == StatusMesa.LIVRE) {
-            // Zera os valores para o próximo cliente
-            mesa.setValorTotal(BigDecimal.ZERO);
-            mesa.setNomeCliente(null);
-            mesa.setHoraAbertura(null);
-
-            // Desvincula os pedidos antigos da mesa, sem apagá-los do sistema.
-            // Isso garante que eles não aparecerão mais na tela da mesa, mas continuarão existindo para os relatórios.
-            for (Pedido pedido : new ArrayList<>(mesa.getPedidos())) {
-                pedido.setMesa(null); // Define a referência da mesa como nula no pedido
-                pedidoRepository.save(pedido); // Salva o pedido desvinculado
-            }
-            mesa.getPedidos().clear(); // Limpa a lista de pedidos da instância atual da mesa
-        }
-
-        return mesaRepository.save(mesa);
-    }
-
-    @Transactional
     public Mesa processarPagamento(Long id, TipoPagamento tipo) {
         Restaurante restaurante = getRestauranteLogado();
         Mesa mesa = mesaRepository.findById(id)
@@ -93,6 +89,7 @@ public class MesaService {
             throw new RuntimeException("Apenas mesas ocupadas podem ter o pagamento processado.");
         }
 
+        // Pagamos apenas os pedidos que ainda não têm um tipo de pagamento definido
         for (Pedido pedido : mesa.getPedidos()) {
             if (pedido.getTipoPagamento() == null) {
                 pedido.setTipoPagamento(tipo);

@@ -39,13 +39,15 @@ public class RelatorioService {
         LocalDateTime inicioDoDia = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
         LocalDateTime fimDoDia = LocalDateTime.of(LocalDate.now(), LocalTime.MAX);
 
-        // Busca todos os pedidos pagos hoje E que pertencem ao restaurante logado
         List<Pedido> pedidosPagosHoje = pedidoRepository.findAllByDataHoraBetweenAndTipoPagamentoIsNotNull(inicioDoDia, fimDoDia)
                 .stream()
-                .filter(pedido -> pedido.getMesa().getRestaurante().getId().equals(restaurante.getId()))
+                // AQUI ESTÁ A CORREÇÃO:
+                // Primeiro, verifica se o pedido tem uma mesa (não é nulo).
+                // Só então, verifica se a mesa pertence ao restaurante logado.
+                .filter(pedido -> pedido.getMesa() != null && pedido.getMesa().getRestaurante().getId().equals(restaurante.getId()))
                 .collect(Collectors.toList());
 
-        // O resto da lógica para montar o DTO permanece a mesma, pois já está baseada na lista filtrada
+        // O resto da lógica para montar o DTO permanece a mesma
         Map<Mesa, List<Pedido>> pedidosPorMesa = pedidosPagosHoje.stream()
                 .collect(Collectors.groupingBy(Pedido::getMesa));
 
