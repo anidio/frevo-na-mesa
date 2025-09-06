@@ -132,24 +132,99 @@ const DetalheMesaPage = () => {
     fetchMesaEProdutos();
   }, [id]);
   
-  const handleEnviarPedido = async () => {
-    if (pedido.length === 0) {
-      toast.warn("Adicione pelo menos um item ao pedido.");
-      return;
-    }
-    const dadosDoPedido = {
-      mesaId: mesa.id,
-      itens: pedido.map(item => ({ produtoId: item.id, quantidade: item.quantidade, observacao: item.observacao })),
+  // Adicione esta função após as outras funções do componente
+  const handlePrint = () => {
+  // Captura os dados do pedido para impressão
+  const conteudoImpressao = `
+    <html>
+    <head>
+      <title>Pedido Mesa ${mesa?.numero || ''}</title>
+      <style>
+        body {
+          font-family: monospace;
+          font-size: 12px;
+          width: 270px;
+          margin: 0;
+          padding: 10px;
+        }
+        .header {
+          text-align: center;
+          font-weight: bold;
+          margin-bottom: 10px;
+          font-size: 14px;
+        }
+        .item {
+          margin-bottom: 5px;
+        }
+        .obs {
+          font-style: italic;
+          font-size: 10px;
+          margin-left: 10px;
+        }
+        .divider {
+          border-top: 1px dashed #000;
+          margin: 10px 0;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        PEDIDO - MESA ${mesa?.numero || ''}
+        ${mesa?.nomeCliente ? `<br>Cliente: ${mesa.nomeCliente}` : ''}
+        <br>${new Date().toLocaleString()}
+      </div>
+      <div class="divider"></div>
+      ${pedido.map(item => `
+        <div class="item">
+          <strong>${item.quantidade}x ${item.nome}</strong>
+          ${item.observacao ? `<div class="obs">Obs: ${item.observacao}</div>` : ''}
+        </div>
+      `).join('')}
+      <div class="divider"></div>
+      <div>
+        <strong>Total do pedido: R$ ${totalPedidoAtual.toFixed(2).replace('.', ',')}</strong>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  // Abre uma nova janela para impressão
+  const janelaImpressao = window.open('', '_blank');
+  janelaImpressao.document.write(conteudoImpressao);
+  janelaImpressao.document.close();
+  
+  // Imprime e fecha a janela após a impressão
+  janelaImpressao.onload = function() {
+    janelaImpressao.print();
+    janelaImpressao.onafterprint = function() {
+      janelaImpressao.close();
     };
-    try {
-      await apiClient.post('/api/pedidos', dadosDoPedido);
-      toast.success("Pedido enviado com sucesso!");
-      setPedido([]);
-      fetchMesaEProdutos(); // Recarrega os dados da mesa para mostrar o novo pedido
-    } catch (error) {
-      toast.error("Erro ao enviar o pedido. Tente novamente.");
-    }
   };
+};
+
+// Modifique a função handleEnviarPedido para incluir a impressão
+const handleEnviarPedido = async () => {
+  if (pedido.length === 0) {
+    toast.warn("Adicione pelo menos um item ao pedido.");
+    return;
+  }
+  const dadosDoPedido = {
+    mesaId: mesa.id,
+    itens: pedido.map(item => ({ produtoId: item.id, quantidade: item.quantidade, observacao: item.observacao })),
+  };
+  try {
+    await apiClient.post('/api/pedidos', dadosDoPedido);
+    toast.success("Pedido enviado com sucesso!");
+    
+    // Imprime o pedido antes de limpar os dados
+    handlePrint();
+    
+    setPedido([]);
+    fetchMesaEProdutos(); // Recarrega os dados da mesa para mostrar o novo pedido
+  } catch (error) {
+    toast.error("Erro ao enviar o pedido. Tente novamente.");
+  }
+};
 
   // Funções de manipulação do pedido (sem alterações na lógica)
   const handleAdicionarProduto = (produto, quantidade) => {
