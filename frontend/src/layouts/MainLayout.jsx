@@ -2,7 +2,6 @@ import React from 'react';
 import { Outlet } from 'react-router-dom';
 import Footer from '../components/Footer';
 import BottomNav from '../components/BottomNav';
-import { ToastContainer } from 'react-toastify';
 
 const MainLayout = () => {
   return (
@@ -19,18 +18,6 @@ const MainLayout = () => {
         <Footer />
       </div>
       <BottomNav />
-      <ToastContainer
-        position="top-right"
-        autoClose={3000} // Fecha automaticamente após 3 segundos
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-      />
     </div>
   );
 };
