@@ -32,6 +32,9 @@ public class Pedido {
     @JsonManagedReference
     private List<ItemPedido> itens;
 
+    @Column(nullable = false)
+    private boolean impresso = false;
+
     private BigDecimal total;
     private LocalDateTime dataHora;
 }

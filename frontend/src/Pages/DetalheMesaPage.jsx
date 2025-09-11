@@ -3,11 +3,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import apiClient from '../services/apiClient'; // USANDO O API CLIENT
+import apiClient from '../services/apiClient';
 
 const categorias = ['Todos', 'Entradas', 'Pratos', 'Sobremesas', 'Bebidas'];
 
-// --- COMPONENTE HEADER ---
+// Componente para o cabeçalho da página (Mesa, Cliente, Status).
 const DetalheMesaHeader = ({ mesa, onMesaUpdate }) => {
   const navigate = useNavigate();
   const [nomeCliente, setNomeCliente] = useState('');
@@ -16,6 +16,7 @@ const DetalheMesaHeader = ({ mesa, onMesaUpdate }) => {
     setNomeCliente(mesa.nomeCliente || '');
   }, [mesa]);
 
+  // Função: Salva o nome do cliente no backend.
   const handleSalvarNome = async () => {
     if (nomeCliente !== (mesa.nomeCliente || '')) {
       try {
@@ -28,6 +29,7 @@ const DetalheMesaHeader = ({ mesa, onMesaUpdate }) => {
     }
   };
   
+  // Função: Altera o status da mesa (Livre -> Ocupada, Paga -> Livre).
   const handleActionClick = async () => {
     let novoStatus;
     if (mesa.status === 'LIVRE') novoStatus = 'OCUPADA';
@@ -44,6 +46,7 @@ const DetalheMesaHeader = ({ mesa, onMesaUpdate }) => {
     }
   };
 
+  // Função: Decide qual botão de ação (Marcar como Ocupada, Liberar Mesa) deve aparecer.
   const renderActionButton = () => {
     switch (mesa.status) {
       case 'LIVRE': return <button onClick={handleActionClick} className="px-4 py-2 rounded-lg font-semibold border transition-colors bg-green-600 text-white hover:bg-green-700">Marcar como Ocupada</button>;
@@ -77,7 +80,7 @@ const DetalheMesaHeader = ({ mesa, onMesaUpdate }) => {
   );
 };
 
-// --- COMPONENTE PRODUTOCARD ---
+// Componente para exibir um produto do cardápio.
 const ProdutoCard = ({ produto, onAdicionar }) => {
   const [quantidade, setQuantidade] = useState(1);
   const handleDecrease = () => setQuantidade(q => Math.max(1, q - 1));
@@ -103,7 +106,7 @@ const ProdutoCard = ({ produto, onAdicionar }) => {
   );
 };
 
-// --- COMPONENTE PRINCIPAL DA PÁGINA ---
+// Componente principal da página.
 const DetalheMesaPage = () => {
   const [mesa, setMesa] = useState(null);
   const [cardapio, setCardapio] = useState([]);
@@ -112,9 +115,9 @@ const DetalheMesaPage = () => {
   const [termoBusca, setTermoBusca] = useState('');
   const { id } = useParams();
 
+  // Função: Busca os dados da mesa e o cardápio completo do restaurante.
   const fetchMesaEProdutos = async () => {
     try {
-      // Usando Promise.all para buscar ambos em paralelo
       const [mesaData, cardapioData] = await Promise.all([
         apiClient.get(`/api/mesas/${id}`),
         apiClient.get('/api/produtos')
@@ -128,105 +131,32 @@ const DetalheMesaPage = () => {
     }
   };
 
+  // Função: Executa a busca de dados quando a página carrega.
   useEffect(() => {
     fetchMesaEProdutos();
   }, [id]);
-  
-  // Adicione esta função após as outras funções do componente
-  const handlePrint = () => {
-  // Captura os dados do pedido para impressão
-  const conteudoImpressao = `
-    <html>
-    <head>
-      <title>Pedido Mesa ${mesa?.numero || ''}</title>
-      <style>
-        body {
-          font-family: monospace;
-          font-size: 12px;
-          width: 270px;
-          margin: 0;
-          padding: 10px;
-        }
-        .header {
-          text-align: center;
-          font-weight: bold;
-          margin-bottom: 10px;
-          font-size: 14px;
-        }
-        .item {
-          margin-bottom: 5px;
-        }
-        .obs {
-          font-style: italic;
-          font-size: 10px;
-          margin-left: 10px;
-        }
-        .divider {
-          border-top: 1px dashed #000;
-          margin: 10px 0;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        PEDIDO - MESA ${mesa?.numero || ''}
-        ${mesa?.nomeCliente ? `<br>Cliente: ${mesa.nomeCliente}` : ''}
-        <br>${new Date().toLocaleString()}
-      </div>
-      <div class="divider"></div>
-      ${pedido.map(item => `
-        <div class="item">
-          <strong>${item.quantidade}x ${item.nome}</strong>
-          ${item.observacao ? `<div class="obs">Obs: ${item.observacao}</div>` : ''}
-        </div>
-      `).join('')}
-      <div class="divider"></div>
-      <div>
-        <strong>Total do pedido: R$ ${totalPedidoAtual.toFixed(2).replace('.', ',')}</strong>
-      </div>
-    </body>
-    </html>
-  `;
-  
-  // Abre uma nova janela para impressão
-  const janelaImpressao = window.open('', '_blank');
-  janelaImpressao.document.write(conteudoImpressao);
-  janelaImpressao.document.close();
-  
-  // Imprime e fecha a janela após a impressão
-  janelaImpressao.onload = function() {
-    janelaImpressao.print();
-    janelaImpressao.onafterprint = function() {
-      janelaImpressao.close();
+
+  // Função: Envia o novo pedido para o backend.
+  const handleEnviarPedido = async () => {
+    if (pedido.length === 0) {
+      toast.warn("Adicione pelo menos um item ao pedido.");
+      return;
+    }
+    const dadosDoPedido = {
+      mesaId: mesa.id,
+      itens: pedido.map(item => ({ produtoId: item.id, quantidade: item.quantidade, observacao: item.observacao })),
     };
+    try {
+      await apiClient.post('/api/pedidos', dadosDoPedido);
+      toast.success("Pedido enviado para o caixa!");
+      setPedido([]);
+      fetchMesaEProdutos();
+    } catch (error) {
+      toast.error("Erro ao enviar o pedido. Tente novamente.");
+    }
   };
-};
 
-// Modifique a função handleEnviarPedido para incluir a impressão
-const handleEnviarPedido = async () => {
-  if (pedido.length === 0) {
-    toast.warn("Adicione pelo menos um item ao pedido.");
-    return;
-  }
-  const dadosDoPedido = {
-    mesaId: mesa.id,
-    itens: pedido.map(item => ({ produtoId: item.id, quantidade: item.quantidade, observacao: item.observacao })),
-  };
-  try {
-    await apiClient.post('/api/pedidos', dadosDoPedido);
-    toast.success("Pedido enviado com sucesso!");
-    
-    // Imprime o pedido antes de limpar os dados
-    handlePrint();
-    
-    setPedido([]);
-    fetchMesaEProdutos(); // Recarrega os dados da mesa para mostrar o novo pedido
-  } catch (error) {
-    toast.error("Erro ao enviar o pedido. Tente novamente.");
-  }
-};
-
-  // Funções de manipulação do pedido (sem alterações na lógica)
+  // Função: Adiciona um produto ao "Novo Pedido" que está sendo montado.
   const handleAdicionarProduto = (produto, quantidade) => {
     setPedido(pedidoAtual => {
       const produtoExistente = pedidoAtual.find(item => item.id === produto.id);
@@ -237,13 +167,33 @@ const handleEnviarPedido = async () => {
       }
     });
   };
+
+  // Função: Remove um item do "Novo Pedido".
   const handleRemoverItem = (itemId) => setPedido(p => p.filter(item => item.id !== itemId));
+  
+  // Função: Atualiza a observação de um item no "Novo Pedido".
   const handleAtualizarObservacao = (itemId, obs) => setPedido(p => p.map(item => item.id === itemId ? { ...item, observacao: obs } : item));
 
+  // --- LÓGICA DE CÁLCULO E FILTRO ATUALIZADA ---
+
+  // Função: Filtra os pedidos da mesa para pegar apenas os que ainda não foram pagos (da sessão atual).
+  const pedidosNaoPagos = useMemo(() => {
+    if (!mesa || !mesa.pedidos) return [];
+    return mesa.pedidos.filter(p => !p.tipoPagamento);
+  }, [mesa]);
+
+  // Função: Calcula o total dos pedidos já feitos na sessão atual.
+  const totalPedidosAnteriores = useMemo(() => {
+    return pedidosNaoPagos.reduce((acc, p) => acc + p.total, 0);
+  }, [pedidosNaoPagos]);
+  
+  // Função: Calcula o total do "Novo Pedido" que está sendo montado.
   const totalPedidoAtual = pedido.reduce((acc, item) => acc + (item.preco * item.quantidade), 0);
-  const totalPedidosAnteriores = mesa ? mesa.valorTotal : 0;
+  
+  // Função: Calcula o valor total que será exibido na mesa.
   const totalDaMesa = totalPedidosAnteriores + totalPedidoAtual;
 
+  // Função: Filtra o cardápio com base na categoria selecionada e no termo de busca.
   const cardapioFiltrado = useMemo(() => {
     return cardapio
       .filter(produto => filtroCategoria === 'Todos' || produto.categoria === filtroCategoria)
@@ -271,11 +221,11 @@ const handleEnviarPedido = async () => {
         <div className="bg-white p-4 rounded-lg shadow-md h-fit space-y-4">
           <h2 className="text-xl font-bold text-gray-800">Resumo do Pedido</h2>
           
-          {mesa.pedidos && mesa.pedidos.length > 0 && (
+          {pedidosNaoPagos.length > 0 && (
             <div className="border-b pb-2">
-              <h3 className="text-md font-semibold text-gray-600 mb-2">Pedidos Anteriores</h3>
+              <h3 className="text-md font-semibold text-gray-600 mb-2">Pedidos Anteriores (Conta Atual)</h3>
               <div className="space-y-2 divide-y divide-gray-100">
-                {mesa.pedidos.map((pedidoAnterior, index) => (
+                {pedidosNaoPagos.map((pedidoAnterior, index) => (
                   <React.Fragment key={pedidoAnterior.id}>
                     <div className="text-sm pt-2 first:pt-0">
                       <div className="flex justify-between font-bold text-gray-700"><span>Pedido #{index + 1}</span></div>
@@ -334,3 +284,4 @@ const handleEnviarPedido = async () => {
 };
 
 export default DetalheMesaPage;
+

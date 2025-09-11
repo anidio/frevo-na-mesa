@@ -1,5 +1,7 @@
 package br.com.frevonamesa.frevonamesa.service;
 
+import br.com.frevonamesa.frevonamesa.dto.MesaSimplesDTO;
+import br.com.frevonamesa.frevonamesa.dto.PedidoFilaDTO;
 import br.com.frevonamesa.frevonamesa.dto.PedidoRequestDTO;
 import br.com.frevonamesa.frevonamesa.model.*;
 import br.com.frevonamesa.frevonamesa.repository.*;
@@ -13,6 +15,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class PedidoService {
@@ -31,17 +35,13 @@ public class PedidoService {
     @Transactional
     public Pedido criarPedido(PedidoRequestDTO dto) {
         Restaurante restaurante = getRestauranteLogado();
-
-        // 1. Encontra a mesa
         Mesa mesa = mesaRepository.findById(dto.getMesaId())
                 .orElseThrow(() -> new RuntimeException("Mesa não encontrada!"));
 
-        // VALIDAÇÃO DE SEGURANÇA: Garante que a mesa pertence ao restaurante logado.
         if (!mesa.getRestaurante().getId().equals(restaurante.getId())) {
             throw new SecurityException("Acesso negado: Esta mesa não pertence ao seu restaurante.");
         }
 
-        // 2. Cria o objeto Pedido
         Pedido novoPedido = new Pedido();
         novoPedido.setMesa(mesa);
         novoPedido.setDataHora(LocalDateTime.now());
@@ -49,12 +49,10 @@ public class PedidoService {
 
         BigDecimal totalPedido = BigDecimal.ZERO;
 
-        // 3. Itera sobre os itens do pedido recebidos
         for (var itemDto : dto.getItens()) {
             Produto produto = produtoRepository.findById(itemDto.getProdutoId())
                     .orElseThrow(() -> new RuntimeException("Produto não encontrado!"));
 
-            // VALIDAÇÃO DE SEGURANÇA: Garante que o produto também pertence ao restaurante.
             if (!produto.getRestaurante().getId().equals(restaurante.getId())) {
                 throw new SecurityException("Acesso negado: O produto '" + produto.getNome() + "' não pertence ao seu restaurante.");
             }
@@ -70,18 +68,57 @@ public class PedidoService {
             totalPedido = totalPedido.add(produto.getPreco().multiply(BigDecimal.valueOf(itemDto.getQuantidade())));
         }
 
-        // 4. Define o total do pedido e atualiza o total da mesa
+        // CORREÇÃO FINAL: Apenas define o total no pedido. Não mexe na mesa.
         novoPedido.setTotal(totalPedido);
-        mesa.setValorTotal(mesa.getValorTotal().add(totalPedido));
+
         if (mesa.getStatus() == StatusMesa.LIVRE) {
             mesa.setStatus(StatusMesa.OCUPADA);
             mesa.setHoraAbertura(LocalTime.now());
         }
 
-        // 5. Salva o pedido (os itens são salvos em cascata) e a mesa
         pedidoRepository.save(novoPedido);
         mesaRepository.save(mesa);
 
         return novoPedido;
+    }
+
+    public List<PedidoFilaDTO> listarPedidosNaoImpressos() {
+        Restaurante restaurante = getRestauranteLogado();
+        List<Mesa> mesasDoRestaurante = mesaRepository.findByRestauranteId(restaurante.getId());
+        List<Pedido> pedidos = pedidoRepository.findByMesaInAndImpressoIsFalse(mesasDoRestaurante);
+
+        // Converte a lista de Pedido para uma lista de PedidoFilaDTO
+        return pedidos.stream().map(pedido -> {
+            Mesa mesa = pedido.getMesa();
+            MesaSimplesDTO mesaDto = new MesaSimplesDTO(mesa.getNumero(), mesa.getNomeCliente());
+
+            PedidoFilaDTO pedidoDto = new PedidoFilaDTO();
+            pedidoDto.setId(pedido.getId());
+            pedidoDto.setDataHora(pedido.getDataHora());
+            pedidoDto.setItens(pedido.getItens());
+            pedidoDto.setMesa(mesaDto);
+
+            return pedidoDto;
+        }).collect(Collectors.toList());
+    }
+
+    @Transactional
+    public Pedido marcarComoImpresso(Long pedidoId) {
+        Restaurante restaurante = getRestauranteLogado();
+        Pedido pedido = pedidoRepository.findById(pedidoId)
+                .orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
+
+        if (pedido.getMesa() == null || !pedido.getMesa().getRestaurante().getId().equals(restaurante.getId())) {
+            throw new SecurityException("Acesso negado: este pedido não pertence ao seu restaurante.");
+        }
+
+        if (!pedido.isImpresso()) {
+            Mesa mesa = pedido.getMesa();
+            mesa.setValorTotal(mesa.getValorTotal().add(pedido.getTotal()));
+            mesaRepository.save(mesa);
+        }
+
+        pedido.setImpresso(true);
+        return pedidoRepository.save(pedido);
     }
 }

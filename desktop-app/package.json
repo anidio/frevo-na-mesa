@@ -1,0 +1,33 @@
+{
+  "name": "frevo-na-mesa-desktop",
+  "version": "1.0.0",
+  "description": "Versão Desktop do Frevo na Mesa",
+  "main": "main.js",
+  "author": "Seu Nome",
+  "scripts": {
+    "start": "electron .",
+    "package": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.frevonamesa.desktop",
+    "productName": "Frevo na Mesa",
+    "files": [
+      "main.js"
+    ],
+    "extraResources": [
+      {
+        "from": "../backend/target/",
+        "to": "app/backend",
+        "filter": ["*.jar"]
+      },
+      {
+        "from": "../frontend/dist/",
+        "to": "app/frontend"
+      }
+    ]
+  }
+}
