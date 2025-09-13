@@ -5,34 +5,24 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
-
-@NoArgsConstructor
 @Entity
 @Data
-public class Produto {
+@NoArgsConstructor
+public class Categoria {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    private String nome;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "restaurante_id", nullable = false)
     @JsonBackReference
     private Restaurante restaurante;
 
-    private String nome;
-    private String descricao;
-    private BigDecimal preco;
-
-    @ManyToOne
-    @JoinColumn(name = "categoria_id")
-    private Categoria categoria;
-
-    public Produto(String nome, String descricao, BigDecimal preco, Categoria categoria) {
+    public Categoria(String nome, Restaurante restaurante) {
         this.nome = nome;
-        this.descricao = descricao;
-        this.preco = preco;
-        this.categoria = categoria;
+        this.restaurante = restaurante;
     }
 }

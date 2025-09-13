@@ -23,6 +23,8 @@ public class Restaurante {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private TipoEstabelecimento tipo;
+    private boolean impressaoDeliveryAtivada = true;
+    private boolean impressaoMesaAtivada = true;
 
     @OneToMany(mappedBy = "restaurante", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference("restaurante-pedido")

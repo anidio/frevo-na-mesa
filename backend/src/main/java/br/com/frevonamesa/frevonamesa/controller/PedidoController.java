@@ -72,4 +72,25 @@ public class PedidoController {
             return ResponseEntity.badRequest().build();
         }
     }
+
+    @GetMapping("/delivery/finalizados")
+    public ResponseEntity<List<Pedido>> getPedidosDeliveryFinalizados() {
+        List<Pedido> pedidos = pedidoService.listarUltimos10Finalizados();
+        return ResponseEntity.ok(pedidos);
+    }
+
+    @PatchMapping("/delivery/{id}/imprimir")
+    public ResponseEntity<Pedido> imprimirPedidoDelivery(@PathVariable Long id) {
+        try {
+            Pedido pedido = pedidoService.imprimirPedidoDelivery(id);
+            return ResponseEntity.ok(pedido);
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping("/delivery/pendentes")
+    public ResponseEntity<List<Pedido>> getPedidosDeliveryPendentes() {
+        return ResponseEntity.ok(pedidoService.listarPedidosDeliveryPendentes());
+    }
 }

@@ -54,10 +54,9 @@ public class PedidoService {
         novoPedido.setDataHora(LocalDateTime.now());
         novoPedido.setItens(new ArrayList<>());
         novoPedido.setTipo(TipoPedido.MESA);
-        novoPedido.setStatus(StatusPedido.PENDENTE);
 
+        // Lógica de cálculo do total (permanece a mesma)
         BigDecimal totalPedido = BigDecimal.ZERO;
-
         for (var itemDto : dto.getItens()) {
             Produto produto = produtoRepository.findById(itemDto.getProdutoId()).orElseThrow(() -> new RuntimeException("Produto não encontrado!"));
             if (!produto.getRestaurante().getId().equals(restaurante.getId())) {
@@ -72,14 +71,26 @@ public class PedidoService {
             novoPedido.getItens().add(itemPedido);
             totalPedido = totalPedido.add(produto.getPreco().multiply(BigDecimal.valueOf(itemDto.getQuantidade())));
         }
-
         novoPedido.setTotal(totalPedido);
+
+        // ATUALIZAÇÃO PRINCIPAL AQUI
+        // Verifica a configuração do restaurante para decidir o status do pedido
+        if (restaurante.isImpressaoMesaAtivada()) {
+            novoPedido.setStatus(StatusPedido.PENDENTE); // Vai para a fila de impressão
+        } else {
+            novoPedido.setStatus(StatusPedido.CONFIRMADO); // Pula a fila e já é confirmado
+            // Se já é confirmado, o valor do pedido deve ser somado imediatamente ao total da mesa
+            mesa.setValorTotal(mesa.getValorTotal().add(novoPedido.getTotal()));
+        }
+
+        // Atualiza status da mesa se estiver livre
         if (mesa.getStatus() == StatusMesa.LIVRE) {
             mesa.setStatus(StatusMesa.OCUPADA);
             mesa.setHoraAbertura(LocalTime.now());
         }
+
         pedidoRepository.save(novoPedido);
-        mesaRepository.save(mesa);
+        mesaRepository.save(mesa); // Salva a mesa (com novo status e/ou novo valor total)
         return novoPedido;
     }
 
@@ -121,7 +132,13 @@ public class PedidoService {
         novoPedido.setDataHora(LocalDateTime.now());
         novoPedido.setItens(new ArrayList<>());
         novoPedido.setTipo(TipoPedido.DELIVERY);
-        novoPedido.setStatus(StatusPedido.PENDENTE);
+
+        if (restaurante.isImpressaoDeliveryAtivada()) {
+            novoPedido.setStatus(StatusPedido.PENDENTE);
+        } else {
+            novoPedido.setStatus(StatusPedido.EM_PREPARO);
+        }
+
         novoPedido.setNomeClienteDelivery(dto.getNomeCliente());
         novoPedido.setTelefoneClienteDelivery(dto.getTelefoneCliente());
         novoPedido.setEnderecoClienteDelivery(dto.getEnderecoCliente());
@@ -163,5 +180,29 @@ public class PedidoService {
         }
         pedido.setStatus(novoStatus);
         return pedidoRepository.save(pedido);
+    }
+
+    public List<Pedido> listarUltimos10Finalizados() {
+        Restaurante restaurante = getRestauranteLogado();
+        return pedidoRepository.findTop10ByRestauranteIdAndTipoAndStatusOrderByDataHoraDesc(
+                restaurante.getId(), TipoPedido.DELIVERY, StatusPedido.FINALIZADO);
+    }
+
+    @Transactional
+    public Pedido imprimirPedidoDelivery(Long pedidoId) {
+        Restaurante restaurante = getRestauranteLogado();
+        Pedido pedido = pedidoRepository.findById(pedidoId)
+                .orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
+        if (!pedido.getRestaurante().getId().equals(restaurante.getId())) {
+            throw new SecurityException("Acesso negado.");
+        }
+        pedido.setImpresso(true);
+        pedido.setStatus(StatusPedido.EM_PREPARO);
+        return pedidoRepository.save(pedido);
+    }
+
+    public List<Pedido> listarPedidosDeliveryPendentes() {
+        Restaurante restaurante = getRestauranteLogado();
+        return pedidoRepository.findByTipoAndStatusAndRestauranteId(TipoPedido.DELIVERY, StatusPedido.PENDENTE, restaurante.getId());
     }
 }

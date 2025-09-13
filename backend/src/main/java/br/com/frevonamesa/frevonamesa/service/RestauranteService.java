@@ -2,10 +2,12 @@ package br.com.frevonamesa.frevonamesa.service;
 
 import br.com.frevonamesa.frevonamesa.dto.RestauranteDTO;
 import br.com.frevonamesa.frevonamesa.dto.RestaurantePerfilDTO;
+import br.com.frevonamesa.frevonamesa.dto.RestauranteSettingsDTO;
 import br.com.frevonamesa.frevonamesa.model.Mesa; // 1. Importar Mesa
 import br.com.frevonamesa.frevonamesa.model.Restaurante;
 import br.com.frevonamesa.frevonamesa.model.StatusMesa; // 2. Importar StatusMesa
 import br.com.frevonamesa.frevonamesa.model.TipoEstabelecimento;
+import br.com.frevonamesa.frevonamesa.repository.CategoriaRepository;
 import br.com.frevonamesa.frevonamesa.repository.MesaRepository; // 3. Importar MesaRepository
 import br.com.frevonamesa.frevonamesa.repository.RestauranteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +15,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal; // 4. Importar BigDecimal
 import java.util.ArrayList; // 5. Importar ArrayList
@@ -28,7 +31,16 @@ public class RestauranteService {
     private PasswordEncoder passwordEncoder;
 
     @Autowired
-    private MesaRepository mesaRepository; // 7. Injetar o repositório de mesas
+    private MesaRepository mesaRepository;
+
+    @Autowired
+    private CategoriaRepository categoriaRepository;
+
+    private Restaurante getRestauranteLogado() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return restauranteRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("Restaurante não encontrado com o email: " + email));
+    }
 
     public Restaurante cadastrar(RestauranteDTO restauranteDTO) {
         if (restauranteRepository.findByEmail(restauranteDTO.getEmail()).isPresent()) {
@@ -74,7 +86,18 @@ public class RestauranteService {
         perfilDto.setNome(restaurante.getNome());
         perfilDto.setEmail(restaurante.getEmail());
         perfilDto.setTipo(restaurante.getTipo());
+        perfilDto.setImpressaoDeliveryAtivada(restaurante.isImpressaoDeliveryAtivada());
+        perfilDto.setImpressaoMesaAtivada(restaurante.isImpressaoMesaAtivada());
 
         return perfilDto;
+    }
+
+    @Transactional
+    public RestaurantePerfilDTO atualizarConfiguracoes(RestauranteSettingsDTO settingsDTO) {
+        Restaurante restaurante = getRestauranteLogado();
+        restaurante.setImpressaoMesaAtivada(settingsDTO.isImpressaoMesaAtivada());
+        restaurante.setImpressaoDeliveryAtivada(settingsDTO.isImpressaoDeliveryAtivada());
+        restauranteRepository.save(restaurante);
+        return getPerfilLogado(); // Retorna o perfil atualizado
     }
 }

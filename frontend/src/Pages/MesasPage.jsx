@@ -73,7 +73,7 @@ const MesasPage = () => {
   return (
     <>
       <div className="w-full p-4 md:p-8 max-w-7xl mx-auto">
-        <div className="text-center mb-8 text-orange-600 dark:text-orange-400">
+        <div className="text-center mb-8 text-tema-primary">
             <div className="flex justify-center items-center gap-2">
                 <GarcomIcon />
                 <h1 className="text-3xl font-bold">Frevo Garçom</h1>
@@ -84,7 +84,7 @@ const MesasPage = () => {
         <div className="flex justify-end mb-4">
             <button
                 onClick={() => setIsModalOpen(true)}
-                className="bg-orange-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-orange-600 transition-colors flex items-center gap-2"
+                className="bg-tema-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-opacity-80 transition-colors flex items-center gap-2"
             >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                 Adicionar Mesa
@@ -108,7 +108,7 @@ const MesasPage = () => {
           </div>
           <div className="text-center">
             <p className="text-sm text-gray-500 dark:text-gray-400">Total em Aberto</p>
-            <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+            <p className="text-2xl font-bold text-tema-accent">
               R$ {totalEmAberto.toFixed(2).replace('.', ',')}
             </p>
           </div>
@@ -129,7 +129,7 @@ const MesasPage = () => {
             </div>
             <div className="mt-6 flex justify-end gap-4">
               <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-lg text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 font-semibold">Cancelar</button>
-              <button onClick={handleAdicionarMesa} className="px-4 py-2 rounded-lg text-white bg-orange-500 hover:bg-orange-600 font-semibold">Salvar Mesa</button>
+              <button onClick={handleAdicionarMesa} className="px-4 py-2 rounded-lg text-white bg-tema-primary hover:bg-opacity-80 font-semibold">Salvar Mesa</button>
             </div>
           </div>
         </div>

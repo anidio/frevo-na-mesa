@@ -9,4 +9,6 @@ public class RestaurantePerfilDTO {
     private String nome;
     private String email;
     private TipoEstabelecimento tipo;
+    private boolean impressaoDeliveryAtivada;
+    private boolean impressaoMesaAtivada = true;
 }

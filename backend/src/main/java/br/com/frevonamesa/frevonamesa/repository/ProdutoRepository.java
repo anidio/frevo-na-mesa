@@ -8,4 +8,6 @@ import java.util.List;
 public interface ProdutoRepository extends JpaRepository<Produto, Long> {
 
     List<Produto> findByRestauranteId(Long restauranteId);
+
+    boolean existsByCategoriaId(Long categoriaId);
 }

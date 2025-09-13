@@ -1,52 +1,72 @@
-// src/pages/GerenciarCardapioPage.jsx
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { toast } from 'react-toastify';
-import apiClient from '../services/apiClient'; // 1. IMPORTAR O API CLIENT
+import apiClient from '../services/apiClient';
 
-// --- COMPONENTE INTERNO ---
-const ConfirmacaoToast = ({ closeToast, onConfirm, mensagem }) => (
-    <div>
-        <p className="font-semibold">{mensagem}</p>
-        <div className="flex justify-end gap-2 mt-2">
-            <button
-                onClick={() => { onConfirm(); closeToast(); }}
-                className="bg-red-600 text-white px-3 py-1 rounded-md text-sm font-bold"
-            >
-                Sim, Deletar
-            </button>
-            <button
-                onClick={closeToast}
-                className="bg-gray-200 text-gray-700 px-3 py-1 rounded-md text-sm font-bold"
-            >
-                Não
-            </button>
+// Componente para o Modal de Categoria (Adicionar/Editar)
+const CategoriaModal = ({ categoria, onClose, onSave }) => {
+    const [nome, setNome] = useState(categoria ? categoria.nome : '');
+
+    const handleSave = () => {
+        if (!nome.trim()) {
+            toast.warn('O nome da categoria não pode ser vazio.');
+            return;
+        }
+        onSave({ ...categoria, nome });
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+            <div className="bg-white dark:bg-tema-surface-dark rounded-lg shadow-xl p-6 w-full max-w-sm">
+                <h2 className="text-2xl font-bold text-tema-text dark:text-tema-text-dark mb-4">
+                    {categoria ? 'Editar Categoria' : 'Nova Categoria'}
+                </h2>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome da Categoria</label>
+                    <input
+                        type="text"
+                        value={nome}
+                        onChange={(e) => setNome(e.target.value)}
+                        className="mt-1 w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-800 dark:border-gray-600"
+                        autoFocus
+                    />
+                </div>
+                <div className="flex justify-end gap-4 pt-6">
+                    <button onClick={onClose} className="px-4 py-2 rounded-lg text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 font-semibold">Cancelar</button>
+                    <button onClick={handleSave} className="px-4 py-2 rounded-lg text-white bg-tema-primary hover:bg-opacity-80 font-semibold">Salvar</button>
+                </div>
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
-const categorias = ['Todos', 'Entradas', 'Pratos', 'Sobremesas', 'Bebidas'];
-
-// --- COMPONENTE PRINCIPAL DA PÁGINA ---
+// Componente principal
 const GerenciarCardapioPage = () => {
     const [cardapio, setCardapio] = useState([]);
+    const [categorias, setCategorias] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filtroCategoria, setFiltroCategoria] = useState('Todos');
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    
+    // Estados para os modais
+    const [isProdutoModalOpen, setIsProdutoModalOpen] = useState(false);
     const [produtoEmEdicao, setProdutoEmEdicao] = useState(null);
+    const [isCategoriaModalOpen, setIsCategoriaModalOpen] = useState(false);
+    const [categoriaEmEdicao, setCategoriaEmEdicao] = useState(null);
+
     const [formState, setFormState] = useState({
-        nome: '', descricao: '', preco: '', categoria: 'Entradas'
+        nome: '', descricao: '', preco: '', categoriaId: ''
     });
 
     const fetchData = async () => {
         setLoading(true);
         try {
-            // 2. USAR O API CLIENT PARA BUSCAR OS PRODUTOS
-            const data = await apiClient.get('/api/produtos');
-            setCardapio(data);
+            const [produtosData, categoriasData] = await Promise.all([
+                apiClient.get('/api/produtos'),
+                apiClient.get('/api/categorias')
+            ]);
+            setCardapio(produtosData);
+            setCategorias(categoriasData);
         } catch (error) {
-            console.error("Erro ao buscar cardápio:", error);
-            toast.error("Não foi possível carregar o cardápio.");
+            toast.error("Não foi possível carregar os dados.");
         } finally {
             setLoading(false);
         }
@@ -56,141 +76,183 @@ const GerenciarCardapioPage = () => {
         fetchData();
     }, []);
 
-    const handleDeletar = (produtoId, produtoNome) => {
-        const performDelete = async () => {
-             try {
-                // 3. USAR O API CLIENT PARA DELETAR
-                await apiClient.delete(`/api/produtos/${produtoId}`);
+    // --- Lógica para Produtos ---
+    const handleDeletarProduto = (produtoId, produtoNome) => {
+        if (!window.confirm(`Tem certeza que deseja deletar o produto "${produtoNome}"?`)) return;
+        apiClient.delete(`/api/produtos/${produtoId}`)
+            .then(() => {
                 toast.success(`"${produtoNome}" foi deletado com sucesso!`);
                 fetchData();
-            } catch (error) {
-                toast.error('Erro de comunicação com o servidor.');
-            }
-        };
-
-        toast.warn(
-            <ConfirmacaoToast
-                mensagem={`Deletar "${produtoNome}"?`}
-                onConfirm={performDelete}
-            />,
-            { autoClose: false, closeOnClick: false, draggable: false }
-        );
+            })
+            .catch(error => toast.error(`Erro ao deletar: ${error.message}`));
     };
 
-    const handleOpenModal = (produto = null) => {
+    const handleOpenProdutoModal = (produto = null) => {
         if (produto) {
             setProdutoEmEdicao(produto);
-            setFormState(produto);
+            setFormState({ ...produto, categoriaId: produto.categoria.id });
         } else {
             setProdutoEmEdicao(null);
-            setFormState({ nome: '', descricao: '', preco: '', categoria: 'Entradas' });
+            setFormState({ nome: '', descricao: '', preco: '', categoriaId: categorias[0]?.id || '' });
         }
-        setIsModalOpen(true);
+        setIsProdutoModalOpen(true);
     };
 
-    const handleCloseModal = () => setIsModalOpen(false);
-
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setFormState(prevState => ({ ...prevState, [name]: value }));
-    };
-
-    const handleSalvar = async () => {
-        if (!formState.nome || !formState.preco || !formState.categoria) {
+    const handleSalvarProduto = async () => {
+        if (!formState.nome || !formState.preco || !formState.categoriaId) {
             toast.warn('Nome, Preço e Categoria são obrigatórios.');
             return;
         }
-        const isEditing = produtoEmEdicao !== null;
+
+        const endpoint = produtoEmEdicao ? `/api/produtos/${produtoEmEdicao.id}` : '/api/produtos';
+        const method = produtoEmEdicao ? 'put' : 'post';
 
         try {
-            if (isEditing) {
-                // 4. USAR O API CLIENT PARA ATUALIZAR (MÉTODO PUT)
-                // O apiClient não tem PUT, então podemos adicioná-lo ou usar o POST se o backend aceitar
-                // Vamos adicionar o PUT ao apiClient para ser mais correto.
-                await apiClient.put(`/api/produtos/${produtoEmEdicao.id}`, formState);
-            } else {
-                // 5. USAR O API CLIENT PARA CRIAR (MÉTODO POST)
-                await apiClient.post('/api/produtos', formState);
-            }
-            toast.success(`Produto ${isEditing ? 'atualizado' : 'adicionado'} com sucesso!`);
-            handleCloseModal();
+            await apiClient[method](endpoint, formState);
+            toast.success(`Produto ${produtoEmEdicao ? 'atualizado' : 'adicionado'} com sucesso!`);
+            setIsProdutoModalOpen(false);
             fetchData();
         } catch (error) {
-            console.error('Erro de comunicação:', error);
-            toast.error(`Erro ao ${isEditing ? 'atualizar' : 'adicionar'} produto.`);
+            toast.error(`Erro ao salvar produto: ${error.message}`);
         }
+    };
+
+    // --- Lógica para Categorias ---
+    const handleOpenCategoriaModal = (categoria = null) => {
+        setCategoriaEmEdicao(categoria);
+        setIsCategoriaModalOpen(true);
+    };
+
+    const handleSalvarCategoria = async (categoria) => {
+        const endpoint = categoria.id ? `/api/categorias/${categoria.id}` : '/api/categorias';
+        const method = categoria.id ? 'put' : 'post';
+
+        try {
+            await apiClient[method](endpoint, { nome: categoria.nome });
+            toast.success(`Categoria ${categoria.id ? 'atualizada' : 'adicionada'} com sucesso!`);
+            setIsCategoriaModalOpen(false);
+            fetchData();
+        } catch (error) {
+            toast.error(`Erro ao salvar categoria: ${error.message}`);
+        }
+    };
+
+    const handleDeletarCategoria = (categoriaId, categoriaNome) => {
+        if (!window.confirm(`Tem certeza que deseja deletar a categoria "${categoriaNome}"?`)) return;
+        apiClient.delete(`/api/categorias/${categoriaId}`)
+            .then(() => {
+                toast.success(`Categoria "${categoriaNome}" deletada com sucesso!`);
+                setFiltroCategoria('Todos'); // Reseta o filtro
+                fetchData();
+            })
+            .catch(error => toast.error(`Erro ao deletar: ${error.message}`));
     };
 
     const cardapioFiltrado = useMemo(() => {
         if (filtroCategoria === 'Todos') return cardapio;
-        return cardapio.filter(produto => produto.categoria === filtroCategoria);
+        return cardapio.filter(produto => produto.categoria.id === filtroCategoria);
     }, [cardapio, filtroCategoria]);
+    
+    // ...
 
-    if (loading) return <div className="p-8 text-center font-semibold">Carregando...</div>;
+    if (loading) return <div className="p-8 text-center font-semibold text-tema-text-muted dark:text-tema-text-muted-dark">Carregando...</div>;
 
     return (
         <>
-            <div className="w-full p-4 md:p-8 max-w-4xl mx-auto">
-                <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-3xl font-bold text-gray-800">Gerenciar Cardápio</h1>
-                    <button onClick={() => handleOpenModal()} className="bg-orange-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-orange-600 transition-colors flex items-center gap-2">
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                        Adicionar Item
-                    </button>
+            <div className="w-full p-4 md:p-8 max-w-4xl mx-auto space-y-8">
+                {/* Seção de Gerenciar Categorias */}
+                <div>
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-2xl font-bold text-tema-text dark:text-tema-text-dark">Categorias</h2>
+                        <button onClick={() => handleOpenCategoriaModal()} className="bg-gray-200 dark:bg-gray-700 text-sm text-tema-text dark:text-tema-text-dark font-bold py-2 px-3 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                            + Nova Categoria
+                        </button>
+                    </div>
+                    <div className="flex flex-wrap gap-2 p-4 bg-white dark:bg-tema-surface-dark rounded-lg border dark:border-gray-700">
+                        {categorias.map(cat => (
+                            <div key={cat.id} className="group flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-full text-sm font-semibold">
+                                <span className="pl-3 pr-2 text-gray-700 dark:text-gray-300">{cat.nome}</span>
+                                <button onClick={() => handleOpenCategoriaModal(cat)} className="p-1 text-gray-400 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z" /></svg>
+                                </button>
+                                <button onClick={() => handleDeletarCategoria(cat.id, cat.nome)} className="p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity pr-2">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                            </div>
+                        ))}
+                    </div>
                 </div>
-                
-                <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-                    {categorias.map(cat => (<button key={cat} onClick={() => setFiltroCategoria(cat)} className={`px-4 py-2 rounded-full font-semibold text-sm whitespace-nowrap transition-colors ${filtroCategoria === cat ? 'bg-orange-500 text-white shadow' : 'bg-white text-gray-700 hover:bg-gray-100 border'}`}>{cat}</button>))}
-                </div>
-                
-                <div className="bg-white shadow-md rounded-lg overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoria</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preço</th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {cardapioFiltrado.map(produto => (
-                                <tr key={produto.id}>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{produto.id}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{produto.nome}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{produto.categoria}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">R$ {produto.preco.toFixed(2).replace('.', ',')}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-4">
-                                        <button onClick={() => handleOpenModal(produto)} className="text-blue-600 hover:text-blue-900 font-semibold">Editar</button>
-                                        <button onClick={() => handleDeletar(produto.id, produto.nome)} className="text-red-600 hover:text-red-900 font-semibold">Deletar</button>
-                                    </td>
+
+                {/* Seção de Gerenciar Produtos */}
+                <div>
+                    <div className="flex justify-between items-center mb-4">
+                        <h1 className="text-2xl font-bold text-tema-text dark:text-tema-text-dark">Produtos do Cardápio</h1>
+                        <button onClick={() => handleOpenProdutoModal()} className="bg-tema-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-opacity-80 transition-colors flex items-center gap-2">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                            Adicionar Item
+                        </button>
+                    </div>
+
+                    <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+                        <button onClick={() => setFiltroCategoria('Todos')} className={`px-4 py-2 rounded-full font-semibold text-sm whitespace-nowrap transition-colors ${filtroCategoria === 'Todos' ? 'bg-tema-primary text-white shadow' : 'bg-white dark:bg-tema-surface-dark text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border dark:border-gray-700'}`}>Todos</button>
+                        {categorias.map(cat => (<button key={cat.id} onClick={() => setFiltroCategoria(cat.id)} className={`px-4 py-2 rounded-full font-semibold text-sm whitespace-nowrap transition-colors ${filtroCategoria === cat.id ? 'bg-tema-primary text-white shadow' : 'bg-white dark:bg-tema-surface-dark text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border dark:border-gray-700'}`}>{cat.nome}</button>))}
+                    </div>
+
+                    <div className="bg-white dark:bg-tema-surface-dark shadow-md rounded-lg overflow-x-auto border dark:border-gray-700">
+                        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead className="bg-gray-50 dark:bg-gray-800">
+                                <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nome</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Categoria</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Preço</th>
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ações</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                                {cardapioFiltrado.map(produto => (
+                                    <tr key={produto.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">{produto.nome}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{produto.categoria.nome}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">R$ {produto.preco.toFixed(2).replace('.', ',')}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-4">
+                                            <button onClick={() => handleOpenProdutoModal(produto)} className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 font-semibold">Editar</button>
+                                            <button onClick={() => handleDeletarProduto(produto.id, produto.nome)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 font-semibold">Deletar</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
-            {isModalOpen && (
+            {isProdutoModalOpen && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-                    <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md space-y-4">
-                        <h2 className="text-2xl font-bold text-gray-800">{produtoEmEdicao ? 'Editar Item do Cardápio' : 'Novo Item do Cardápio'}</h2>
-                        <div><label className="block text-sm font-medium text-gray-700">Nome</label><input type="text" name="nome" value={formState.nome} onChange={handleInputChange} className="mt-1 w-full p-2 border border-gray-300 rounded-md" /></div>
-                        <div><label className="block text-sm font-medium text-gray-700">Descrição</label><input type="text" name="descricao" value={formState.descricao} onChange={handleInputChange} className="mt-1 w-full p-2 border border-gray-300 rounded-md" /></div>
-                        <div><label className="block text-sm font-medium text-gray-700">Preço (ex: 18.90)</label><input type="number" name="preco" value={formState.preco} onChange={handleInputChange} className="mt-1 w-full p-2 border border-gray-300 rounded-md" /></div>
+                    <div className="bg-white dark:bg-tema-surface-dark rounded-lg shadow-xl p-6 w-full max-w-md space-y-4">
+                        <h2 className="text-2xl font-bold text-tema-text dark:text-tema-text-dark">{produtoEmEdicao ? 'Editar Item' : 'Novo Item'}</h2>
+                        <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome</label><input type="text" name="nome" value={formState.nome} onChange={e => setFormState({...formState, nome: e.target.value})} className="mt-1 w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-800 dark:border-gray-600" /></div>
+                        <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Descrição</label><input type="text" name="descricao" value={formState.descricao} onChange={e => setFormState({...formState, descricao: e.target.value})} className="mt-1 w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-800 dark:border-gray-600" /></div>
+                        <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Preço</label><input type="number" name="preco" value={formState.preco} onChange={e => setFormState({...formState, preco: e.target.value})} className="mt-1 w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-800 dark:border-gray-600" /></div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Categoria</label>
-                            <select name="categoria" value={formState.categoria} onChange={handleInputChange} className="mt-1 w-full p-2 border border-gray-300 rounded-md bg-white">
-                                <option>Entradas</option><option>Pratos</option><option>Sobremesas</option><option>Bebidas</option>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Categoria</label>
+                            <select name="categoriaId" value={formState.categoriaId} onChange={e => setFormState({...formState, categoriaId: e.target.value})} className="mt-1 w-full p-2 border rounded-md bg-white dark:bg-gray-800 dark:border-gray-600">
+                                {categorias.map(cat => <option key={cat.id} value={cat.id}>{cat.nome}</option>)}
                             </select>
                         </div>
                         <div className="flex justify-end gap-4 pt-4">
-                            <button onClick={handleCloseModal} className="px-4 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300 font-semibold">Cancelar</button>
-                            <button onClick={handleSalvar} className="px-4 py-2 rounded-lg text-white bg-orange-500 hover:bg-orange-600 font-semibold">Salvar</button>
+                            <button onClick={() => setIsProdutoModalOpen(false)} className="px-4 py-2 rounded-lg text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 font-semibold">Cancelar</button>
+                            <button onClick={handleSalvarProduto} className="px-4 py-2 rounded-lg text-white bg-tema-primary hover:bg-opacity-80 font-semibold">Salvar</button>
                         </div>
                     </div>
                 </div>
+            )}
+
+            {isCategoriaModalOpen && (
+                <CategoriaModal 
+                    categoria={categoriaEmEdicao} 
+                    onClose={() => setIsCategoriaModalOpen(false)}
+                    onSave={handleSalvarCategoria}
+                />
             )}
         </>
     );

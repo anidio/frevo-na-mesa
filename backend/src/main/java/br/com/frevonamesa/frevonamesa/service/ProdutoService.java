@@ -1,8 +1,10 @@
 package br.com.frevonamesa.frevonamesa.service;
 
 import br.com.frevonamesa.frevonamesa.dto.ProdutoDTO;
+import br.com.frevonamesa.frevonamesa.model.Categoria;
 import br.com.frevonamesa.frevonamesa.model.Produto;
 import br.com.frevonamesa.frevonamesa.model.Restaurante;
+import br.com.frevonamesa.frevonamesa.repository.CategoriaRepository;
 import br.com.frevonamesa.frevonamesa.repository.ProdutoRepository;
 import br.com.frevonamesa.frevonamesa.repository.RestauranteRepository;
 import jakarta.transaction.Transactional;
@@ -18,6 +20,9 @@ public class ProdutoService {
 
     @Autowired
     private ProdutoRepository produtoRepository;
+
+    @Autowired
+    private CategoriaRepository categoriaRepository;
 
     @Autowired
     private RestauranteRepository restauranteRepository;
@@ -48,12 +53,20 @@ public class ProdutoService {
     @Transactional
     public Produto criarProduto(ProdutoDTO dto) {
         Restaurante restaurante = getRestauranteLogado();
+
+        Categoria categoria = categoriaRepository.findById(dto.getCategoriaId())
+                .orElseThrow(() -> new RuntimeException("Categoria não encontrada!"));
+
+        if (!categoria.getRestaurante().getId().equals(restaurante.getId())) {
+            throw new SecurityException("Acesso negado: Categoria inválida.");
+        }
+
         Produto novoProduto = new Produto();
         novoProduto.setNome(dto.getNome());
         novoProduto.setDescricao(dto.getDescricao());
         novoProduto.setPreco(dto.getPreco());
-        novoProduto.setCategoria(dto.getCategoria());
-        novoProduto.setRestaurante(restaurante); // Associa o produto ao restaurante
+        novoProduto.setCategoria(categoria); // ATUALIZADO
+        novoProduto.setRestaurante(restaurante);
         return produtoRepository.save(novoProduto);
     }
 
@@ -63,13 +76,20 @@ public class ProdutoService {
                 .orElseThrow(() -> new RuntimeException("Produto com ID " + id + " não encontrado."));
 
         if (!produtoExistente.getRestaurante().getId().equals(restaurante.getId())) {
-            throw new SecurityException("Acesso negado: Este produto não pertence ao seu restaurante.");
+            throw new SecurityException("Acesso negado.");
+        }
+
+        Categoria categoria = categoriaRepository.findById(dto.getCategoriaId())
+                .orElseThrow(() -> new RuntimeException("Categoria não encontrada!"));
+
+        if (!categoria.getRestaurante().getId().equals(restaurante.getId())) {
+            throw new SecurityException("Acesso negado: Categoria inválida.");
         }
 
         produtoExistente.setNome(dto.getNome());
         produtoExistente.setDescricao(dto.getDescricao());
         produtoExistente.setPreco(dto.getPreco());
-        produtoExistente.setCategoria(dto.getCategoria());
+        produtoExistente.setCategoria(categoria);
         return produtoRepository.save(produtoExistente);
     }
 }

@@ -13,5 +13,9 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
     List<Pedido> findAllByDataHoraBetweenAndTipoPagamentoIsNotNull(LocalDateTime inicio, LocalDateTime fim);
 
     List<Pedido> findByTipoAndStatusAndRestauranteId(TipoPedido tipo, StatusPedido status, Long restauranteId);
+
+    List<Pedido> findTop10ByRestauranteIdAndTipoAndStatusOrderByDataHoraDesc(Long restauranteId, TipoPedido tipo, StatusPedido status);
+
+    List<Pedido> findAllByRestauranteIdAndTipoAndDataHoraBetweenAndTipoPagamentoIsNotNull(Long restauranteId, TipoPedido tipo, LocalDateTime inicio, LocalDateTime fim);
 }
 
