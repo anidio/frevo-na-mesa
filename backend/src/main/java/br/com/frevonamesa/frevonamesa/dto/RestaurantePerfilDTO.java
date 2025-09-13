@@ -4,9 +4,9 @@ import br.com.frevonamesa.frevonamesa.model.TipoEstabelecimento;
 import lombok.Data;
 
 @Data
-public class RestauranteDTO {
+public class RestaurantePerfilDTO {
+    private Long id;
     private String nome;
     private String email;
-    private String senha;
     private TipoEstabelecimento tipo;
 }

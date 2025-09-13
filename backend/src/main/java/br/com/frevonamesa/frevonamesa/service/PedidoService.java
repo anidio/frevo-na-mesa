@@ -1,10 +1,14 @@
 package br.com.frevonamesa.frevonamesa.service;
 
 import br.com.frevonamesa.frevonamesa.dto.MesaSimplesDTO;
+import br.com.frevonamesa.frevonamesa.dto.PedidoDeliveryRequestDTO;
 import br.com.frevonamesa.frevonamesa.dto.PedidoFilaDTO;
 import br.com.frevonamesa.frevonamesa.dto.PedidoRequestDTO;
 import br.com.frevonamesa.frevonamesa.model.*;
-import br.com.frevonamesa.frevonamesa.repository.*;
+import br.com.frevonamesa.frevonamesa.repository.MesaRepository;
+import br.com.frevonamesa.frevonamesa.repository.PedidoRepository;
+import br.com.frevonamesa.frevonamesa.repository.ProdutoRepository;
+import br.com.frevonamesa.frevonamesa.repository.RestauranteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -15,7 +19,9 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -39,86 +45,123 @@ public class PedidoService {
                 .orElseThrow(() -> new RuntimeException("Mesa não encontrada!"));
 
         if (!mesa.getRestaurante().getId().equals(restaurante.getId())) {
-            throw new SecurityException("Acesso negado: Esta mesa não pertence ao seu restaurante.");
+            throw new SecurityException("Acesso negado.");
         }
 
         Pedido novoPedido = new Pedido();
         novoPedido.setMesa(mesa);
+        novoPedido.setRestaurante(restaurante);
         novoPedido.setDataHora(LocalDateTime.now());
         novoPedido.setItens(new ArrayList<>());
+        novoPedido.setTipo(TipoPedido.MESA);
+        novoPedido.setStatus(StatusPedido.PENDENTE);
 
         BigDecimal totalPedido = BigDecimal.ZERO;
 
         for (var itemDto : dto.getItens()) {
-            Produto produto = produtoRepository.findById(itemDto.getProdutoId())
-                    .orElseThrow(() -> new RuntimeException("Produto não encontrado!"));
-
+            Produto produto = produtoRepository.findById(itemDto.getProdutoId()).orElseThrow(() -> new RuntimeException("Produto não encontrado!"));
             if (!produto.getRestaurante().getId().equals(restaurante.getId())) {
-                throw new SecurityException("Acesso negado: O produto '" + produto.getNome() + "' não pertence ao seu restaurante.");
+                throw new SecurityException("Acesso negado.");
             }
-
             ItemPedido itemPedido = new ItemPedido();
             itemPedido.setProduto(produto);
             itemPedido.setQuantidade(itemDto.getQuantidade());
             itemPedido.setPrecoUnitario(produto.getPreco());
             itemPedido.setObservacao(itemDto.getObservacao());
             itemPedido.setPedido(novoPedido);
-
             novoPedido.getItens().add(itemPedido);
             totalPedido = totalPedido.add(produto.getPreco().multiply(BigDecimal.valueOf(itemDto.getQuantidade())));
         }
 
-        // CORREÇÃO FINAL: Apenas define o total no pedido. Não mexe na mesa.
         novoPedido.setTotal(totalPedido);
-
         if (mesa.getStatus() == StatusMesa.LIVRE) {
             mesa.setStatus(StatusMesa.OCUPADA);
             mesa.setHoraAbertura(LocalTime.now());
         }
-
         pedidoRepository.save(novoPedido);
         mesaRepository.save(mesa);
-
         return novoPedido;
     }
 
-    public List<PedidoFilaDTO> listarPedidosNaoImpressos() {
+    public List<PedidoFilaDTO> listarPedidosDeMesaPendentes() {
         Restaurante restaurante = getRestauranteLogado();
-        List<Mesa> mesasDoRestaurante = mesaRepository.findByRestauranteId(restaurante.getId());
-        List<Pedido> pedidos = pedidoRepository.findByMesaInAndImpressoIsFalse(mesasDoRestaurante);
-
-        // Converte a lista de Pedido para uma lista de PedidoFilaDTO
+        List<Pedido> pedidos = pedidoRepository.findByTipoAndStatusAndRestauranteId(TipoPedido.MESA, StatusPedido.PENDENTE, restaurante.getId());
         return pedidos.stream().map(pedido -> {
             Mesa mesa = pedido.getMesa();
             MesaSimplesDTO mesaDto = new MesaSimplesDTO(mesa.getNumero(), mesa.getNomeCliente());
-
             PedidoFilaDTO pedidoDto = new PedidoFilaDTO();
             pedidoDto.setId(pedido.getId());
             pedidoDto.setDataHora(pedido.getDataHora());
             pedidoDto.setItens(pedido.getItens());
             pedidoDto.setMesa(mesaDto);
-
             return pedidoDto;
         }).collect(Collectors.toList());
     }
 
     @Transactional
-    public Pedido marcarComoImpresso(Long pedidoId) {
+    public Pedido confirmarPedidoDeMesa(Long pedidoId) {
         Restaurante restaurante = getRestauranteLogado();
-        Pedido pedido = pedidoRepository.findById(pedidoId)
-                .orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
-
-        if (pedido.getMesa() == null || !pedido.getMesa().getRestaurante().getId().equals(restaurante.getId())) {
-            throw new SecurityException("Acesso negado: este pedido não pertence ao seu restaurante.");
+        Pedido pedido = pedidoRepository.findById(pedidoId).orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
+        if (!pedido.getRestaurante().getId().equals(restaurante.getId())) {
+            throw new SecurityException("Acesso negado.");
         }
+        Mesa mesa = pedido.getMesa();
+        mesa.setValorTotal(mesa.getValorTotal().add(pedido.getTotal()));
+        mesaRepository.save(mesa);
+        pedido.setStatus(StatusPedido.CONFIRMADO);
+        return pedidoRepository.save(pedido);
+    }
 
-        if (!pedido.isImpresso()) {
-            Mesa mesa = pedido.getMesa();
-            mesa.setValorTotal(mesa.getValorTotal().add(pedido.getTotal()));
-            mesaRepository.save(mesa);
+    @Transactional
+    public Pedido criarPedidoDelivery(PedidoDeliveryRequestDTO dto) {
+        Restaurante restaurante = getRestauranteLogado();
+
+        Pedido novoPedido = new Pedido();
+        novoPedido.setRestaurante(restaurante);
+        novoPedido.setDataHora(LocalDateTime.now());
+        novoPedido.setItens(new ArrayList<>());
+        novoPedido.setTipo(TipoPedido.DELIVERY);
+        novoPedido.setStatus(StatusPedido.PENDENTE);
+        novoPedido.setNomeClienteDelivery(dto.getNomeCliente());
+        novoPedido.setTelefoneClienteDelivery(dto.getTelefoneCliente());
+        novoPedido.setEnderecoClienteDelivery(dto.getEnderecoCliente());
+
+        BigDecimal totalPedido = BigDecimal.ZERO;
+        for (var itemDto : dto.getItens()) {
+            Produto produto = produtoRepository.findById(itemDto.getProdutoId()).orElseThrow(() -> new RuntimeException("Produto não encontrado!"));
+            if (!produto.getRestaurante().getId().equals(restaurante.getId())) {
+                throw new SecurityException("Acesso negado.");
+            }
+            ItemPedido itemPedido = new ItemPedido();
+            itemPedido.setProduto(produto);
+            itemPedido.setQuantidade(itemDto.getQuantidade());
+            itemPedido.setPrecoUnitario(produto.getPreco());
+            itemPedido.setObservacao(itemDto.getObservacao());
+            itemPedido.setPedido(novoPedido);
+            novoPedido.getItens().add(itemPedido);
+            totalPedido = totalPedido.add(produto.getPreco().multiply(BigDecimal.valueOf(itemDto.getQuantidade())));
         }
+        novoPedido.setTotal(totalPedido);
+        return pedidoRepository.save(novoPedido);
+    }
 
-        pedido.setImpresso(true);
+    public Map<StatusPedido, List<Pedido>> listarPedidosDeliveryPorStatus() {
+        Restaurante restaurante = getRestauranteLogado();
+        Map<StatusPedido, List<Pedido>> pedidosAgrupados = new HashMap<>();
+        pedidosAgrupados.put(StatusPedido.PENDENTE, pedidoRepository.findByTipoAndStatusAndRestauranteId(TipoPedido.DELIVERY, StatusPedido.PENDENTE, restaurante.getId()));
+        pedidosAgrupados.put(StatusPedido.EM_PREPARO, pedidoRepository.findByTipoAndStatusAndRestauranteId(TipoPedido.DELIVERY, StatusPedido.EM_PREPARO, restaurante.getId()));
+        pedidosAgrupados.put(StatusPedido.PRONTO_PARA_ENTREGA, pedidoRepository.findByTipoAndStatusAndRestauranteId(TipoPedido.DELIVERY, StatusPedido.PRONTO_PARA_ENTREGA, restaurante.getId()));
+        return pedidosAgrupados;
+    }
+
+    @Transactional
+    public Pedido atualizarStatusPedidoDelivery(Long pedidoId, StatusPedido novoStatus) {
+        Restaurante restaurante = getRestauranteLogado();
+        Pedido pedido = pedidoRepository.findById(pedidoId).orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
+        if (!pedido.getRestaurante().getId().equals(restaurante.getId()) || pedido.getTipo() != TipoPedido.DELIVERY) {
+            throw new SecurityException("Acesso negado.");
+        }
+        pedido.setStatus(novoStatus);
         return pedidoRepository.save(pedido);
     }
 }

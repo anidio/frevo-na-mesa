@@ -125,6 +125,7 @@ public class MesaService {
 
         Mesa novaMesa = new Mesa();
         novaMesa.setNumero(dto.getNumero());
+        novaMesa.setNomeCliente(dto.getNomeCliente());
         novaMesa.setStatus(StatusMesa.LIVRE);
         novaMesa.setValorTotal(BigDecimal.ZERO);
         novaMesa.setPedidos(new ArrayList<>());

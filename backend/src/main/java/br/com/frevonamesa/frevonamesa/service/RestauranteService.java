@@ -1,12 +1,16 @@
 package br.com.frevonamesa.frevonamesa.service;
 
 import br.com.frevonamesa.frevonamesa.dto.RestauranteDTO;
+import br.com.frevonamesa.frevonamesa.dto.RestaurantePerfilDTO;
 import br.com.frevonamesa.frevonamesa.model.Mesa; // 1. Importar Mesa
 import br.com.frevonamesa.frevonamesa.model.Restaurante;
 import br.com.frevonamesa.frevonamesa.model.StatusMesa; // 2. Importar StatusMesa
+import br.com.frevonamesa.frevonamesa.model.TipoEstabelecimento;
 import br.com.frevonamesa.frevonamesa.repository.MesaRepository; // 3. Importar MesaRepository
 import br.com.frevonamesa.frevonamesa.repository.RestauranteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -36,23 +40,41 @@ public class RestauranteService {
         Restaurante novoRestaurante = new Restaurante(
                 restauranteDTO.getNome(),
                 restauranteDTO.getEmail(),
-                senhaCriptografada
+                senhaCriptografada,
+                restauranteDTO.getTipo()
         );
 
         // Salva o novo restaurante primeiro para que ele tenha um ID
         Restaurante restauranteSalvo = restauranteRepository.save(novoRestaurante);
 
-        // 8. LÓGICA ADICIONADA: Cria 10 mesas padrão para o novo restaurante
-        IntStream.rangeClosed(1, 10).forEach(numero -> {
-            Mesa novaMesa = new Mesa();
-            novaMesa.setNumero(numero);
-            novaMesa.setStatus(StatusMesa.LIVRE);
-            novaMesa.setValorTotal(BigDecimal.ZERO);
-            novaMesa.setPedidos(new ArrayList<>());
-            novaMesa.setRestaurante(restauranteSalvo); // Associa ao restaurante que acabamos de salvar
-            mesaRepository.save(novaMesa);
-        });
+        if (restauranteSalvo.getTipo() == TipoEstabelecimento.APENAS_MESAS || restauranteSalvo.getTipo() == TipoEstabelecimento.MESAS_E_DELIVERY) {
+            IntStream.rangeClosed(1, 5).forEach(numero -> {
+                Mesa novaMesa = new Mesa();
+                novaMesa.setNumero(numero);
+                novaMesa.setStatus(StatusMesa.LIVRE);
+                novaMesa.setValorTotal(BigDecimal.ZERO);
+                novaMesa.setPedidos(new ArrayList<>());
+                novaMesa.setRestaurante(restauranteSalvo);
+                mesaRepository.save(novaMesa);
+            });
+        }
 
         return restauranteSalvo;
+    }
+
+    public RestaurantePerfilDTO getPerfilLogado() {
+        // Pega o email do usuário autenticado no sistema
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        Restaurante restaurante = restauranteRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("Restaurante não encontrado: " + email));
+
+        // Converte a entidade para o DTO de perfil
+        RestaurantePerfilDTO perfilDto = new RestaurantePerfilDTO();
+        perfilDto.setId(restaurante.getId());
+        perfilDto.setNome(restaurante.getNome());
+        perfilDto.setEmail(restaurante.getEmail());
+        perfilDto.setTipo(restaurante.getTipo());
+
+        return perfilDto;
     }
 }

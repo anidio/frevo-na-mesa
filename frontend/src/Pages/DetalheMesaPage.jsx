@@ -1,5 +1,3 @@
-// src/Pages/DetalheMesaPage.jsx
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -72,6 +70,7 @@ const DetalheMesaHeader = ({ mesa, onMesaUpdate }) => {
         <div className="flex items-baseline gap-2">
           <h1 className="text-3xl font-bold text-gray-800">Mesa {mesa.numero}</h1>
           <input type="text" placeholder="Nome do Cliente" className="text-lg font-semibold text-gray-600 border-b-2 border-transparent focus:border-orange-500 bg-transparent outline-none transition-colors w-48" value={nomeCliente} onChange={(e) => setNomeCliente(e.target.value)} onBlur={handleSalvarNome} />
+          
         </div>
         <span className={`px-3 py-1 text-sm font-bold rounded-md border ${statusTagClasses[mesa.status]}`}>{mesa.status}</span>
       </div>
@@ -147,7 +146,7 @@ const DetalheMesaPage = () => {
       itens: pedido.map(item => ({ produtoId: item.id, quantidade: item.quantidade, observacao: item.observacao })),
     };
     try {
-      await apiClient.post('/api/pedidos', dadosDoPedido);
+      await apiClient.post('/api/pedidos/mesa', dadosDoPedido);
       toast.success("Pedido enviado para o caixa!");
       setPedido([]);
       fetchMesaEProdutos();
@@ -284,4 +283,3 @@ const DetalheMesaPage = () => {
 };
 
 export default DetalheMesaPage;
-

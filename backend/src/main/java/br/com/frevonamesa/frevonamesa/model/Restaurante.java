@@ -1,11 +1,11 @@
 package br.com.frevonamesa.frevonamesa.model;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.util.List;
 
 @Entity
 @Data
@@ -16,13 +16,22 @@ public class Restaurante {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String nome; // Nome do restaurante
-    private String email; // Email para login
-    private String senha; // Senha (será criptografada)
+    private String nome;
+    private String email;
+    private String senha;
 
-    public Restaurante(String nome, String email, String senha) {
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TipoEstabelecimento tipo;
+
+    @OneToMany(mappedBy = "restaurante", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference("restaurante-pedido")
+    private List<Pedido> pedidos;
+
+    public Restaurante(String nome, String email, String senha, TipoEstabelecimento tipo) {
         this.nome = nome;
         this.email = email;
         this.senha = senha;
+        this.tipo = tipo;
     }
 }

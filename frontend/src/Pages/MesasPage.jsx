@@ -17,6 +17,7 @@ const MesasPage = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [novoNumero, setNovoNumero] = useState('');
+  const [novoNome, setNovoNome] = useState('');
   const navigate = useNavigate();
 
   const fetchData = async () => {
@@ -44,13 +45,15 @@ const MesasPage = () => {
       return;
     }
     try {
-      // USA O API CLIENT PARA A CHAMADA POST
-      await apiClient.post('/api/mesas', { numero: parseInt(novoNumero) });
+      
+      await apiClient.post('/api/mesas', { 
+        numero: parseInt(novoNumero),
+        nomeCliente: novoNome });
 
       toast.success('Mesa adicionada com sucesso!');
       setIsModalOpen(false);
       setNovoNumero('');
-      fetchData(); // Recarrega os dados após adicionar
+      fetchData(); 
     } catch (error) {
       console.error("Erro de comunicação ao adicionar mesa:", error);
       toast.error(`Erro ao adicionar mesa: ${error.message}`);
@@ -70,12 +73,12 @@ const MesasPage = () => {
   return (
     <>
       <div className="w-full p-4 md:p-8 max-w-7xl mx-auto">
-        <div className="text-center mb-8 text-orange-600">
+        <div className="text-center mb-8 text-orange-600 dark:text-orange-400">
             <div className="flex justify-center items-center gap-2">
                 <GarcomIcon />
                 <h1 className="text-3xl font-bold">Frevo Garçom</h1>
             </div>
-            <p className="mt-1 text-gray-500">Selecione uma mesa para começar o atendimento.</p>
+            <p className="mt-1 text-gray-500 dark:text-gray-400">Selecione uma mesa para começar o atendimento.</p>
         </div>
         
         <div className="flex justify-end mb-4">
@@ -94,18 +97,18 @@ const MesasPage = () => {
           ))}
         </div>
 
-        <div className="mt-12 p-4 bg-white rounded-lg shadow-md flex flex-wrap justify-around items-center gap-4">
+        <div className="mt-12 p-4 bg-white dark:bg-tema-surface-dark rounded-lg shadow-md flex flex-wrap justify-around items-center gap-4 border border-gray-200 dark:border-gray-700">
           <div className="text-center">
-            <p className="text-sm text-gray-500">Mesas Livres</p>
-            <p className="text-2xl font-bold text-green-600">{mesasLivres}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Mesas Livres</p>
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400">{mesasLivres}</p>
           </div>
           <div className="text-center">
-            <p className="text-sm text-gray-500">Mesas Ocupadas</p>
-            <p className="text-2xl font-bold text-yellow-600">{mesasOcupadas}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Mesas Ocupadas</p>
+            <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{mesasOcupadas}</p>
           </div>
           <div className="text-center">
-            <p className="text-sm text-gray-500">Total em Aberto</p>
-            <p className="text-2xl font-bold text-orange-600">
+            <p className="text-sm text-gray-500 dark:text-gray-400">Total em Aberto</p>
+            <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
               R$ {totalEmAberto.toFixed(2).replace('.', ',')}
             </p>
           </div>
@@ -114,14 +117,18 @@ const MesasPage = () => {
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">Adicionar Nova Mesa</h2>
+          <div className="bg-white dark:bg-tema-surface-dark rounded-lg shadow-xl p-6 w-full max-w-sm">
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-tema-text-dark mb-4">Adicionar Nova Mesa</h2>
             <div>
-              <label htmlFor="table-number" className="block text-sm font-medium text-gray-700">Número da Mesa</label>
-              <input type="number" id="table-number" value={novoNumero} onChange={(e) => setNovoNumero(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500" placeholder="Ex: 11" autoFocus />
+              <label htmlFor="table-number" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Número da Mesa</label>
+              <input type="number" id="table-number" value={novoNumero} onChange={(e) => setNovoNumero(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500" placeholder="Ex: 11" autoFocus />
+            </div>
+            <div>
+              <label htmlFor="table-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome do Cliente</label>
+              <input type="text" id="table-name" value={novoNome} onChange={(e) => setNovoNome(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500" placeholder="Ex: nome" autoFocus />
             </div>
             <div className="mt-6 flex justify-end gap-4">
-              <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300 font-semibold">Cancelar</button>
+              <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-lg text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 font-semibold">Cancelar</button>
               <button onClick={handleAdicionarMesa} className="px-4 py-2 rounded-lg text-white bg-orange-500 hover:bg-orange-600 font-semibold">Salvar Mesa</button>
             </div>
           </div>

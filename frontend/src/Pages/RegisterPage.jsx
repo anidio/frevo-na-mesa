@@ -10,8 +10,8 @@ const RegisterPage = () => {
     const [email, setEmail] = useState('');
     const [senha, setSenha] = useState('');
     const [confirmaSenha, setConfirmaSenha] = useState('');
-    // 1. Novo estado para controlar a mensagem de erro
     const [erroSenha, setErroSenha] = useState('');
+    const [tipo, setTipo] = useState('RESTAURANTE_COM_MESAS');
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
@@ -28,7 +28,7 @@ const RegisterPage = () => {
         setErroSenha('');
 
         try {
-            await authService.registrar(nome, email, senha);
+            await authService.registrar(nome, email, senha, tipo);
             toast.success('Restaurante registrado com sucesso! Faça o login.');
             navigate('/login');
         } catch (error) {
@@ -53,6 +53,18 @@ const RegisterPage = () => {
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Email</label>
                         <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Qual o seu tipo de negócio?</label>
+                        <select 
+                            value={tipo} 
+                            onChange={(e) => setTipo(e.target.value)} 
+                            className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm bg-white"
+                        >
+                            <option value="APENAS_MESAS">Apenas Gestão de Mesas (Restaurante/Bar)</option>
+                            <option value="APENAS_DELIVERY">Apenas Delivery</option>
+                            <option value="MESAS_E_DELIVERY">Plano Completo (Mesas e Delivery)</option>
+                        </select>
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Senha</label>

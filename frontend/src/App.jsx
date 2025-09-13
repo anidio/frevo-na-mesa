@@ -13,6 +13,8 @@ import AdminPage from './Pages/AdminPage.jsx';
 import LoginPage from './Pages/LoginPage.jsx';
 import RegisterPage from './Pages/RegisterPage.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
+import NovoPedidoDeliveryPage from './Pages/NovoPedidoDeliveryPage.jsx';
+import DeliveryPage from './Pages/DeliveryPage.jsx';
 
 const App = () => {
   return (
@@ -33,6 +35,8 @@ const App = () => {
             <Route path="mesas" element={<MesasPage />} />
             <Route path="mesas/:id" element={<DetalheMesaPage />} />
             <Route path="caixa" element={<CaixaPage />} />
+            <Route path="delivery" element={<DeliveryPage />} />
+            <Route path="delivery/novo" element={<NovoPedidoDeliveryPage />} />
             <Route path="admin" element={<AdminPage />} />
             <Route path="admin/cardapio" element={<GerenciarCardapioPage />} />
             <Route path="admin/relatorios" element={<RelatorioPage />} />
