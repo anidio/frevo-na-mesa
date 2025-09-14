@@ -2,14 +2,14 @@ package br.com.frevonamesa.frevonamesa.config;
 
 import br.com.frevonamesa.frevonamesa.config.jwt.JwtRequestFilter;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+// import org.springframework.beans.factory.annotation.Value; // Comentamos ou removemos esta linha
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer; // Importante
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -29,8 +29,9 @@ public class SecurityConfig {
     @Autowired
     private AuthenticationProvider authenticationProvider;
 
-    @Value("${app.cors.allowed-origins}")
-    private String[] allowedOrigins;
+    // A anotação @Value e a variável foram removidas para o teste
+    // @Value("${app.cors.allowed-origins}")
+    // private String[] allowedOrigins;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -48,7 +49,6 @@ public class SecurityConfig {
                 .authenticationProvider(authenticationProvider)
                 .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 
-        // AQUI ESTÁ A CORREÇÃO: Usando a sintaxe de referência de método, que é mais clara.
         http.headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable));
 
         return http.build();
@@ -57,7 +57,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList(allowedOrigins));
+        // AQUI ESTÁ A MUDANÇA: Colocamos os links diretamente no código
+        configuration.setAllowedOrigins(Arrays.asList(
+                "https://frevo-na-mesa-front.vercel.app",
+                "http://localhost:5173"
+        ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
