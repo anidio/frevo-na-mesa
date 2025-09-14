@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface MesaRepository extends JpaRepository<Mesa, Long> {
@@ -23,5 +24,7 @@ public interface MesaRepository extends JpaRepository<Mesa, Long> {
 
     // NOVO: Verifica se uma mesa com um certo número já existe para um restaurante específico
     boolean existsByNumeroAndRestauranteId(int numero, Long restauranteId);
+
+    Optional<Mesa> findByNumeroAndRestauranteId(int numero, Long restauranteId);
 
 }

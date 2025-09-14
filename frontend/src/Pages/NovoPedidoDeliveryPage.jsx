@@ -35,7 +35,8 @@ const NovoPedidoDeliveryPage = () => {
     const [cliente, setCliente] = useState({
         nome: '',
         telefone: '',
-        endereco: ''
+        endereco: '',
+        pontoReferencia: ''
     });
     // Estado para o cardápio completo
     const [cardapio, setCardapio] = useState([]);
@@ -108,6 +109,7 @@ const NovoPedidoDeliveryPage = () => {
             nomeCliente: cliente.nome,
             telefoneCliente: cliente.telefone,
             enderecoCliente: cliente.endereco,
+            pontoReferencia: cliente.pontoReferencia,
             itens: itensPedido.map(item => ({
                 produtoId: item.id,
                 quantidade: item.quantidade,
@@ -150,6 +152,10 @@ const NovoPedidoDeliveryPage = () => {
                             <div className="md:col-span-2">
                                 <label className="block text-sm font-medium text-gray-600">Endereço de Entrega</label>
                                 <input type="text" name="endereco" value={cliente.endereco} onChange={handleClienteChange} className="mt-1 w-full p-2 border rounded-md" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-600">Ponto de Referência (Opcional)</label>
+                                <input type="text" name="pontoReferencia" value={cliente.pontoReferencia} onChange={handleClienteChange} className="mt-1 w-full p-2 border rounded-md" />
                             </div>
                         </div>
                     </div>

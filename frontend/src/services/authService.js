@@ -17,13 +17,13 @@ export const login = async (email, senha) => {
     return response.json(); // Retorna { token: "..." }
 };
 
-export const registrar = async (nome, email, senha,tipo) => {
+export const registrar = async (nome, email, senha, tipo, endereco) => {
     const response = await fetch(`${API_URL}/api/auth/registrar`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ nome, email, senha, tipo }),
+        body: JSON.stringify({ nome, email, senha, tipo, endereco }),
     });
 
     if (!response.ok) {

@@ -1,10 +1,8 @@
 package br.com.frevonamesa.frevonamesa.service;
 
-import br.com.frevonamesa.frevonamesa.dto.MesaSimplesDTO;
-import br.com.frevonamesa.frevonamesa.dto.PedidoDeliveryRequestDTO;
-import br.com.frevonamesa.frevonamesa.dto.PedidoFilaDTO;
-import br.com.frevonamesa.frevonamesa.dto.PedidoRequestDTO;
+import br.com.frevonamesa.frevonamesa.dto.*;
 import br.com.frevonamesa.frevonamesa.model.*;
+import br.com.frevonamesa.frevonamesa.repository.AdicionalRepository;
 import br.com.frevonamesa.frevonamesa.repository.MesaRepository;
 import br.com.frevonamesa.frevonamesa.repository.PedidoRepository;
 import br.com.frevonamesa.frevonamesa.repository.ProdutoRepository;
@@ -31,6 +29,7 @@ public class PedidoService {
     @Autowired private ProdutoRepository produtoRepository;
     @Autowired private PedidoRepository pedidoRepository;
     @Autowired private RestauranteRepository restauranteRepository;
+    @Autowired private AdicionalRepository adicionalRepository; // INJEÇÃO DO NOVO REPOSITÓRIO
 
     private Restaurante getRestauranteLogado() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -55,7 +54,7 @@ public class PedidoService {
         novoPedido.setItens(new ArrayList<>());
         novoPedido.setTipo(TipoPedido.MESA);
 
-        BigDecimal totalPedido = BigDecimal.ZERO;
+        List<Adicional> adicionaisDisponiveis = adicionalRepository.findByRestauranteId(restaurante.getId());
 
         for (var itemDto : dto.getItens()) {
             Produto produto = produtoRepository.findById(itemDto.getProdutoId()).orElseThrow(() -> new RuntimeException("Produto não encontrado!"));
@@ -68,12 +67,24 @@ public class PedidoService {
             itemPedido.setPrecoUnitario(produto.getPreco());
             itemPedido.setObservacao(itemDto.getObservacao());
             itemPedido.setPedido(novoPedido);
+
+            // LÓGICA DE ADICIONAIS APLICADA AQUI
+            if (itemDto.getAdicionaisIds() != null && !itemDto.getAdicionaisIds().isEmpty()) {
+                for (Long adicionalId : itemDto.getAdicionaisIds()) {
+                    Adicional adicional = adicionaisDisponiveis.stream()
+                            .filter(a -> a.getId().equals(adicionalId))
+                            .findFirst()
+                            .orElseThrow(() -> new RuntimeException("Adicional inválido."));
+                    itemPedido.getAdicionais().add(new ItemPedidoAdicional(itemPedido, adicional));
+                }
+            }
             novoPedido.getItens().add(itemPedido);
-            totalPedido = totalPedido.add(produto.getPreco().multiply(BigDecimal.valueOf(itemDto.getQuantidade())));
         }
 
+        BigDecimal totalPedido = novoPedido.getItens().stream()
+                .map(ItemPedido::getSubtotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         novoPedido.setTotal(totalPedido);
-
         mesa.setValorTotal(mesa.getValorTotal().add(totalPedido));
 
         if (restaurante.isImpressaoMesaAtivada()) {
@@ -127,12 +138,20 @@ public class PedidoService {
         novoPedido.setDataHora(LocalDateTime.now());
         novoPedido.setItens(new ArrayList<>());
         novoPedido.setTipo(TipoPedido.DELIVERY);
-        novoPedido.setStatus(StatusPedido.PENDENTE);
+
+        if (restaurante.isImpressaoDeliveryAtivada()) {
+            novoPedido.setStatus(StatusPedido.PENDENTE);
+        } else {
+            novoPedido.setStatus(StatusPedido.EM_PREPARO);
+        }
+
         novoPedido.setNomeClienteDelivery(dto.getNomeCliente());
         novoPedido.setTelefoneClienteDelivery(dto.getTelefoneCliente());
         novoPedido.setEnderecoClienteDelivery(dto.getEnderecoCliente());
+        novoPedido.setPontoReferencia(dto.getPontoReferencia()); // Esta linha agora funcionará
 
-        BigDecimal totalPedido = BigDecimal.ZERO;
+        List<Adicional> adicionaisDisponiveis = adicionalRepository.findByRestauranteId(restaurante.getId());
+
         for (var itemDto : dto.getItens()) {
             Produto produto = produtoRepository.findById(itemDto.getProdutoId()).orElseThrow(() -> new RuntimeException("Produto não encontrado!"));
             if (!produto.getRestaurante().getId().equals(restaurante.getId())) {
@@ -144,9 +163,22 @@ public class PedidoService {
             itemPedido.setPrecoUnitario(produto.getPreco());
             itemPedido.setObservacao(itemDto.getObservacao());
             itemPedido.setPedido(novoPedido);
+
+            if (itemDto.getAdicionaisIds() != null && !itemDto.getAdicionaisIds().isEmpty()) {
+                for (Long adicionalId : itemDto.getAdicionaisIds()) {
+                    Adicional adicional = adicionaisDisponiveis.stream()
+                            .filter(a -> a.getId().equals(adicionalId))
+                            .findFirst()
+                            .orElseThrow(() -> new RuntimeException("Adicional inválido."));
+                    itemPedido.getAdicionais().add(new ItemPedidoAdicional(itemPedido, adicional));
+                }
+            }
             novoPedido.getItens().add(itemPedido);
-            totalPedido = totalPedido.add(produto.getPreco().multiply(BigDecimal.valueOf(itemDto.getQuantidade())));
         }
+
+        BigDecimal totalPedido = novoPedido.getItens().stream()
+                .map(ItemPedido::getSubtotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         novoPedido.setTotal(totalPedido);
         return pedidoRepository.save(novoPedido);
     }
@@ -197,5 +229,121 @@ public class PedidoService {
     public List<Pedido> listarPedidosDeliveryPendentes() {
         Restaurante restaurante = getRestauranteLogado();
         return pedidoRepository.findByTipoAndStatusAndRestauranteId(TipoPedido.DELIVERY, StatusPedido.PENDENTE, restaurante.getId());
+    }
+
+    @Transactional
+    public Pedido criarPedidoMesaCliente(PedidoClienteDTO dto) {
+        Restaurante restaurante = restauranteRepository.findById(dto.getRestauranteId())
+                .orElseThrow(() -> new RuntimeException("Restaurante não encontrado!"));
+        Mesa mesa = mesaRepository.findByNumeroAndRestauranteId(dto.getNumeroMesa(), restaurante.getId())
+                .orElseThrow(() -> new RuntimeException("Mesa não encontrada ou inválida para este restaurante."));
+        if (dto.getNomeCliente() != null && !dto.getNomeCliente().trim().isEmpty()) {
+            mesa.setNomeCliente(dto.getNomeCliente());
+        }
+
+        Pedido novoPedido = new Pedido();
+        novoPedido.setMesa(mesa);
+        novoPedido.setRestaurante(restaurante);
+        novoPedido.setDataHora(LocalDateTime.now());
+        novoPedido.setItens(new ArrayList<>());
+        novoPedido.setTipo(TipoPedido.MESA);
+
+        List<Adicional> adicionaisDisponiveis = adicionalRepository.findByRestauranteId(restaurante.getId());
+
+        for (var itemDto : dto.getItens()) {
+            Produto produto = produtoRepository.findById(itemDto.getProdutoId())
+                    .orElseThrow(() -> new RuntimeException("Produto não encontrado!"));
+            ItemPedido itemPedido = new ItemPedido();
+            itemPedido.setProduto(produto);
+            itemPedido.setQuantidade(itemDto.getQuantidade());
+            itemPedido.setPrecoUnitario(produto.getPreco());
+            itemPedido.setObservacao(itemDto.getObservacao());
+            itemPedido.setPedido(novoPedido);
+
+            if (itemDto.getAdicionaisIds() != null && !itemDto.getAdicionaisIds().isEmpty()) {
+                for (Long adicionalId : itemDto.getAdicionaisIds()) {
+                    Adicional adicional = adicionaisDisponiveis.stream()
+                            .filter(a -> a.getId().equals(adicionalId))
+                            .findFirst()
+                            .orElseThrow(() -> new RuntimeException("Adicional inválido."));
+                    itemPedido.getAdicionais().add(new ItemPedidoAdicional(itemPedido, adicional));
+                }
+            }
+            novoPedido.getItens().add(itemPedido);
+        }
+
+        BigDecimal totalPedido = novoPedido.getItens().stream()
+                .map(ItemPedido::getSubtotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        novoPedido.setTotal(totalPedido);
+        mesa.setValorTotal(mesa.getValorTotal().add(totalPedido));
+
+        if (restaurante.isImpressaoMesaAtivada()) {
+            novoPedido.setStatus(StatusPedido.PENDENTE);
+        } else {
+            novoPedido.setStatus(StatusPedido.CONFIRMADO);
+        }
+
+        if (mesa.getStatus() == StatusMesa.LIVRE) {
+            mesa.setStatus(StatusMesa.OCUPADA);
+            mesa.setHoraAbertura(LocalTime.now());
+        }
+
+        pedidoRepository.save(novoPedido);
+        mesaRepository.save(mesa);
+        return novoPedido;
+    }
+
+    @Transactional
+    public Pedido criarPedidoDeliveryCliente(PedidoDeliveryClienteDTO dto) {
+        Restaurante restaurante = restauranteRepository.findById(dto.getRestauranteId())
+                .orElseThrow(() -> new RuntimeException("Restaurante não encontrado!"));
+
+        Pedido novoPedido = new Pedido();
+        novoPedido.setRestaurante(restaurante);
+        novoPedido.setDataHora(LocalDateTime.now());
+        novoPedido.setItens(new ArrayList<>());
+        novoPedido.setTipo(TipoPedido.DELIVERY);
+
+        if (restaurante.isImpressaoDeliveryAtivada()) {
+            novoPedido.setStatus(StatusPedido.PENDENTE);
+        } else {
+            novoPedido.setStatus(StatusPedido.EM_PREPARO);
+        }
+
+        novoPedido.setNomeClienteDelivery(dto.getNomeCliente());
+        novoPedido.setTelefoneClienteDelivery(dto.getTelefoneCliente());
+        novoPedido.setEnderecoClienteDelivery(dto.getEnderecoCliente());
+
+        List<Adicional> adicionaisDisponiveis = adicionalRepository.findByRestauranteId(restaurante.getId());
+
+        for (var itemDto : dto.getItens()) {
+            Produto produto = produtoRepository.findById(itemDto.getProdutoId())
+                    .orElseThrow(() -> new RuntimeException("Produto não encontrado!"));
+
+            ItemPedido itemPedido = new ItemPedido();
+            itemPedido.setProduto(produto);
+            itemPedido.setQuantidade(itemDto.getQuantidade());
+            itemPedido.setPrecoUnitario(produto.getPreco());
+            itemPedido.setObservacao(itemDto.getObservacao());
+            itemPedido.setPedido(novoPedido);
+
+            if (itemDto.getAdicionaisIds() != null && !itemDto.getAdicionaisIds().isEmpty()) {
+                for (Long adicionalId : itemDto.getAdicionaisIds()) {
+                    Adicional adicional = adicionaisDisponiveis.stream()
+                            .filter(a -> a.getId().equals(adicionalId))
+                            .findFirst()
+                            .orElseThrow(() -> new RuntimeException("Adicional inválido."));
+                    itemPedido.getAdicionais().add(new ItemPedidoAdicional(itemPedido, adicional));
+                }
+            }
+            novoPedido.getItens().add(itemPedido);
+        }
+
+        BigDecimal totalPedido = novoPedido.getItens().stream()
+                .map(ItemPedido::getSubtotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        novoPedido.setTotal(totalPedido);
+        return pedidoRepository.save(novoPedido);
     }
 }

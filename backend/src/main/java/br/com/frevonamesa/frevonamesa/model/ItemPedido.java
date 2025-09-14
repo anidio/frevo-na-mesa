@@ -3,11 +3,14 @@
 package br.com.frevonamesa.frevonamesa.model;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor; // >>> NOVO: Importe o NoArgsConstructor
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @NoArgsConstructor // >>> NOVO: Adicione esta anotação
@@ -22,6 +25,11 @@ public class ItemPedido {
     @JoinColumn(name = "pedido_id")
     @JsonBackReference
     private Pedido pedido;
+
+    @OneToMany(mappedBy = "itemPedido", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    private List<ItemPedidoAdicional> adicionais = new ArrayList<>();
+
 
     @ManyToOne
     @JoinColumn(name = "produto_id")
@@ -48,6 +56,12 @@ public class ItemPedido {
      */
     @Transient
     public BigDecimal getSubtotal() {
-        return this.precoUnitario.multiply(BigDecimal.valueOf(this.quantidade));
+        BigDecimal precoDosAdicionais = adicionais.stream()
+                .map(ItemPedidoAdicional::getPrecoAdicional)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal precoTotalUnitario = this.precoUnitario.add(precoDosAdicionais);
+
+        return precoTotalUnitario.multiply(BigDecimal.valueOf(this.quantidade));
     }
 }

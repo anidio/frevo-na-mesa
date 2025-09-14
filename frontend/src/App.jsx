@@ -15,6 +15,8 @@ import RegisterPage from './Pages/RegisterPage.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import NovoPedidoDeliveryPage from './Pages/NovoPedidoDeliveryPage.jsx';
 import DeliveryPage from './Pages/DeliveryPage.jsx';
+import CardapioClientePage from './Pages/CardapioClientePage.jsx';
+import GerenciarAdicionaisPage from './Pages/GerenciarAdicionaisPage.jsx';
 
 const App = () => {
   return (
@@ -22,6 +24,7 @@ const App = () => {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/registrar" element={<RegisterPage />} />
+        <Route path="/cardapio/:restauranteId" element={<CardapioClientePage />} />
         <Route path="/" element={<MainLayout />}>
           <Route index element={<HomePage />} />
           <Route element={<ProtectedRoute />}>
@@ -32,6 +35,7 @@ const App = () => {
             <Route path="delivery/novo" element={<NovoPedidoDeliveryPage />} />
             <Route path="admin" element={<AdminPage />} />
             <Route path="admin/cardapio" element={<GerenciarCardapioPage />} />
+            <Route path="admin/adicionais" element={<GerenciarAdicionaisPage />} />
             <Route path="admin/relatorios" element={<RelatorioPage />} />
             <Route path="admin/configuracoes" element={<ConfiguracoesPage />} />
           </Route>

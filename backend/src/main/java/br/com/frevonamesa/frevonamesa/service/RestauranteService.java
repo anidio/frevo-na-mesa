@@ -1,14 +1,10 @@
 package br.com.frevonamesa.frevonamesa.service;
 
-import br.com.frevonamesa.frevonamesa.dto.RestauranteDTO;
-import br.com.frevonamesa.frevonamesa.dto.RestaurantePerfilDTO;
-import br.com.frevonamesa.frevonamesa.dto.RestauranteSettingsDTO;
-import br.com.frevonamesa.frevonamesa.model.Mesa; // 1. Importar Mesa
-import br.com.frevonamesa.frevonamesa.model.Restaurante;
-import br.com.frevonamesa.frevonamesa.model.StatusMesa; // 2. Importar StatusMesa
-import br.com.frevonamesa.frevonamesa.model.TipoEstabelecimento;
+import br.com.frevonamesa.frevonamesa.dto.*;
+import br.com.frevonamesa.frevonamesa.model.*;
 import br.com.frevonamesa.frevonamesa.repository.CategoriaRepository;
 import br.com.frevonamesa.frevonamesa.repository.MesaRepository; // 3. Importar MesaRepository
+import br.com.frevonamesa.frevonamesa.repository.ProdutoRepository;
 import br.com.frevonamesa.frevonamesa.repository.RestauranteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -19,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal; // 4. Importar BigDecimal
 import java.util.ArrayList; // 5. Importar ArrayList
+import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream; // 6. Importar IntStream
 
 @Service
@@ -35,6 +33,9 @@ public class RestauranteService {
 
     @Autowired
     private CategoriaRepository categoriaRepository;
+
+    @Autowired
+    private ProdutoRepository produtoRepository;
 
     private Restaurante getRestauranteLogado() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -55,6 +56,7 @@ public class RestauranteService {
                 senhaCriptografada,
                 restauranteDTO.getTipo()
         );
+        novoRestaurante.setEndereco(restauranteDTO.getEndereco());
 
         // Salva o novo restaurante primeiro para que ele tenha um ID
         Restaurante restauranteSalvo = restauranteRepository.save(novoRestaurante);
@@ -85,6 +87,7 @@ public class RestauranteService {
         perfilDto.setId(restaurante.getId());
         perfilDto.setNome(restaurante.getNome());
         perfilDto.setEmail(restaurante.getEmail());
+        perfilDto.setEndereco(restaurante.getEndereco());
         perfilDto.setTipo(restaurante.getTipo());
         perfilDto.setImpressaoDeliveryAtivada(restaurante.isImpressaoDeliveryAtivada());
         perfilDto.setImpressaoMesaAtivada(restaurante.isImpressaoMesaAtivada());
@@ -99,5 +102,39 @@ public class RestauranteService {
         restaurante.setImpressaoDeliveryAtivada(settingsDTO.isImpressaoDeliveryAtivada());
         restauranteRepository.save(restaurante);
         return getPerfilLogado(); // Retorna o perfil atualizado
+    }
+
+    public CardapioPublicoDTO getCardapioPublico(Long restauranteId) {
+        Restaurante restaurante = restauranteRepository.findById(restauranteId)
+                .orElseThrow(() -> new RuntimeException("Restaurante não encontrado."));
+
+        List<Categoria> categorias = categoriaRepository.findByRestauranteId(restauranteId);
+        List<Produto> produtos = produtoRepository.findByRestauranteId(restauranteId);
+
+        CardapioPublicoDTO cardapioDTO = new CardapioPublicoDTO();
+        cardapioDTO.setNomeRestaurante(restaurante.getNome());
+        cardapioDTO.setEnderecoRestaurante(restaurante.getEndereco());
+
+        List<CategoriaCardapioDTO> categoriasDTO = categorias.stream().map(categoria -> {
+            CategoriaCardapioDTO categoriaDTO = new CategoriaCardapioDTO();
+            categoriaDTO.setNome(categoria.getNome());
+
+            List<ProdutoCardapioDTO> produtosDaCategoria = produtos.stream()
+                    .filter(produto -> produto.getCategoria().getId().equals(categoria.getId()))
+                    .map(produto -> {
+                        ProdutoCardapioDTO produtoDTO = new ProdutoCardapioDTO();
+                        produtoDTO.setId(produto.getId());
+                        produtoDTO.setNome(produto.getNome());
+                        produtoDTO.setDescricao(produto.getDescricao());
+                        produtoDTO.setPreco(produto.getPreco());
+                        return produtoDTO;
+                    }).collect(Collectors.toList());
+
+            categoriaDTO.setProdutos(produtosDaCategoria);
+            return categoriaDTO;
+        }).collect(Collectors.toList());
+
+        cardapioDTO.setCategorias(categoriasDTO);
+        return cardapioDTO;
     }
 }

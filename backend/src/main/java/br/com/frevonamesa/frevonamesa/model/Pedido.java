@@ -52,4 +52,5 @@ public class Pedido {
     private String nomeClienteDelivery;
     private String telefoneClienteDelivery;
     private String enderecoClienteDelivery;
+    private String pontoReferencia;
 }

@@ -38,7 +38,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         // Permite acesso público ao login, registro e console do H2
-                        .requestMatchers("/api/auth/**", "/h2-console/**").permitAll()
+                        .requestMatchers("/api/auth/**", "/h2-console/**", "/api/publico/**").permitAll()
                         // Permite requisições OPTIONS (pre-flight) para qualquer rota
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // Qualquer outra requisição exige autenticação

@@ -4,12 +4,11 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class PedidoDeliveryRequestDTO {
+public class PedidoDeliveryClienteDTO {
+    private Long restauranteId;
     private String nomeCliente;
     private String telefoneCliente;
     private String enderecoCliente;
     private String pontoReferencia;
-
-    // Lista de itens do pedido (reaproveitando o DTO que já temos)
     private List<ItemPedidoRequestDTO> itens;
 }
