@@ -111,14 +111,14 @@ const NovoPedidoDeliveryPage = () => {
             itens: itensPedido.map(item => ({
                 produtoId: item.id,
                 quantidade: item.quantidade,
-                observacao: '' // Pode adicionar um campo de observação por item no futuro
+                observacao: '' 
             }))
         };
 
         try {
             await apiClient.post('/api/pedidos/delivery', dadosDoPedido);
             toast.success('Pedido de delivery criado com sucesso!');
-            navigate('/caixa'); // Volta para o painel do caixa
+            navigate('/delivery'); // Volta para o painel do caixa
         } catch (error) {
             toast.error('Erro ao criar pedido de delivery.');
         }

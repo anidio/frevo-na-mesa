@@ -2,66 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import PainelDelivery from '../components/PainelDelivery';
-import PedidoDetalhesModal from '../components/PedidoDetalhesModal'; // NOVO
+import PedidoDetalhesModal from '../components/PedidoDetalhesModal';
 import apiClient from '../services/apiClient';
-import { useAuth } from '../contexts/AuthContext'; // NOVO
-
-// Ícone da impressora
-const PrinterIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm7-5a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2h2" /></svg>;
-
-// NOVO: Componente para a Fila de Impressão de Delivery
-const FilaImpressaoDelivery = ({ pedidos, onImprimir }) => {
-    if (!pedidos || pedidos.length === 0) {
-        return null; // Não mostra nada se não houver pedidos
-    }
-    return (
-        <div>
-            <h2 className="text-2xl font-bold text-tema-text dark:text-tema-text-dark mb-4">
-                Fila de Impressão ({pedidos.length})
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {pedidos.map(pedido => (
-                    <div key={pedido.id} className="bg-white dark:bg-tema-surface-dark p-3 rounded-lg shadow-sm border-2 flex justify-between items-center animate-pulse-attention">
-                        <div>
-                            <p className="font-bold text-tema-text dark:text-tema-text-dark">Pedido #{pedido.id}</p>
-                            <p className="text-sm text-tema-text-muted dark:text-tema-text-muted-dark">{pedido.nomeClienteDelivery}</p>
-                        </div>
-                        <button onClick={() => onImprimir(pedido)} className="bg-tema-primary text-white font-bold py-2 px-3 rounded-lg hover:bg-opacity-80 flex items-center gap-2 text-sm">
-                            <PrinterIcon /> Imprimir
-                        </button>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-};
+import { useAuth } from '../contexts/AuthContext';
 
 const DeliveryPage = () => {
-  const { userProfile } = useAuth(); // NOVO
+  const { userProfile } = useAuth();
   const [pedidos, setPedidos] = useState({});
-  const [pedidosParaImprimir, setPedidosParaImprimir] = useState([]); // NOVO
   const [pedidosFinalizados, setPedidosFinalizados] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [pedidoSelecionado, setPedidoSelecionado] = useState(null); // NOVO
+  const [pedidoSelecionado, setPedidoSelecionado] = useState(null);
 
   const fetchPedidos = async () => {
     try {
-      const promises = [
+      const [data, finalizadosData] = await Promise.all([
           apiClient.get('/api/pedidos/delivery'),
           apiClient.get('/api/pedidos/delivery/finalizados')
-      ];
-      // Só busca a fila de impressão se estiver ativa
-      if (userProfile?.impressaoDeliveryAtivada) {
-          promises.push(apiClient.get('/api/pedidos/delivery/pendentes'));
-      }
-      
-      const results = await Promise.all(promises);
-      setPedidos(results[0]);
-      setPedidosFinalizados(results[1]);
-      if (userProfile?.impressaoDeliveryAtivada) {
-          setPedidosParaImprimir(results[2]);
-      }
-
+      ]);
+      setPedidos(data);
+      setPedidosFinalizados(finalizadosData);
     } catch (error) {
       console.error('Erro ao buscar pedidos:', error);
       toast.error('Erro ao carregar pedidos de delivery');
@@ -71,12 +30,10 @@ const DeliveryPage = () => {
   };
 
   useEffect(() => {
-    if (userProfile) { // Só busca dados quando o perfil do usuário carregar
-        fetchPedidos();
-        const interval = setInterval(fetchPedidos, 15000); // Atualiza a cada 15s
-        return () => clearInterval(interval);
-    }
-  }, [userProfile]); // Roda o efeito quando o userProfile mudar
+    fetchPedidos();
+    const interval = setInterval(fetchPedidos, 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleStatusChange = async (pedidoId, novoStatus) => {
     try {
@@ -84,19 +41,41 @@ const DeliveryPage = () => {
       toast.success('Status do pedido atualizado!');
       fetchPedidos();
     } catch (error) {
-      console.error('Erro ao atualizar status:', error);
       toast.error('Erro ao atualizar status do pedido');
     }
   };
 
   const handleImprimirPedido = async (pedido) => {
-    // ... (lógica de impressão permanece a mesma, mas chama o endpoint correto)
+    const conteudoImpressao = `
+      <html><head><title>Pedido Delivery #${pedido.id}</title>
+        <style>
+          body { font-family: 'Courier New', Courier, monospace; font-size: 12px; width: 280px; margin: 0; padding: 10px; color: #000; }
+          .header { text-align: center; font-weight: bold; margin-bottom: 10px; font-size: 14px; }
+          .divider { border-top: 1px dashed #000; margin: 10px 0; }
+        </style></head><body>
+          <div class="header">
+            PEDIDO DELIVERY #${pedido.id}<br>
+            Cliente: ${pedido.nomeClienteDelivery}<br>
+            ${new Date(pedido.dataHora).toLocaleString('pt-BR')}
+          </div>
+          <div class="divider"></div>
+          ${pedido.itens.map(item => `<div>${item.quantidade}x ${item.produto.nome}</div>`).join('')}
+        </body></html>
+    `;
+    const janelaImpressao = window.open('', '_blank');
+    janelaImpressao.document.write(conteudoImpressao);
+    janelaImpressao.document.close();
+    janelaImpressao.focus();
+    janelaImpressao.print();
+    janelaImpressao.onafterprint = () => janelaImpressao.close();
+    
     try {
+      // Endpoint antigo 'imprimir' agora só marca o pedido, não muda o status
       await apiClient.patch(`/api/pedidos/delivery/${pedido.id}/imprimir`);
-      toast.success(`Pedido #${pedido.id} impresso e movido para 'Em Preparo'.`);
-      fetchPedidos();
+      toast.success(`Pedido #${pedido.id} marcado como impresso.`);
+      fetchPedidos(); // Atualiza para mostrar o botão de imprimir desativado
     } catch (error) {
-      toast.error("Não foi possível processar a impressão.");
+      toast.error("Não foi possível marcar o pedido como impresso.");
     }
   };
 
@@ -111,12 +90,15 @@ const DeliveryPage = () => {
         </div>
 
         {loading ? (
-            <div className="text-center py-8"><p className="text-tema-text-muted dark:text-tema-text-muted-dark">Carregando pedidos...</p></div>
+            <div className="text-center py-8"><p className="text-tema-text-muted dark:text-tema-text-muted-dark">Carregando...</p></div>
         ) : (
           <>
-            {userProfile?.impressaoDeliveryAtivada && <FilaImpressaoDelivery pedidos={pedidosParaImprimir} onImprimir={handleImprimirPedido} />}
-            <PainelDelivery pedidos={pedidos} onStatusChange={handleStatusChange} />
-
+            <PainelDelivery 
+              pedidos={pedidos} 
+              onStatusChange={handleStatusChange} 
+              onImprimir={handleImprimirPedido}
+              userProfile={userProfile}
+            />
             <div>
               <h2 className="text-2xl font-bold text-tema-text dark:text-tema-text-dark mb-4">Últimos Pedidos Entregues</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
