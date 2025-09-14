@@ -29,7 +29,7 @@ public class PedidoService {
     @Autowired private ProdutoRepository produtoRepository;
     @Autowired private PedidoRepository pedidoRepository;
     @Autowired private RestauranteRepository restauranteRepository;
-    @Autowired private AdicionalRepository adicionalRepository; // INJEÇÃO DO NOVO REPOSITÓRIO
+    @Autowired private AdicionalRepository adicionalRepository;
 
     private Restaurante getRestauranteLogado() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
