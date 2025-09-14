@@ -36,7 +36,7 @@ public class AuthController {
     public ResponseEntity<?> registrarRestaurante(@RequestBody RestauranteDTO restauranteDTO) {
         try {
             restauranteService.cadastrar(restauranteDTO);
-            return ResponseEntity.ok("Restaurante registrado com sucesso!");
+            return ResponseEntity.ok("Restaurante registrado com SUCESSO - VERSAO 2!");
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
