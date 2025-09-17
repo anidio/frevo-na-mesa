@@ -12,13 +12,12 @@ const RegisterPage = () => {
     const [endereco, setEndereco] = useState('');
     const [confirmaSenha, setConfirmaSenha] = useState('');
     const [erroSenha, setErroSenha] = useState('');
-    const [tipo, setTipo] = useState('RESTAURANTE_COM_MESAS');
+    const [tipo, setTipo] = useState('APENAS_MESAS');
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // 2. Validação da confirmação de senha
         if (senha !== confirmaSenha) {
             setErroSenha('As senhas não coincidem!'); // Define a mensagem de erro
             toast.error('As senhas não coincidem!');

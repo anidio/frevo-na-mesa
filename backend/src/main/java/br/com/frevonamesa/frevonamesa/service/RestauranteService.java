@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream; // 6. Importar IntStream
 
 @Service
+@Transactional
 public class RestauranteService {
 
     @Autowired

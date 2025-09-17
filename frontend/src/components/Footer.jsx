@@ -17,7 +17,7 @@ const Footer = () => {
         
         {/* Branding da Empresa */}
         <p className="text-sm font-semibold">
-          Este é um produto <span className="font-bold text-orange-500">Vértice Digital</span>.
+          Este é um produto <span className="font-bold text-orange-500">MangueBit Code</span>.
         </p>
         <p className="text-xs mt-1">
           Criamos soluções inovadoras, de sistemas para restaurantes a ferramentas de conformidade e hardware.
@@ -39,10 +39,10 @@ const Footer = () => {
         {/* Informações de Contato */}
         <div className="mt-4 border-t border-gray-300 pt-4">
           <p className="text-xs">
-            Contato: contato@verticedigital.com | (81) 99999-8888
+            Contato: contato@manguebitcode.com | (81) 99999-8888
           </p>
           <p className="text-xs mt-1">
-            © 2025 Vértice Digital. Todos os direitos reservados.
+            © 2025 MagueBit Code. Todos os direitos reservados.
           </p>
         </div>
 

@@ -1,3 +1,5 @@
+// src/components/BottomNav.jsx
+
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -44,6 +46,7 @@ const BottomNav = () => {
       <div className="flex items-center gap-2 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm p-2 rounded-full shadow-lg border dark:border-gray-700">
         <NavItem icon={<HomeIcon />} label="Home" to="/" />
 
+        {/* REGRAS ATUALIZADAS PARA EXIBIÇÃO DOS BOTÕES */}
         {(userProfile.tipo === 'APENAS_MESAS' || userProfile.tipo === 'MESAS_E_DELIVERY') && (
             <NavItem icon={<UserIcon />} label="Garçom" to="/mesas" />
         )}
@@ -51,8 +54,12 @@ const BottomNav = () => {
         {(userProfile.tipo === 'APENAS_DELIVERY' || userProfile.tipo === 'MESAS_E_DELIVERY') && (
             <NavItem icon={<DeliveryIcon />} label="Delivery" to="/delivery" />
         )}
-
-        <NavItem icon={<CalculatorIcon />} label="Caixa" to="/caixa" />
+        
+        {/* LÓGICA CONDICIONAL ADICIONADA PARA O BOTÃO CAIXA */}
+        {(userProfile.tipo === 'APENAS_MESAS' || userProfile.tipo === 'MESAS_E_DELIVERY') && (
+            <NavItem icon={<CalculatorIcon />} label="Caixa" to="/caixa" />
+        )}
+        
         <NavItem icon={<SettingsIcon />} label="Admin" to="/admin" />
       </div>
     </div>

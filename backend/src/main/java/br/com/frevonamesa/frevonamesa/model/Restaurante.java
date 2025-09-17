@@ -17,6 +17,8 @@ public class Restaurante {
     private Long id;
 
     private String nome;
+
+    @Column(unique = true)
     private String email;
     private String senha;
     private String endereco;
