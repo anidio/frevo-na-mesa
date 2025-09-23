@@ -5,7 +5,7 @@ import PagamentoModal from '../components/PagamentoModal';
 import apiClient from '../services/apiClient';
 import { useAuth } from '../contexts/AuthContext';
 
-// --- ÍCONES ---
+// --- Ícones ---
 const HeaderIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>);
 const ClockIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>);
 const PaymentIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>);
@@ -81,15 +81,15 @@ const CaixaPage = () => {
     };
 
     useEffect(() => {
-        // CORREÇÃO: A requisição só é feita quando o perfil do usuário estiver carregado
         if (userProfile) {
             fetchData();
             const intervalId = setInterval(fetchData, 15000);
             return () => clearInterval(intervalId);
+        } else {
+            setLoading(false);
         }
-    }, [userProfile]); // Adicionado `userProfile` como dependência
+    }, [userProfile]);
 
-    // Adicionado uma tela de carregamento para o perfil
     if (loadingProfile) {
         return <div className="p-8 text-center text-tema-text-muted">Carregando...</div>;
     }
@@ -104,6 +104,63 @@ const CaixaPage = () => {
 
     const mesasOcupadas = mesas.filter(m => m.status === 'OCUPADA');
     const mesasPagas = mesas.filter(m => m.status === 'PAGA');
+
+    const handleImprimirPedido = async (pedido) => {
+        const conteudoImpressao = `
+            <html><head><title>Pedido Mesa ${pedido.mesa.numero}</title>
+            <style>
+                body { font-family: 'Courier New', Courier, monospace; font-size: 12px; width: 280px; margin: 0; padding: 10px; color: #000; }
+                .header { text-align: center; font-weight: bold; margin-bottom: 10px; font-size: 14px; }
+                .item-line { display: flex; justify-content: space-between; margin-bottom: 5px; }
+                .obs { font-style: italic; font-size: 10px; margin-left: 10px; }
+                .divider { border-top: 1px dashed #000; margin: 10px 0; }
+            </style></head><body>
+                <div class="header">
+                    PEDIDO - MESA ${pedido.mesa.numero}
+                    ${pedido.mesa.nomeCliente ? `<br>Cliente: ${pedido.mesa.nomeCliente}` : ''}
+                    <br>${new Date(pedido.dataHora).toLocaleString('pt-BR')}
+                </div>
+                <div class="divider"></div>
+                ${pedido.itens.map(item => `
+                    <div class="item-line"><span>${item.quantidade}x ${item.produto.nome}</span></div>
+                    ${item.observacao ? `<div class="obs">Obs: ${item.observacao}</div>` : ''}
+                `).join('')}
+            </body></html>
+        `;
+        const janelaImpressao = window.open('', '_blank');
+        janelaImpressao.document.write(conteudoImpressao);
+        janelaImpressao.document.close();
+        janelaImpressao.onload = function() {
+            janelaImpressao.print();
+            janelaImpressao.onafterprint = function() { janelaImpressao.close(); };
+        };
+        try {
+            await apiClient.patch(`/api/pedidos/mesa/${pedido.id}/confirmar`);
+            toast.success(`Pedido da Mesa ${pedido.mesa.numero} enviado para impressão.`);
+            fetchData();
+        } catch (error) {
+            toast.error("Não foi possível marcar o pedido como impresso.");
+        }
+    };
+    
+    const handleAbrirModal = (mesa) => {
+        if (mesa.status === 'OCUPADA') setMesaParaPagamento(mesa);
+        else if (mesa.status === 'PAGA') toast.info(`A Mesa ${mesa.numero} já foi paga e está aguardando liberação do garçom.`);
+    };
+
+    const handleCloseModal = () => setMesaParaPagamento(null);
+
+    const handleConfirmarPagamento = async (mesaId, tipoPagamento) => {
+        try {
+            await apiClient.patch(`/api/mesas/${mesaId}/pagar`, { tipoPagamento });
+            toast.success(`Pagamento da Mesa ${mesaId} (${tipoPagamento}) confirmado com sucesso!`);
+            handleCloseModal();
+            fetchData();
+        } catch (error) {
+            console.error("Erro ao confirmar pagamento:", error);
+            toast.error('Erro de comunicação com o servidor.');
+        }
+    };
 
     return (
         <div className="w-full p-4 md:p-8 max-w-7xl mx-auto space-y-8">
