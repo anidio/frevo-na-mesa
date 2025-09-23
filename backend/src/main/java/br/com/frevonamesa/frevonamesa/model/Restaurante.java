@@ -17,8 +17,6 @@ public class Restaurante {
     private Long id;
 
     private String nome;
-    private String whatsappPhoneNumberId;
-    private String whatsappApiToken;
 
     @Column(unique = true)
     private String email;

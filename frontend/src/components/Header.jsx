@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import AuthStatus from './AuthStatus';
 import ThemeToggle from './ThemeToggle';
@@ -15,8 +15,21 @@ const FrevoUmbrellaIcon = () => (
     </svg>
 );
 
+const MenuIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-tema-text dark:text-tema-text-dark" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+);
+
+const CloseIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-tema-text dark:text-tema-text-dark" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+);
 
 const Header = () => {
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+
     return (
         <header className="bg-white/70 dark:bg-tema-surface-dark/70 backdrop-blur-sm shadow-sm sticky top-0 z-40 border-b border-gray-200 dark:border-gray-700">
             <div className="container mx-auto px-4 py-3 flex justify-between items-center">
@@ -26,10 +39,33 @@ const Header = () => {
                         Frevo na Mesa
                     </span>
                 </Link>
-                <div className="flex items-center gap-4">
+                
+                {/* Menu em telas grandes (md+) */}
+                <div className="hidden md:flex items-center gap-4">
                     <ThemeToggle />
                     <AuthStatus />
                 </div>
+
+                {/* Ícone de menu (hambúrguer) em telas pequenas */}
+                <div className="md:hidden">
+                    <button onClick={() => setIsMenuOpen(!isMenuOpen)}>
+                        {isMenuOpen ? <CloseIcon /> : <MenuIcon />}
+                    </button>
+                </div>
+
+                {/* Menu suspenso para telas pequenas */}
+                {isMenuOpen && (
+                    <div className="absolute top-full right-4 mt-2 p-4 bg-white dark:bg-tema-surface-dark rounded-lg shadow-xl border dark:border-gray-700 md:hidden z-50">
+                        <div className="space-y-4">
+                            <div className="flex justify-end">
+                                <ThemeToggle />
+                            </div>
+                            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                                <AuthStatus />
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </header>
     );

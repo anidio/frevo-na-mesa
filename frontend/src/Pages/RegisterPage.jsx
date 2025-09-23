@@ -1,9 +1,9 @@
-// src/Pages/RegisterPage.jsx
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import * as authService from '../services/authService';
 import { toast } from 'react-toastify';
+import * as authService from '../services/authService';
+import Header from '../components/Header';
+import Footer from '../components/Footer';
 
 const RegisterPage = () => {
     const [nome, setNome] = useState('');
@@ -19,12 +19,10 @@ const RegisterPage = () => {
         e.preventDefault();
 
         if (senha !== confirmaSenha) {
-            setErroSenha('As senhas não coincidem!'); // Define a mensagem de erro
+            setErroSenha('As senhas não coincidem!');
             toast.error('As senhas não coincidem!');
-            return; // Interrompe o envio do formulário
+            return;
         }
-
-        // Se as senhas estiverem corretas, limpa qualquer erro anterior
         setErroSenha('');
 
         try {
@@ -36,65 +34,68 @@ const RegisterPage = () => {
         }
     };
 
-    // 3. Define classes de estilo para os inputs de senha com base no erro
+    const inputClass = "w-full px-3 py-2 mt-1 border rounded-md shadow-sm dark:bg-gray-800 dark:text-white dark:border-gray-600 focus:ring-tema-primary focus:border-tema-primary";
     const senhaInputClass = erroSenha
-        ? "w-full px-3 py-2 mt-1 border border-red-500 rounded-md shadow-sm"
-        : "w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm";
+        ? `${inputClass} border-red-500`
+        : `${inputClass} border-gray-300`;
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-orange-50">
-            <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
-                <h2 className="text-2xl font-bold text-center text-gray-800">Crie sua Conta</h2>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Nome do Restaurante</label>
-                        <input type="text" value={nome} onChange={(e) => setNome(e.target.value)} required className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Email</label>
-                        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm" />
-                    </div>
-                    <div>
-                <label className="block text-sm font-medium text-gray-700">Endereço Completo</label>
-                    <input type="text" value={endereco} onChange={(e) => setEndereco(e.target.value)} required className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm" />
+        <div className="flex flex-col min-h-screen bg-tema-fundo dark:bg-tema-fundo-dark">
+            <Header />
+            <div className="flex-grow flex items-center justify-center p-4">
+                <div className="w-full max-w-md p-8 space-y-6 bg-white dark:bg-tema-surface-dark rounded-lg shadow-xl border dark:border-gray-700">
+                    <h2 className="text-2xl font-bold text-center text-tema-text dark:text-tema-text-dark">Crie sua Conta</h2>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-tema-text-muted dark:text-tema-text-muted-dark">Nome do Restaurante</label>
+                            <input type="text" value={nome} onChange={(e) => setNome(e.target.value)} required className={inputClass} />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-tema-text-muted dark:text-tema-text-muted-dark">Email</label>
+                            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className={inputClass} />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-tema-text-muted dark:text-tema-text-muted-dark">Endereço Completo</label>
+                            <input type="text" value={endereco} onChange={(e) => setEndereco(e.target.value)} required className={inputClass} />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-tema-text-muted dark:text-tema-text-muted-dark">Qual o seu tipo de negócio?</label>
+                            <select
+                                value={tipo}
+                                onChange={(e) => setTipo(e.target.value)}
+                                className={`${inputClass} bg-white dark:bg-gray-800`}
+                            >
+                                <option value="APENAS_MESAS">Apenas Gestão de Mesas (Restaurante/Bar)</option>
+                                <option value="APENAS_DELIVERY">Apenas Delivery</option>
+                                <option value="MESAS_E_DELIVERY">Plano Completo (Mesas e Delivery)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-tema-text-muted dark:text-tema-text-muted-dark">Senha</label>
+                            <input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} required className={senhaInputClass} />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-tema-text-muted dark:text-tema-text-muted-dark">Confirme a Senha</label>
+                            <input type="password" value={confirmaSenha} onChange={(e) => setConfirmaSenha(e.target.value)} required className={senhaInputClass} />
+                        </div>
+
+                        {erroSenha && (
+                            <p className="text-sm text-red-600 text-center">{erroSenha}</p>
+                        )}
+
+                        <button type="submit" className="w-full py-2 px-4 font-semibold text-white bg-tema-primary rounded-md hover:bg-opacity-80 transition-colors">
+                            Registrar
+                        </button>
+                    </form>
+                    <p className="text-sm text-center text-tema-text-muted dark:text-tema-text-muted-dark">
+                        Já tem uma conta?{' '}
+                        <Link to="/login" className="font-medium text-tema-primary hover:underline">
+                            Faça o login
+                        </Link>
+                    </p>
                 </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Qual o seu tipo de negócio?</label>
-                        <select 
-                            value={tipo} 
-                            onChange={(e) => setTipo(e.target.value)} 
-                            className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm bg-white"
-                        >
-                            <option value="APENAS_MESAS">Apenas Gestão de Mesas (Restaurante/Bar)</option>
-                            <option value="APENAS_DELIVERY">Apenas Delivery</option>
-                            <option value="MESAS_E_DELIVERY">Plano Completo (Mesas e Delivery)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Senha</label>
-                        <input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} required className={senhaInputClass} />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Confirme a Senha</label>
-                        <input type="password" value={confirmaSenha} onChange={(e) => setConfirmaSenha(e.target.value)} required className={senhaInputClass} />
-                    </div>
-
-                    {/* 4. Exibe a mensagem de erro diretamente no formulário */}
-                    {erroSenha && (
-                        <p className="text-sm text-red-600 text-center">{erroSenha}</p>
-                    )}
-
-                    <button type="submit" className="w-full py-2 px-4 font-semibold text-white bg-orange-600 rounded-md hover:bg-orange-700">
-                        Registrar
-                    </button>
-                </form>
-                <p className="text-sm text-center text-gray-600">
-                    Já tem uma conta?{' '}
-                    <Link to="/login" className="font-medium text-orange-600 hover:underline">
-                        Faça o login
-                    </Link>
-                </p>
             </div>
+            <Footer />
         </div>
     );
 };

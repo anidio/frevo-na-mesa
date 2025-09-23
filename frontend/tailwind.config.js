@@ -19,6 +19,7 @@ export default {
         'tema-surface-dark': '#2D3748',   // Um cinza um pouco mais claro para cards e superfícies
         'tema-text-dark': '#E2E8F0',       // Um branco levemente acinzentado para textos
         'tema-text-muted-dark': '#A0AEC0',// Um cinza mais escuro para textos secundários
+        'tema-link-dark': '#38bdf8',
       }
     },
   },

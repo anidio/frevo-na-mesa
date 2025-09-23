@@ -27,7 +27,6 @@ public class PedidoService {
     @Autowired private PedidoRepository pedidoRepository;
     @Autowired private RestauranteRepository restauranteRepository;
     @Autowired private AdicionalRepository adicionalRepository;
-    @Autowired private WhatsappService whatsappService;
 
     private Restaurante getRestauranteLogado() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -180,17 +179,6 @@ public class PedidoService {
         novoPedido.setTotal(totalPedido);
 
         Pedido pedidoSalvo = pedidoRepository.save(novoPedido);
-
-        // --- LÓGICA PARA ENVIAR MENSAGEM DO WHATSAPP ---
-        String urlRastreamento = "https://frevo-na-mesa.com/rastrear/" + pedidoSalvo.getUuid();
-        Map<String, String> parametros = new HashMap<>();
-        parametros.put("cliente_nome", dto.getNomeCliente());
-        parametros.put("pedido_id", String.valueOf(pedidoSalvo.getId()));
-        parametros.put("url_rastreamento", urlRastreamento);
-
-        whatsappService.enviarMensagemTemplate(restaurante.getWhatsappPhoneNumberId(), restaurante.getWhatsappApiToken(), dto.getTelefoneCliente(), "pedido_recebido", parametros);
-        // --- FIM DA LÓGICA DO WHATSAPP ---
-
         return pedidoSalvo;
     }
 
@@ -223,25 +211,6 @@ public class PedidoService {
         Map<String, String> parametros = new HashMap<>();
         parametros.put("pedido_id", String.valueOf(pedido.getId()));
         parametros.put("url_rastreamento", urlRastreamento);
-
-        switch (novoStatus) {
-            case EM_PREPARO:
-                templateName = "pedido_em_preparo";
-                whatsappService.enviarMensagemTemplate(restaurante.getWhatsappPhoneNumberId(), restaurante.getWhatsappApiToken(), pedido.getTelefoneClienteDelivery(), templateName, parametros);
-                break;
-            case PRONTO_PARA_ENTREGA:
-                templateName = "pedido_saiu";
-                whatsappService.enviarMensagemTemplate(restaurante.getWhatsappPhoneNumberId(), restaurante.getWhatsappApiToken(), pedido.getTelefoneClienteDelivery(), templateName, parametros);
-                break;
-            case FINALIZADO:
-                templateName = "pedido_entregue";
-                whatsappService.enviarMensagemTemplate(restaurante.getWhatsappPhoneNumberId(), restaurante.getWhatsappApiToken(), pedido.getTelefoneClienteDelivery(), templateName, parametros);
-                break;
-            default:
-                // Não faz nada para outros status
-                break;
-        }
-        // --- FIM DA LÓGICA DO WHATSAPP ---
 
         return pedidoRepository.save(pedido);
     }
@@ -386,16 +355,6 @@ public class PedidoService {
         novoPedido.setTotal(totalPedido);
 
         Pedido pedidoSalvo = pedidoRepository.save(novoPedido);
-
-        // --- LÓGICA PARA ENVIAR MENSAGEM DO WHATSAPP ---
-        String urlRastreamento = "https://frevo-na-mesa.com/rastrear/" + pedidoSalvo.getUuid();
-        Map<String, String> parametros = new HashMap<>();
-        parametros.put("cliente_nome", dto.getNomeCliente());
-        parametros.put("pedido_id", String.valueOf(pedidoSalvo.getId()));
-        parametros.put("url_rastreamento", urlRastreamento);
-
-        whatsappService.enviarMensagemTemplate(restaurante.getWhatsappPhoneNumberId(), restaurante.getWhatsappApiToken(), dto.getTelefoneCliente(), "pedido_recebido", parametros);
-        // --- FIM DA LÓGICA DO WHATSAPP ---
 
         return pedidoSalvo;
     }

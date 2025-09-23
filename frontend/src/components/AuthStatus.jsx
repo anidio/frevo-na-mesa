@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
 
 const AuthStatus = () => {
-    const { isLoggedIn, logout, token } = useAuth();
+    const { isLoggedIn, logout } = useAuth();
     const navigate = useNavigate();
 
     const handleLogout = () => {
@@ -13,16 +13,19 @@ const AuthStatus = () => {
         navigate('/');
     };
 
-    // Se o usuário estiver logado, mostra a saudação e o botão de Sair
+    // Layout para botões de autenticação em telas grandes e pequenas
+    const authButtonsLayoutClass = "flex items-center gap-3";
+    const mobileMenuLayoutClass = "flex flex-col gap-3";
+
     if (isLoggedIn) {
         return (
             <div className="flex items-center gap-4">
-                <span className="text-sm text-gray-600 font-semibold">
+                <span className="text-sm text-tema-text-muted dark:text-tema-text-muted-dark font-semibold">
                     Olá!
                 </span>
                 <button
                     onClick={handleLogout}
-                    className="bg-red-500 text-white font-bold py-2 px-4 rounded-full hover:bg-red-600 transition-colors text-sm"
+                    className="bg-tema-accent text-white font-bold py-2 px-4 rounded-full hover:bg-opacity-80 transition-colors text-sm"
                 >
                     Sair
                 </button>
@@ -30,18 +33,18 @@ const AuthStatus = () => {
         );
     }
 
-    // Se estiver deslogado, mostra os botões de Login e Registrar
+    // AQUI ESTÁ A CORREÇÃO: Usamos flex-col para mobile e md:flex-row para desktop
     return (
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col md:flex-row items-center gap-3">
             <Link
                 to="/login"
-                className="bg-white text-orange-600 font-bold py-2 px-5 rounded-full hover:bg-orange-100 transition-colors border border-orange-200"
+                className="bg-gray-200 dark:bg-tema-surface-dark text-tema-primary dark:text-tema-text-dark font-bold py-2 px-5 rounded-full hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors"
             >
                 Login
             </Link>
             <Link
                 to="/registrar"
-                className="bg-orange-500 text-white font-bold py-2 px-5 rounded-full hover:bg-orange-600 transition-colors"
+                className="bg-tema-primary text-white font-bold py-2 px-5 rounded-full hover:bg-opacity-80 transition-colors"
             >
                 Registrar
             </Link>

@@ -2,7 +2,7 @@
 
 import React from 'react';
 
-// Ícone do Instagram
+// Ícone do Instagram atualizado para herdar a cor do texto
 const InstagramIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <rect width="20" height="20" x="2" y="2" rx="5" ry="5" strokeWidth="2"></rect>
@@ -12,24 +12,24 @@ const InstagramIcon = () => (
 
 const Footer = () => {
   return (
-    <footer className="bg-gray-100 text-gray-600 py-8 px-4">
+    <footer className="bg-gray-100 text-gray-600 py-8 px-4 dark:bg-tema-fundo-dark dark:text-tema-text-muted-dark">
       <div className="container mx-auto text-center">
         
         {/* Branding da Empresa */}
-        <p className="text-sm font-semibold">
-          Este é um produto <span className="font-bold text-orange-500">MangueBit Code</span>.
+        <p className="text-sm font-semibold text-tema-text dark:text-tema-text-dark">
+          Este é um produto <span className="font-bold text-tema-primary dark:text-tema-link-dark">MangueBit Code</span>.
         </p>
         <p className="text-xs mt-1">
           Criamos soluções inovadoras, de sistemas para restaurantes a ferramentas de conformidade e hardware.
         </p>
 
-        {/* Link para o Instagram */}
+        {/* Link para o Instagram atualizado */}
         <div className="mt-4">
           <a 
             href="https://www.instagram.com/nomedaempresa" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors"
+            className="inline-flex items-center gap-2 p-2 rounded-lg transition-colors border-2 border-transparent hover:border-tema-primary dark:hover:border-tema-link-dark text-tema-primary dark:text-tema-link-dark"
           >
             <InstagramIcon />
             <span className="font-bold">Siga-nos no Instagram!</span>
@@ -37,7 +37,7 @@ const Footer = () => {
         </div>
 
         {/* Informações de Contato */}
-        <div className="mt-4 border-t border-gray-300 pt-4">
+        <div className="mt-4 border-t border-gray-300 dark:border-gray-700 pt-4">
           <p className="text-xs">
             Contato: contato@manguebitcode.com | (81) 99999-8888
           </p>

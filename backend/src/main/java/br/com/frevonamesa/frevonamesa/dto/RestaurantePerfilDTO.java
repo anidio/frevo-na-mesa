@@ -12,6 +12,4 @@ public class RestaurantePerfilDTO {
     private TipoEstabelecimento tipo;
     private boolean impressaoDeliveryAtivada;
     private boolean impressaoMesaAtivada = true;
-    private String whatsappPhoneNumberId;
-    private String whatsappApiToken;
 }
