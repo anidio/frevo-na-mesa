@@ -47,179 +47,126 @@ const FilaDeImpressao = ({ pedidos, onImprimir }) => {
 };
 
 const CaixaPage = () => {
-  const { userProfile } = useAuth();
-  const [dashboardData, setDashboardData] = useState(null);
-  const [mesas, setMesas] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [mesaParaPagamento, setMesaParaPagamento] = useState(null);
-  const [pedidosParaImprimir, setPedidosParaImprimir] = useState([]);
+    const { userProfile, loadingProfile } = useAuth();
+    const [dashboardData, setDashboardData] = useState(null);
+    const [mesas, setMesas] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [mesaParaPagamento, setMesaParaPagamento] = useState(null);
+    const [pedidosParaImprimir, setPedidosParaImprimir] = useState([]);
 
-  const fetchData = async () => {
-    try {
-      const promises = [apiClient.get('/api/caixa/dashboard')];
+    const fetchData = async () => {
+        try {
+            const promises = [apiClient.get('/api/caixa/dashboard')];
 
-      if (userProfile && (userProfile.tipo === 'APENAS_MESAS' || userProfile.tipo === 'MESAS_E_DELIVERY')) {
-        promises.push(apiClient.get('/api/mesas'));
-        // Só busca a fila de impressão se a funcionalidade estiver ativa no perfil
-        if (userProfile.impressaoMesaAtivada) {
-            promises.push(apiClient.get('/api/pedidos/mesa/pendentes'));
+            if (userProfile && (userProfile.tipo === 'APENAS_MESAS' || userProfile.tipo === 'MESAS_E_DELIVERY')) {
+                promises.push(apiClient.get('/api/mesas'));
+                if (userProfile.impressaoMesaAtivada) {
+                    promises.push(apiClient.get('/api/pedidos/mesa/pendentes'));
+                }
+            }
+            const results = await Promise.all(promises);
+            setDashboardData(results[0]);
+            if (userProfile && (userProfile.tipo === 'APENAS_MESAS' || userProfile.tipo === 'MESAS_E_DELIVERY')) {
+                setMesas(results[1]);
+                if (userProfile.impressaoMesaAtivada) {
+                    setPedidosParaImprimir(results[2] || []);
+                }
+            }
+        } catch (error) {
+            console.error("Erro ao buscar dados do caixa:", error);
+            toast.error("Não foi possível carregar os dados do caixa.");
+        } finally {
+            setLoading(false);
         }
-      }
-      const results = await Promise.all(promises);
-      setDashboardData(results[0]);
-      if (userProfile && (userProfile.tipo === 'APENAS_MESAS' || userProfile.tipo === 'MESAS_E_DELIVERY')) {
-        setMesas(results[1]);
-        if (userProfile.impressaoMesaAtivada) {
-            setPedidosParaImprimir(results[2] || []);
-        }
-      }
-    } catch (error) {
-      console.error("Erro ao buscar dados do caixa:", error);
-      toast.error("Não foi possível carregar os dados do caixa.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (userProfile) {
-        fetchData();
-        const intervalId = setInterval(fetchData, 15000);
-        return () => clearInterval(intervalId);
-    } else {
-        setLoading(false);
-    }
-  }, [userProfile]);
-  
-  const handleImprimirPedido = async (pedido) => {
-    const conteudoImpressao = `
-      <html><head><title>Pedido Mesa ${pedido.mesa.numero}</title>
-        <style>
-          body { font-family: 'Courier New', Courier, monospace; font-size: 12px; width: 280px; margin: 0; padding: 10px; color: #000; }
-          .header { text-align: center; font-weight: bold; margin-bottom: 10px; font-size: 14px; }
-          .item-line { display: flex; justify-content: space-between; margin-bottom: 5px; }
-          .obs { font-style: italic; font-size: 10px; margin-left: 10px; }
-          .divider { border-top: 1px dashed #000; margin: 10px 0; }
-        </style></head><body>
-          <div class="header">
-            PEDIDO - MESA ${pedido.mesa.numero}
-            ${pedido.mesa.nomeCliente ? `<br>Cliente: ${pedido.mesa.nomeCliente}` : ''}
-            <br>${new Date(pedido.dataHora).toLocaleString('pt-BR')}
-          </div>
-          <div class="divider"></div>
-          ${pedido.itens.map(item => `
-            <div class="item-line"><span>${item.quantidade}x ${item.produto.nome}</span></div>
-            ${item.observacao ? `<div class="obs">Obs: ${item.observacao}</div>` : ''}
-          `).join('')}
-        </body></html>
-    `;
-    const janelaImpressao = window.open('', '_blank');
-    janelaImpressao.document.write(conteudoImpressao);
-    janelaImpressao.document.close();
-    janelaImpressao.onload = function() {
-        janelaImpressao.print();
-        janelaImpressao.onafterprint = function() { janelaImpressao.close(); };
     };
-    try {
-      await apiClient.patch(`/api/pedidos/mesa/${pedido.id}/confirmar`);
-      toast.success(`Pedido da Mesa ${pedido.mesa.numero} enviado para impressão.`);
-      fetchData();
-    } catch (error) {
-      toast.error("Não foi possível marcar o pedido como impresso.");
+
+    useEffect(() => {
+        // CORREÇÃO: A requisição só é feita quando o perfil do usuário estiver carregado
+        if (userProfile) {
+            fetchData();
+            const intervalId = setInterval(fetchData, 15000);
+            return () => clearInterval(intervalId);
+        }
+    }, [userProfile]); // Adicionado `userProfile` como dependência
+
+    // Adicionado uma tela de carregamento para o perfil
+    if (loadingProfile) {
+        return <div className="p-8 text-center text-tema-text-muted">Carregando...</div>;
     }
-  };
-  
-  const handleAbrirModal = (mesa) => {
-    if (mesa.status === 'OCUPADA') setMesaParaPagamento(mesa);
-    else if (mesa.status === 'PAGA') toast.info(`A Mesa ${mesa.numero} já foi paga e está aguardando liberação do garçom.`);
-  };
-
-  const handleCloseModal = () => setMesaParaPagamento(null);
-
-  const handleConfirmarPagamento = async (mesaId, tipoPagamento) => {
-    try {
-      await apiClient.patch(`/api/mesas/${mesaId}/pagar`, { tipoPagamento });
-      toast.success(`Pagamento da Mesa ${mesaId} (${tipoPagamento}) confirmado com sucesso!`);
-      handleCloseModal();
-      fetchData();
-    } catch (error) {
-      console.error("Erro ao confirmar pagamento:", error);
-      toast.error('Erro de comunicação com o servidor.');
+    
+    if (loading) {
+        return <div className="p-8 text-center text-tema-text-muted">Carregando dados do painel...</div>;
     }
-  };
 
-  if (loading || !userProfile) {
-    return <div className="p-8 text-center text-tema-text-muted">Carregando...</div>;
-  }
-  if (!dashboardData) {
-    return <div className="p-8 text-center text-tema-accent">Não foi possível carregar os dados do painel.</div>
-  }
+    if (!dashboardData) {
+        return <div className="p-8 text-center text-tema-accent">Não foi possível carregar os dados do painel.</div>
+    }
 
-  const mesasOcupadas = mesas.filter(m => m.status === 'OCUPADA');
-  const mesasPagas = mesas.filter(m => m.status === 'PAGA');
+    const mesasOcupadas = mesas.filter(m => m.status === 'OCUPADA');
+    const mesasPagas = mesas.filter(m => m.status === 'PAGA');
 
-  return (
-    <div className="w-full p-4 md:p-8 max-w-7xl mx-auto space-y-8">
-      <div className="text-center">
-        <div className="flex justify-center items-center gap-2 text-tema-primary"><HeaderIcon /><h1 className="text-3xl font-bold text-tema-text dark:text-tema-text-dark">Frevo Caixa</h1></div>
-        <p className="mt-1 text-tema-text-muted dark:text-tema-text-muted-dark">Gerencie pagamentos e acompanhe o movimento.</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <DashboardCard icon={<SummaryClockIcon />} title="Mesas Abertas" value={dashboardData.mesasAbertas} colorClass="text-orange-500" />
-        <DashboardCard icon={<SummaryDollarIcon />} title="Em Aberto" value={`R$ ${dashboardData.totalEmAberto.toFixed(2).replace('.', ',')}`} colorClass="text-tema-accent" />
-        <DashboardCard icon={<SummaryCheckIcon />} title="Mesas Pagas" value={dashboardData.mesasPagas} colorClass="text-tema-success" />
-      </div>
-      
-      {(userProfile.tipo === 'APENAS_MESAS' || userProfile.tipo === 'MESAS_E_DELIVERY') && (
-        <>
-          {userProfile.impressaoMesaAtivada && (
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-tema-text dark:text-tema-text-dark flex items-center gap-2">
-                  <PrinterIcon /> Fila de Impressão ({pedidosParaImprimir.length})
-              </h2>
-              <FilaDeImpressao pedidos={pedidosParaImprimir} onImprimir={handleImprimirPedido} />
+    return (
+        <div className="w-full p-4 md:p-8 max-w-7xl mx-auto space-y-8">
+            <div className="text-center">
+                <div className="flex justify-center items-center gap-2 text-tema-primary"><HeaderIcon /><h1 className="text-3xl font-bold text-tema-text dark:text-tema-text-dark">Frevo Caixa</h1></div>
+                <p className="mt-1 text-tema-text-muted dark:text-tema-text-muted-dark">Gerencie pagamentos e acompanhe o movimento.</p>
             </div>
-          )}
 
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-tema-text dark:text-tema-text-dark flex items-center gap-2">
-                <ClockIcon /> Mesas com Contas Abertas ({mesasOcupadas.length})
-            </h2>
-            {mesasOcupadas.length > 0 ? (
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
-                {mesasOcupadas.map(mesa => (
-                  <div key={mesa.id} onClick={() => handleAbrirModal(mesa)} className="bg-white dark:bg-tema-surface-dark border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-center cursor-pointer hover:border-tema-primary transition-colors">
-                    <p className="font-bold text-tema-text dark:text-tema-text-dark truncate">Mesa {mesa.numero}</p>
-                    {mesa.nomeCliente && <p className="text-xs text-tema-text-muted dark:text-tema-text-muted-dark truncate" title={mesa.nomeCliente}>{mesa.nomeCliente}</p>}
-                    <p className="font-semibold text-sm text-tema-text dark:text-tema-text-dark">R$ {mesa.valorTotal.toFixed(2).replace('.', ',')}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (<div className="bg-white dark:bg-tema-surface-dark p-6 rounded-lg text-center text-tema-text-muted dark:text-tema-text-muted-dark border">Nenhuma mesa aberta no momento.</div>)}
-          </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <DashboardCard icon={<SummaryClockIcon />} title="Mesas Abertas" value={dashboardData.mesasAbertas} colorClass="text-orange-500" />
+                <DashboardCard icon={<SummaryDollarIcon />} title="Em Aberto" value={`R$ ${dashboardData.totalEmAberto.toFixed(2).replace('.', ',')}`} colorClass="text-tema-accent" />
+                <DashboardCard icon={<SummaryCheckIcon />} title="Mesas Pagas" value={dashboardData.mesasPagas} colorClass="text-tema-success" />
+            </div>
+            
+            {(userProfile.tipo === 'APENAS_MESAS' || userProfile.tipo === 'MESAS_E_DELIVERY') && (
+                <>
+                {userProfile.impressaoMesaAtivada && (
+                    <div className="space-y-4">
+                    <h2 className="text-xl font-semibold text-tema-text dark:text-tema-text-dark flex items-center gap-2">
+                        <PrinterIcon /> Fila de Impressão ({pedidosParaImprimir.length})
+                    </h2>
+                    <FilaDeImpressao pedidos={pedidosParaImprimir} onImprimir={handleImprimirPedido} />
+                    </div>
+                )}
 
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-tema-text dark:text-tema-text-dark flex items-center gap-2">
-                <PaymentIcon /> Mesas Pagas - Aguardando Liberação ({mesasPagas.length})
-            </h2>
-            {mesasPagas.length > 0 ? (
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
-                {mesasPagas.map(mesa => (
-                  <div key={mesa.id} onClick={() => handleAbrirModal(mesa)} className="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-center cursor-pointer hover:border-gray-400 transition-colors">
-                    <p className="font-bold text-gray-600 dark:text-gray-300 truncate">Mesa {mesa.numero}</p>
-                    {mesa.nomeCliente && <p className="text-xs text-gray-500 dark:text-gray-400 truncate" title={mesa.nomeCliente}>{mesa.nomeCliente}</p>}
-                  </div>
-                ))}
-              </div>
-            ) : (<div className="bg-white dark:bg-tema-surface-dark p-6 rounded-lg text-center text-tema-text-muted dark:text-tema-text-muted-dark border">Nenhuma mesa aguardando liberação.</div>)}
-          </div>
-        </>
-      )}
+                <div className="space-y-4">
+                    <h2 className="text-xl font-semibold text-tema-text dark:text-tema-text-dark flex items-center gap-2">
+                        <ClockIcon /> Mesas com Contas Abertas ({mesasOcupadas.length})
+                    </h2>
+                    {mesasOcupadas.length > 0 ? (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+                        {mesasOcupadas.map(mesa => (
+                        <div key={mesa.id} onClick={() => handleAbrirModal(mesa)} className="bg-white dark:bg-tema-surface-dark border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-center cursor-pointer hover:border-tema-primary transition-colors">
+                            <p className="font-bold text-tema-text dark:text-tema-text-dark truncate">Mesa {mesa.numero}</p>
+                            {mesa.nomeCliente && <p className="text-xs text-tema-text-muted dark:text-tema-text-muted-dark truncate" title={mesa.nomeCliente}>{mesa.nomeCliente}</p>}
+                            <p className="font-semibold text-sm text-tema-text dark:text-tema-text-dark">R$ {mesa.valorTotal.toFixed(2).replace('.', ',')}</p>
+                        </div>
+                        ))}
+                    </div>
+                    ) : (<div className="bg-white dark:bg-tema-surface-dark p-6 rounded-lg text-center text-tema-text-muted dark:text-tema-text-muted-dark border">Nenhuma mesa aberta no momento.</div>)}
+                </div>
 
-      {mesaParaPagamento && (<PagamentoModal mesa={mesaParaPagamento} onClose={handleCloseModal} onConfirm={handleConfirmarPagamento} />)}
-    </div>
-  );
+                <div className="space-y-4">
+                    <h2 className="text-xl font-semibold text-tema-text dark:text-tema-text-dark flex items-center gap-2">
+                        <PaymentIcon /> Mesas Pagas - Aguardando Liberação ({mesasPagas.length})
+                    </h2>
+                    {mesasPagas.length > 0 ? (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+                        {mesasPagas.map(mesa => (
+                        <div key={mesa.id} onClick={() => handleAbrirModal(mesa)} className="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-center cursor-pointer hover:border-gray-400 transition-colors">
+                            <p className="font-bold text-gray-600 dark:text-gray-300 truncate">Mesa {mesa.numero}</p>
+                            {mesa.nomeCliente && <p className="text-xs text-gray-500 dark:text-gray-400 truncate" title={mesa.nomeCliente}>{mesa.nomeCliente}</p>}
+                        </div>
+                        ))}
+                    </div>
+                    ) : (<div className="bg-white dark:bg-tema-surface-dark p-6 rounded-lg text-center text-tema-text-muted dark:text-tema-text-muted-dark border">Nenhuma mesa aguardando liberação.</div>)}
+                </div>
+                </>
+            )}
+
+            {mesaParaPagamento && (<PagamentoModal mesa={mesaParaPagamento} onClose={handleCloseModal} onConfirm={handleConfirmarPagamento} />)}
+        </div>
+    );
 };
 
 export default CaixaPage;
