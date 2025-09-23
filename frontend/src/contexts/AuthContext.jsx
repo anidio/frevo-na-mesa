@@ -36,14 +36,12 @@ export const AuthProvider = ({ children }) => {
         const data = await authService.login(email, senha);
         localStorage.setItem('authToken', data.token);
         localStorage.setItem('userEmailForRefresh', email);
-        localStorage.setItem('userPasswordForRefresh', senha);
         setToken(data.token); 
     };
 
     const logout = () => {
         localStorage.removeItem('authToken');
         localStorage.removeItem('userEmailForRefresh');
-        localStorage.removeItem('userPasswordForRefresh');
         setToken(null);
         setUserProfile(null);
     };

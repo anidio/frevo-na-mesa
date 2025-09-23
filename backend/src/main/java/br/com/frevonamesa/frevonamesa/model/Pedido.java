@@ -18,7 +18,7 @@ public class Pedido {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false)
+    @Column(unique = true)
     private UUID uuid;
 
     @ManyToOne(fetch = FetchType.LAZY)
