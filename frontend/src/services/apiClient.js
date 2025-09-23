@@ -1,9 +1,23 @@
-// Remova a função getAuthHeaders() e altere a estrutura do objeto apiClient
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
+const getAuthHeaders = () => {
+    const token = localStorage.getItem('authToken');
+    // Se não houver token, não envia o cabeçalho Authorization
+    if (!token) {
+        return {
+            'Content-Type': 'application/json',
+        };
+    }
+    return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+    };
+};
 
 const handleResponse = async (response) => {
     if (!response.ok) {
         const errorText = await response.text();
+        // Se o erro for um JSON (comum em erros de validação), tenta extrair a mensagem
         try {
             const errorJson = JSON.parse(errorText);
             throw new Error(errorJson.message || errorText);
@@ -11,65 +25,57 @@ const handleResponse = async (response) => {
             throw new Error(errorText || `Erro HTTP: ${response.status}`);
         }
     }
+
     const contentType = response.headers.get("content-type");
     if (contentType && contentType.includes("application/json")) {
         return response.json();
     }
+    // Retorna o texto da resposta se não for JSON (ex: "Restaurante registrado com sucesso!")
     const text = await response.text();
     return text;
 };
 
-// Agora o apiClient aceita o token como parâmetro opcional
 const apiClient = {
-    get: async (endpoint, token) => {
-        const headers = { 'Content-Type': 'application/json' };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
+    get: async (endpoint) => {
         const response = await fetch(`${API_URL}${endpoint}`, {
             method: 'GET',
-            headers,
+            headers: getAuthHeaders(),
         });
         return handleResponse(response);
     },
 
-    post: async (endpoint, body, token) => {
-        const headers = { 'Content-Type': 'application/json' };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
+    post: async (endpoint, body) => {
         const response = await fetch(`${API_URL}${endpoint}`, {
             method: 'POST',
-            headers,
+            headers: getAuthHeaders(),
             body: JSON.stringify(body),
         });
         return handleResponse(response);
     },
 
-    patch: async (endpoint, body, token) => {
-        const headers = { 'Content-Type': 'application/json' };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
+    patch: async (endpoint, body) => {
         const response = await fetch(`${API_URL}${endpoint}`, {
             method: 'PATCH',
-            headers,
+            headers: getAuthHeaders(),
             body: JSON.stringify(body),
         });
         return handleResponse(response);
     },
 
-    put: async (endpoint, body, token) => {
-        const headers = { 'Content-Type': 'application/json' };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
+    // MÉTODO PUT PARA ATUALIZAR RECURSOS
+    put: async (endpoint, body) => {
         const response = await fetch(`${API_URL}${endpoint}`, {
             method: 'PUT',
-            headers,
+            headers: getAuthHeaders(),
             body: JSON.stringify(body),
         });
         return handleResponse(response);
     },
 
-    delete: async (endpoint, token) => {
-        const headers = { 'Content-Type': 'application/json' };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
+    delete: async (endpoint) => {
         const response = await fetch(`${API_URL}${endpoint}`, {
             method: 'DELETE',
-            headers,
+            headers: getAuthHeaders(),
         });
         return handleResponse(response);
     },
