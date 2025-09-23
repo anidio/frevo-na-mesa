@@ -16,10 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -30,6 +27,7 @@ public class PedidoService {
     @Autowired private PedidoRepository pedidoRepository;
     @Autowired private RestauranteRepository restauranteRepository;
     @Autowired private AdicionalRepository adicionalRepository;
+    @Autowired private WhatsappService whatsappService;
 
     private Restaurante getRestauranteLogado() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -68,7 +66,6 @@ public class PedidoService {
             itemPedido.setObservacao(itemDto.getObservacao());
             itemPedido.setPedido(novoPedido);
 
-            // LÓGICA DE ADICIONAIS APLICADA AQUI
             if (itemDto.getAdicionaisIds() != null && !itemDto.getAdicionaisIds().isEmpty()) {
                 for (Long adicionalId : itemDto.getAdicionaisIds()) {
                     Adicional adicional = adicionaisDisponiveis.stream()
@@ -138,6 +135,7 @@ public class PedidoService {
         novoPedido.setDataHora(LocalDateTime.now());
         novoPedido.setItens(new ArrayList<>());
         novoPedido.setTipo(TipoPedido.DELIVERY);
+        novoPedido.setUuid(UUID.randomUUID());
 
         if (restaurante.isImpressaoDeliveryAtivada()) {
             novoPedido.setStatus(StatusPedido.PENDENTE);
@@ -148,7 +146,7 @@ public class PedidoService {
         novoPedido.setNomeClienteDelivery(dto.getNomeCliente());
         novoPedido.setTelefoneClienteDelivery(dto.getTelefoneCliente());
         novoPedido.setEnderecoClienteDelivery(dto.getEnderecoCliente());
-        novoPedido.setPontoReferencia(dto.getPontoReferencia()); // Esta linha agora funcionará
+        novoPedido.setPontoReferencia(dto.getPontoReferencia());
 
         List<Adicional> adicionaisDisponiveis = adicionalRepository.findByRestauranteId(restaurante.getId());
 
@@ -180,7 +178,20 @@ public class PedidoService {
                 .map(ItemPedido::getSubtotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         novoPedido.setTotal(totalPedido);
-        return pedidoRepository.save(novoPedido);
+
+        Pedido pedidoSalvo = pedidoRepository.save(novoPedido);
+
+        // --- LÓGICA PARA ENVIAR MENSAGEM DO WHATSAPP ---
+        String urlRastreamento = "https://frevo-na-mesa.com/rastrear/" + pedidoSalvo.getUuid();
+        Map<String, String> parametros = new HashMap<>();
+        parametros.put("cliente_nome", dto.getNomeCliente());
+        parametros.put("pedido_id", String.valueOf(pedidoSalvo.getId()));
+        parametros.put("url_rastreamento", urlRastreamento);
+
+        whatsappService.enviarMensagemTemplate(restaurante.getWhatsappPhoneNumberId(), restaurante.getWhatsappApiToken(), dto.getTelefoneCliente(), "pedido_recebido", parametros);
+        // --- FIM DA LÓGICA DO WHATSAPP ---
+
+        return pedidoSalvo;
     }
 
     public Map<StatusPedido, List<Pedido>> listarPedidosDeliveryPorStatus() {
@@ -205,6 +216,33 @@ public class PedidoService {
             }
         }
         pedido.setStatus(novoStatus);
+
+        // --- LÓGICA PARA ENVIAR MENSAGEM DO WHATSAPP ---
+        String urlRastreamento = "https://frevo-na-mesa.com/rastrear/" + pedido.getUuid();
+        String templateName;
+        Map<String, String> parametros = new HashMap<>();
+        parametros.put("pedido_id", String.valueOf(pedido.getId()));
+        parametros.put("url_rastreamento", urlRastreamento);
+
+        switch (novoStatus) {
+            case EM_PREPARO:
+                templateName = "pedido_em_preparo";
+                whatsappService.enviarMensagemTemplate(restaurante.getWhatsappPhoneNumberId(), restaurante.getWhatsappApiToken(), pedido.getTelefoneClienteDelivery(), templateName, parametros);
+                break;
+            case PRONTO_PARA_ENTREGA:
+                templateName = "pedido_saiu";
+                whatsappService.enviarMensagemTemplate(restaurante.getWhatsappPhoneNumberId(), restaurante.getWhatsappApiToken(), pedido.getTelefoneClienteDelivery(), templateName, parametros);
+                break;
+            case FINALIZADO:
+                templateName = "pedido_entregue";
+                whatsappService.enviarMensagemTemplate(restaurante.getWhatsappPhoneNumberId(), restaurante.getWhatsappApiToken(), pedido.getTelefoneClienteDelivery(), templateName, parametros);
+                break;
+            default:
+                // Não faz nada para outros status
+                break;
+        }
+        // --- FIM DA LÓGICA DO WHATSAPP ---
+
         return pedidoRepository.save(pedido);
     }
 
@@ -300,6 +338,7 @@ public class PedidoService {
                 .orElseThrow(() -> new RuntimeException("Restaurante não encontrado!"));
 
         Pedido novoPedido = new Pedido();
+        novoPedido.setUuid(UUID.randomUUID());
         novoPedido.setRestaurante(restaurante);
         novoPedido.setDataHora(LocalDateTime.now());
         novoPedido.setItens(new ArrayList<>());
@@ -314,6 +353,7 @@ public class PedidoService {
         novoPedido.setNomeClienteDelivery(dto.getNomeCliente());
         novoPedido.setTelefoneClienteDelivery(dto.getTelefoneCliente());
         novoPedido.setEnderecoClienteDelivery(dto.getEnderecoCliente());
+        novoPedido.setPontoReferencia(dto.getPontoReferencia());
 
         List<Adicional> adicionaisDisponiveis = adicionalRepository.findByRestauranteId(restaurante.getId());
 
@@ -344,6 +384,23 @@ public class PedidoService {
                 .map(ItemPedido::getSubtotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         novoPedido.setTotal(totalPedido);
-        return pedidoRepository.save(novoPedido);
+
+        Pedido pedidoSalvo = pedidoRepository.save(novoPedido);
+
+        // --- LÓGICA PARA ENVIAR MENSAGEM DO WHATSAPP ---
+        String urlRastreamento = "https://frevo-na-mesa.com/rastrear/" + pedidoSalvo.getUuid();
+        Map<String, String> parametros = new HashMap<>();
+        parametros.put("cliente_nome", dto.getNomeCliente());
+        parametros.put("pedido_id", String.valueOf(pedidoSalvo.getId()));
+        parametros.put("url_rastreamento", urlRastreamento);
+
+        whatsappService.enviarMensagemTemplate(restaurante.getWhatsappPhoneNumberId(), restaurante.getWhatsappApiToken(), dto.getTelefoneCliente(), "pedido_recebido", parametros);
+        // --- FIM DA LÓGICA DO WHATSAPP ---
+
+        return pedidoSalvo;
+    }
+
+    public Pedido rastrearPedidoPorUuid(UUID uuid) {
+        return pedidoRepository.findByUuid(uuid).orElse(null);
     }
 }

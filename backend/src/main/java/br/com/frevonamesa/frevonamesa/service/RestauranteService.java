@@ -101,6 +101,8 @@ public class RestauranteService {
         Restaurante restaurante = getRestauranteLogado();
         restaurante.setImpressaoMesaAtivada(settingsDTO.isImpressaoMesaAtivada());
         restaurante.setImpressaoDeliveryAtivada(settingsDTO.isImpressaoDeliveryAtivada());
+        restaurante.setWhatsappPhoneNumberId(settingsDTO.getWhatsappPhoneNumberId());
+        restaurante.setWhatsappApiToken(settingsDTO.getWhatsappApiToken());
         restauranteRepository.save(restaurante);
         return getPerfilLogado(); // Retorna o perfil atualizado
     }

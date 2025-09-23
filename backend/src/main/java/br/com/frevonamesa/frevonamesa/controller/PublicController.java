@@ -10,6 +10,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/api/publico")
 public class PublicController {
@@ -28,6 +30,15 @@ public class PublicController {
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    @GetMapping("/pedido/{uuid}/rastrear")
+    public ResponseEntity<Pedido> rastrearPedido(@PathVariable UUID uuid) {
+        Pedido pedido = pedidoService.rastrearPedidoPorUuid(uuid);
+        if (pedido != null) {
+            return ResponseEntity.ok(pedido);
+        }
+        return ResponseEntity.notFound().build();
     }
 
     @PostMapping("/pedido/mesa")

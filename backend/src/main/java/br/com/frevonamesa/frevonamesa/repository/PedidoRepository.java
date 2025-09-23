@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
@@ -17,5 +19,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
     List<Pedido> findTop10ByRestauranteIdAndTipoAndStatusOrderByDataHoraDesc(Long restauranteId, TipoPedido tipo, StatusPedido status);
 
     List<Pedido> findAllByRestauranteIdAndTipoAndDataHoraBetweenAndTipoPagamentoIsNotNull(Long restauranteId, TipoPedido tipo, LocalDateTime inicio, LocalDateTime fim);
+
+    Optional<Pedido> findByUuid(UUID uuid);
 }
 

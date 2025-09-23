@@ -17,6 +17,7 @@ import NovoPedidoDeliveryPage from './Pages/NovoPedidoDeliveryPage.jsx';
 import DeliveryPage from './Pages/DeliveryPage.jsx';
 import CardapioClientePage from './Pages/CardapioClientePage.jsx';
 import GerenciarAdicionaisPage from './Pages/GerenciarAdicionaisPage.jsx';
+import RastrearPedidoPage from './Pages/RastrearPedidoPage.jsx';
 
 const App = () => {
   return (
@@ -24,6 +25,7 @@ const App = () => {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/registrar" element={<RegisterPage />} />
+        <Route path="/rastrear/:uuid" element={<RastrearPedidoPage />} />
         <Route path="/cardapio/:restauranteId" element={<CardapioClientePage />} />
         <Route path="/" element={<MainLayout />}>
           <Route index element={<HomePage />} />

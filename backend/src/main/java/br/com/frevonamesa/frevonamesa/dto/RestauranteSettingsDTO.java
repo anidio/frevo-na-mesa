@@ -6,4 +6,6 @@ import lombok.Data;
 public class RestauranteSettingsDTO {
     private boolean impressaoMesaAtivada;
     private boolean impressaoDeliveryAtivada;
+    private String whatsappPhoneNumberId;
+    private String whatsappApiToken;
 }

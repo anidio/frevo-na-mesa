@@ -2,7 +2,7 @@ package br.com.frevonamesa.frevonamesa.config;
 
 import br.com.frevonamesa.frevonamesa.config.jwt.JwtRequestFilter;
 import org.springframework.beans.factory.annotation.Autowired;
-// import org.springframework.beans.factory.annotation.Value; // Comentamos ou removemos esta linha
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -29,9 +29,8 @@ public class SecurityConfig {
     @Autowired
     private AuthenticationProvider authenticationProvider;
 
-    // A anotação @Value e a variável foram removidas para o teste
-    // @Value("${app.cors.allowed-origins}")
-    // private String[] allowedOrigins;
+    @Value("${app.cors.allowed-origins}")
+    private String[] allowedOrigins;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -57,11 +56,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // AQUI ESTÁ A MUDANÇA: Colocamos os links diretamente no código
-        configuration.setAllowedOrigins(Arrays.asList(
-                "https://frevo-na-mesa-front.vercel.app",
-                "http://localhost:5173"
-        ));
+        configuration.setAllowedOrigins(Arrays.asList(allowedOrigins));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
