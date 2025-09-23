@@ -20,7 +20,7 @@ const Footer = () => {
           Este é um produto <span className="font-bold text-tema-primary dark:text-tema-link-dark">MangueBit Code</span>.
         </p>
         <p className="text-xs mt-1">
-          Criamos soluções inovadoras, de sistemas para restaurantes a ferramentas de conformidade e hardware.
+          Criamos tecnologia sob medida para simplificar processos, aumentar resultados e impulsionar o seu negócio. Fale com a gente e descubra como podemos ajudar você.
         </p>
 
         {/* Link para o Instagram atualizado */}

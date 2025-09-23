@@ -12,7 +12,7 @@ const RegisterPage = () => {
     const [endereco, setEndereco] = useState('');
     const [confirmaSenha, setConfirmaSenha] = useState('');
     const [erroSenha, setErroSenha] = useState('');
-    const [tipo, setTipo] = useState('APENAS_MESAS');
+    const [tipo, setTipo] = useState('APENAS_DELIVERY');
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
@@ -65,8 +65,8 @@ const RegisterPage = () => {
                                 onChange={(e) => setTipo(e.target.value)}
                                 className={`${inputClass} bg-white dark:bg-gray-800`}
                             >
-                                <option value="APENAS_MESAS">Apenas Gestão de Mesas (Restaurante/Bar)</option>
                                 <option value="APENAS_DELIVERY">Apenas Delivery</option>
+                                <option value="APENAS_MESAS">Apenas Gestão de Mesas (Restaurante/Bar)</option>
                                 <option value="MESAS_E_DELIVERY">Plano Completo (Mesas e Delivery)</option>
                             </select>
                         </div>
