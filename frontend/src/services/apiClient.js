@@ -1,23 +1,22 @@
+// frontend/src/services/apiClient.js
+
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
+// FUNÇÃO CHAVE: Pega o token do localStorage e prepara o cabeçalho
 const getAuthHeaders = () => {
     const token = localStorage.getItem('authToken');
-    // Se não houver token, não envia o cabeçalho Authorization
-    if (!token) {
-        return {
-            'Content-Type': 'application/json',
-        };
-    }
-    return {
+    const headers = {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
     };
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
 };
 
 const handleResponse = async (response) => {
     if (!response.ok) {
         const errorText = await response.text();
-        // Se o erro for um JSON (comum em erros de validação), tenta extrair a mensagem
         try {
             const errorJson = JSON.parse(errorText);
             throw new Error(errorJson.message || errorText);
@@ -25,21 +24,20 @@ const handleResponse = async (response) => {
             throw new Error(errorText || `Erro HTTP: ${response.status}`);
         }
     }
-
     const contentType = response.headers.get("content-type");
     if (contentType && contentType.includes("application/json")) {
         return response.json();
     }
-    // Retorna o texto da resposta se não for JSON (ex: "Restaurante registrado com sucesso!")
     const text = await response.text();
     return text;
 };
 
+// Objeto apiClient agora usa getAuthHeaders() automaticamente
 const apiClient = {
     get: async (endpoint) => {
         const response = await fetch(`${API_URL}${endpoint}`, {
             method: 'GET',
-            headers: getAuthHeaders(),
+            headers: getAuthHeaders(), // IMPORTANTE
         });
         return handleResponse(response);
     },
@@ -47,7 +45,7 @@ const apiClient = {
     post: async (endpoint, body) => {
         const response = await fetch(`${API_URL}${endpoint}`, {
             method: 'POST',
-            headers: getAuthHeaders(),
+            headers: getAuthHeaders(), // IMPORTANTE
             body: JSON.stringify(body),
         });
         return handleResponse(response);
@@ -56,17 +54,16 @@ const apiClient = {
     patch: async (endpoint, body) => {
         const response = await fetch(`${API_URL}${endpoint}`, {
             method: 'PATCH',
-            headers: getAuthHeaders(),
+            headers: getAuthHeaders(), // IMPORTANTE
             body: JSON.stringify(body),
         });
         return handleResponse(response);
     },
 
-    // MÉTODO PUT PARA ATUALIZAR RECURSOS
     put: async (endpoint, body) => {
         const response = await fetch(`${API_URL}${endpoint}`, {
             method: 'PUT',
-            headers: getAuthHeaders(),
+            headers: getAuthHeaders(), // IMPORTANTE
             body: JSON.stringify(body),
         });
         return handleResponse(response);
@@ -75,7 +72,7 @@ const apiClient = {
     delete: async (endpoint) => {
         const response = await fetch(`${API_URL}${endpoint}`, {
             method: 'DELETE',
-            headers: getAuthHeaders(),
+            headers: getAuthHeaders(), // IMPORTANTE
         });
         return handleResponse(response);
     },
