@@ -18,6 +18,11 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.beans.factory.annotation.Value;
 
 @Service
 public class PedidoService {
@@ -27,6 +32,9 @@ public class PedidoService {
     @Autowired private PedidoRepository pedidoRepository;
     @Autowired private RestauranteRepository restauranteRepository;
     @Autowired private AdicionalRepository adicionalRepository;
+
+    @Value("${n8n.webhook.url}")
+    private String n8nWebhookUrl;
 
     private Restaurante getRestauranteLogado() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -195,22 +203,43 @@ public class PedidoService {
     public Pedido atualizarStatusPedidoDelivery(Long pedidoId, StatusPedido novoStatus) {
         Restaurante restaurante = getRestauranteLogado();
         Pedido pedido = pedidoRepository.findById(pedidoId).orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
+
         if (!pedido.getRestaurante().getId().equals(restaurante.getId()) || pedido.getTipo() != TipoPedido.DELIVERY) {
             throw new SecurityException("Acesso negado.");
         }
-        if (novoStatus == StatusPedido.FINALIZADO) {
-            if (pedido.getTipoPagamento() == null) {
-                pedido.setTipoPagamento(TipoPagamento.DINHEIRO);
-            }
+
+        if (novoStatus == StatusPedido.FINALIZADO && pedido.getTipoPagamento() == null) {
+            pedido.setTipoPagamento(TipoPagamento.DINHEIRO);
         }
+
         pedido.setStatus(novoStatus);
 
-        // --- LÓGICA PARA ENVIAR MENSAGEM DO WHATSAPP ---
-        String urlRastreamento = "https://frevo-na-mesa.com/rastrear/" + pedido.getUuid();
-        String templateName;
-        Map<String, String> parametros = new HashMap<>();
-        parametros.put("pedido_id", String.valueOf(pedido.getId()));
-        parametros.put("url_rastreamento", urlRastreamento);
+        // --- LÓGICA FINAL DE WEBHOOK PARA O N8N ---
+        // Verifica se a URL mestre do n8n e o número do restaurante estão configurados
+        if (n8nWebhookUrl != null && !n8nWebhookUrl.isBlank() && restaurante.getWhatsappNumber() != null && !restaurante.getWhatsappNumber().isBlank()) {
+            RestTemplate restTemplate = new RestTemplate();
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            // Monta um objeto JSON com todos os dados que o n8n vai precisar
+            String requestBody = String.format(
+                    "{ \"pedidoId\": %d, \"novoStatus\": \"%s\", \"clienteNome\": \"%s\", \"clienteTelefone\": \"%s\", \"restauranteWhatsapp\": \"%s\" }",
+                    pedido.getId(),
+                    novoStatus.toString(),
+                    pedido.getNomeClienteDelivery(),
+                    pedido.getTelefoneClienteDelivery(),
+                    restaurante.getWhatsappNumber() // Enviando o número do restaurante
+            );
+
+            HttpEntity<String> entity = new HttpEntity<>(requestBody, headers);
+
+            try {
+                restTemplate.postForEntity(n8nWebhookUrl, entity, String.class);
+                System.out.println("INFO: Webhook do n8n notificado para o pedido #" + pedido.getId());
+            } catch (Exception e) {
+                System.err.println("ERRO: Falha ao notificar webhook do n8n: " + e.getMessage());
+            }
+        }
 
         return pedidoRepository.save(pedido);
     }

@@ -92,6 +92,7 @@ public class RestauranteService {
         perfilDto.setTipo(restaurante.getTipo());
         perfilDto.setImpressaoDeliveryAtivada(restaurante.isImpressaoDeliveryAtivada());
         perfilDto.setImpressaoMesaAtivada(restaurante.isImpressaoMesaAtivada());
+        perfilDto.setWhatsappWebhookUrl(restaurante.getWhatsappWebhookUrl());
 
         return perfilDto;
     }
@@ -101,6 +102,7 @@ public class RestauranteService {
         Restaurante restaurante = getRestauranteLogado();
         restaurante.setImpressaoMesaAtivada(settingsDTO.isImpressaoMesaAtivada());
         restaurante.setImpressaoDeliveryAtivada(settingsDTO.isImpressaoDeliveryAtivada());
+        restaurante.setWhatsappWebhookUrl(settingsDTO.getWhatsappWebhookUrl());
         restauranteRepository.save(restaurante);
         return getPerfilLogado(); // Retorna o perfil atualizado
     }

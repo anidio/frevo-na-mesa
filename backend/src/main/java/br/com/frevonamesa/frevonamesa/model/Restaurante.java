@@ -33,6 +33,8 @@ public class Restaurante {
     @JsonManagedReference("restaurante-pedido")
     private List<Pedido> pedidos;
 
+    private String whatsappNumber;
+
     public Restaurante(String nome, String email, String senha, TipoEstabelecimento tipo) {
         this.nome = nome;
         this.email = email;

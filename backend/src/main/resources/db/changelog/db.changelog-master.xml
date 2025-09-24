@@ -6,5 +6,6 @@
                            http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
 
     <include file="db/changelog/changes/001-add-uuid-to-pedido.xml"/>
+    <include file="db/changelog/changes/002-add-whatsapp-webhook-url-to-restaurante.xml"/>
 
 </databaseChangeLog>

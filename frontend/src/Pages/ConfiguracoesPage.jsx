@@ -31,6 +31,8 @@ const ConfiguracoesPage = () => {
             setSettings({
                 impressaoMesaAtivada: userProfile.impressaoMesaAtivada,
                 impressaoDeliveryAtivada: userProfile.impressaoDeliveryAtivada,
+                // Adicionamos o novo campo ao estado inicial
+                whatsappWebhookUrl: userProfile.whatsappWebhookUrl || '', 
             });
             setLoading(false);
         }
@@ -43,14 +45,12 @@ const ConfiguracoesPage = () => {
 
     const handleSaveSettings = async () => {
         try {
-            // Remove os campos do WhatsApp que não serão usados
-            const { impressaoMesaAtivada, impressaoDeliveryAtivada } = settings;
-            await apiClient.put('/api/restaurante/configuracoes', { impressaoMesaAtivada, impressaoDeliveryAtivada });
+            // A requisição agora envia todos os 'settings', incluindo a nova URL
+            await apiClient.put('/api/restaurante/configuracoes', settings);
             toast.success('Configurações salvas!');
             await refreshProfile();
         } catch (error) {
-            toast.error('Erro ao salvar. A página será recarregada.');
-            window.location.reload();
+            toast.error('Erro ao salvar as configurações.');
         }
     };
 
@@ -79,6 +79,24 @@ const ConfiguracoesPage = () => {
                             enabled={settings.impressaoDeliveryAtivada}
                             onChange={(value) => setSettings({...settings, impressaoDeliveryAtivada: value})}
                         />
+                    </div>
+                </div>
+
+                {/* SEÇÃO ADICIONADA PARA O WEBHOOK */}
+                <div>
+                    <h2 className="text-xl font-bold text-tema-text dark:text-tema-text-dark mb-3">Automação do WhatsApp (n8n)</h2>
+                    <div className="space-y-4 bg-white dark:bg-tema-surface-dark p-4 rounded-lg border dark:border-gray-700">
+                        <div>
+                            <label className="block text-sm font-medium">URL do Webhook de Produção</label>
+                            <input 
+                                type="text" 
+                                name="whatsappWebhookUrl" 
+                                value={settings.whatsappWebhookUrl} 
+                                onChange={handleInputChange} 
+                                className="mt-1 w-full p-2 border rounded-md dark:bg-gray-800 dark:border-gray-600" 
+                                placeholder="Cole a URL do seu webhook do n8n aqui" 
+                            />
+                        </div>
                     </div>
                 </div>
 
