@@ -23,7 +23,11 @@ const ToggleSwitch = ({ label, enabled, onChange }) => (
 
 const ConfiguracoesPage = () => {
     const { userProfile, refreshProfile } = useAuth();
-    const [settings, setSettings] = useState(null);
+    const [settings, setSettings] = useState({
+        impressaoMesaAtivada: true,
+        impressaoDeliveryAtivada: true,
+        whatsappNumber: '', // CORRETO: Estado inicial para o número de WhatsApp
+    });
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -31,8 +35,7 @@ const ConfiguracoesPage = () => {
             setSettings({
                 impressaoMesaAtivada: userProfile.impressaoMesaAtivada,
                 impressaoDeliveryAtivada: userProfile.impressaoDeliveryAtivada,
-                // Adicionamos o novo campo ao estado inicial
-                whatsappWebhookUrl: userProfile.whatsappWebhookUrl || '', 
+                whatsappNumber: userProfile.whatsappNumber || '', // CORRETO: Carrega o número do perfil
             });
             setLoading(false);
         }
@@ -45,7 +48,6 @@ const ConfiguracoesPage = () => {
 
     const handleSaveSettings = async () => {
         try {
-            // A requisição agora envia todos os 'settings', incluindo a nova URL
             await apiClient.put('/api/restaurante/configuracoes', settings);
             toast.success('Configurações salvas!');
             await refreshProfile();
@@ -82,20 +84,23 @@ const ConfiguracoesPage = () => {
                     </div>
                 </div>
 
-                {/* SEÇÃO ADICIONADA PARA O WEBHOOK */}
+                {/* --- SEÇÃO CORRIGIDA --- */}
                 <div>
-                    <h2 className="text-xl font-bold text-tema-text dark:text-tema-text-dark mb-3">Automação do WhatsApp (n8n)</h2>
+                    <h2 className="text-xl font-bold text-tema-text dark:text-tema-text-dark mb-3">Automação do WhatsApp</h2>
                     <div className="space-y-4 bg-white dark:bg-tema-surface-dark p-4 rounded-lg border dark:border-gray-700">
                         <div>
-                            <label className="block text-sm font-medium">URL do Webhook de Produção</label>
+                            <label className="block text-sm font-medium">Número do WhatsApp para enviar notificações</label>
                             <input 
                                 type="text" 
-                                name="whatsappWebhookUrl" 
-                                value={settings.whatsappWebhookUrl} 
+                                name="whatsappNumber" 
+                                value={settings.whatsappNumber} 
                                 onChange={handleInputChange} 
                                 className="mt-1 w-full p-2 border rounded-md dark:bg-gray-800 dark:border-gray-600" 
-                                placeholder="Cole a URL do seu webhook do n8n aqui" 
+                                placeholder="Ex: 5581999998888 (com código do país e DDD)" 
                             />
+                             <p className="text-xs text-tema-text-muted dark:text-tema-text-muted-dark mt-2">
+                                Este número será usado para enviar as atualizações de status dos pedidos para os seus clientes.
+                            </p>
                         </div>
                     </div>
                 </div>
