@@ -78,12 +78,10 @@ public class RestauranteService {
     }
 
     public RestaurantePerfilDTO getPerfilLogado() {
-        // Pega o email do usuário autenticado no sistema
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         Restaurante restaurante = restauranteRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Restaurante não encontrado: " + email));
 
-        // Converte a entidade para o DTO de perfil
         RestaurantePerfilDTO perfilDto = new RestaurantePerfilDTO();
         perfilDto.setId(restaurante.getId());
         perfilDto.setNome(restaurante.getNome());
@@ -92,19 +90,20 @@ public class RestauranteService {
         perfilDto.setTipo(restaurante.getTipo());
         perfilDto.setImpressaoDeliveryAtivada(restaurante.isImpressaoDeliveryAtivada());
         perfilDto.setImpressaoMesaAtivada(restaurante.isImpressaoMesaAtivada());
-        perfilDto.setWhatsappWebhookUrl(restaurante.getWhatsappWebhookUrl());
+        perfilDto.setWhatsappNumber(restaurante.getWhatsappNumber()); // Corrigido
 
         return perfilDto;
     }
+
 
     @Transactional
     public RestaurantePerfilDTO atualizarConfiguracoes(RestauranteSettingsDTO settingsDTO) {
         Restaurante restaurante = getRestauranteLogado();
         restaurante.setImpressaoMesaAtivada(settingsDTO.isImpressaoMesaAtivada());
         restaurante.setImpressaoDeliveryAtivada(settingsDTO.isImpressaoDeliveryAtivada());
-        restaurante.setWhatsappWebhookUrl(settingsDTO.getWhatsappWebhookUrl());
+        restaurante.setWhatsappNumber(settingsDTO.getWhatsappNumber()); // Corrigido
         restauranteRepository.save(restaurante);
-        return getPerfilLogado(); // Retorna o perfil atualizado
+        return getPerfilLogado();
     }
 
     public CardapioPublicoDTO getCardapioPublico(Long restauranteId) {
