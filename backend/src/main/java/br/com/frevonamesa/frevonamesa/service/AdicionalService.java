@@ -5,8 +5,6 @@ import br.com.frevonamesa.frevonamesa.model.Restaurante;
 import br.com.frevonamesa.frevonamesa.repository.AdicionalRepository;
 import br.com.frevonamesa.frevonamesa.repository.RestauranteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,26 +15,25 @@ public class AdicionalService {
     @Autowired
     private AdicionalRepository adicionalRepository;
     @Autowired
-    private RestauranteRepository restauranteRepository;
-
-    private Restaurante getRestauranteLogado() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return restauranteRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Restaurante não encontrado"));
-    }
+    private RestauranteService restauranteService; 
 
     public List<Adicional> listarPorRestaurante() {
-        return adicionalRepository.findByRestauranteId(getRestauranteLogado().getId());
+        Restaurante restaurante = restauranteService.getRestauranteLogado(); // CHAMA O SERVIÇO CENTRAL
+        return adicionalRepository.findByRestauranteId(restaurante.getId());
     }
 
     public Adicional salvar(Adicional adicional) {
-        adicional.setRestaurante(getRestauranteLogado());
+        Restaurante restaurante = restauranteService.getRestauranteLogado(); // CHAMA O SERVIÇO CENTRAL
+        adicional.setRestaurante(restaurante);
         return adicionalRepository.save(adicional);
     }
 
     public Adicional atualizar(Long id, Adicional adicional) {
+        Restaurante restaurante = restauranteService.getRestauranteLogado(); // CHAMA O SERVIÇO CENTRAL
         Adicional existente = adicionalRepository.findById(id).orElseThrow(() -> new RuntimeException("Adicional não encontrado"));
-        if (!existente.getRestaurante().getId().equals(getRestauranteLogado().getId())) {
+
+        // VERIFICAÇÃO DE SEGURANÇA CORRIGIDA: Usa 'restaurante'
+        if (!existente.getRestaurante().getId().equals(restaurante.getId())) {
             throw new SecurityException("Acesso negado.");
         }
         existente.setNome(adicional.getNome());
@@ -45,8 +42,11 @@ public class AdicionalService {
     }
 
     public void deletar(Long id) {
+        Restaurante restaurante = restauranteService.getRestauranteLogado(); // CHAMA O SERVIÇO CENTRAL
         Adicional existente = adicionalRepository.findById(id).orElseThrow(() -> new RuntimeException("Adicional não encontrado"));
-        if (!existente.getRestaurante().getId().equals(getRestauranteLogado().getId())) {
+
+        // VERIFICAÇÃO DE SEGURANÇA CORRIGIDA: Usa 'restaurante'
+        if (!existente.getRestaurante().getId().equals(restaurante.getId())) {
             throw new SecurityException("Acesso negado.");
         }
         adicionalRepository.deleteById(id);

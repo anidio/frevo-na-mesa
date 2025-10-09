@@ -29,11 +29,9 @@ public class RelatorioService {
     @Autowired
     private RestauranteRepository restauranteRepository;
 
-    private Restaurante getRestauranteLogado() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return restauranteRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Restaurante não encontrado: " + email));
-    }
+    @Autowired
+    private RestauranteService restauranteService;
+
 
     private RelatorioDeliveryDTO gerarRelatorioDeliveryDoDia(Restaurante restaurante, LocalDateTime inicioDoDia, LocalDateTime fimDoDia) {
         List<Pedido> pedidosDeliveryPagos = pedidoRepository.findAllByRestauranteIdAndTipoAndDataHoraBetweenAndTipoPagamentoIsNotNull(
@@ -80,7 +78,7 @@ public class RelatorioService {
     }
 
     public RelatorioDiarioDTO gerarRelatorioDoDia() {
-        Restaurante restaurante = getRestauranteLogado();
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
         LocalDateTime inicioDoDia = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
         LocalDateTime fimDoDia = LocalDateTime.of(LocalDate.now(), LocalTime.MAX);
 

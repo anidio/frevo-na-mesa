@@ -18,6 +18,7 @@ import DeliveryPage from './Pages/DeliveryPage.jsx';
 import CardapioClientePage from './Pages/CardapioClientePage.jsx';
 import GerenciarAdicionaisPage from './Pages/GerenciarAdicionaisPage.jsx';
 import RastrearPedidoPage from './Pages/RastrearPedidoPage.jsx';
+import GerenciarUsuariosPage from './Pages/GerenciarUsuariosPage.jsx';
 
 const App = () => {
   return (
@@ -38,6 +39,7 @@ const App = () => {
             <Route path="admin" element={<AdminPage />} />
             <Route path="admin/cardapio" element={<GerenciarCardapioPage />} />
             <Route path="admin/adicionais" element={<GerenciarAdicionaisPage />} />
+            <Route path="admin/usuarios" element={<GerenciarUsuariosPage />} />
             <Route path="admin/relatorios" element={<RelatorioPage />} />
             <Route path="admin/configuracoes" element={<ConfiguracoesPage />} />
           </Route>

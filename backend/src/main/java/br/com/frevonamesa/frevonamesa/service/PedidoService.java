@@ -36,15 +36,12 @@ public class PedidoService {
     @Value("${n8n.webhook.url}")
     private String n8nWebhookUrl;
 
-    private Restaurante getRestauranteLogado() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return restauranteRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Restaurante não encontrado: " + email));
-    }
+    @Autowired
+    private RestauranteService restauranteService;
 
     @Transactional
     public Pedido criarPedido(PedidoRequestDTO dto) {
-        Restaurante restaurante = getRestauranteLogado();
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
         Mesa mesa = mesaRepository.findById(dto.getMesaId())
                 .orElseThrow(() -> new RuntimeException("Mesa não encontrada!"));
 
@@ -108,7 +105,7 @@ public class PedidoService {
     }
 
     public List<PedidoFilaDTO> listarPedidosDeMesaPendentes() {
-        Restaurante restaurante = getRestauranteLogado();
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
         List<Pedido> pedidos = pedidoRepository.findByTipoAndStatusAndRestauranteId(TipoPedido.MESA, StatusPedido.PENDENTE, restaurante.getId());
         return pedidos.stream().map(pedido -> {
             Mesa mesa = pedido.getMesa();
@@ -124,7 +121,7 @@ public class PedidoService {
 
     @Transactional
     public Pedido confirmarPedidoDeMesa(Long pedidoId) {
-        Restaurante restaurante = getRestauranteLogado();
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
         Pedido pedido = pedidoRepository.findById(pedidoId).orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
         if (!pedido.getRestaurante().getId().equals(restaurante.getId())) {
             throw new SecurityException("Acesso negado.");
@@ -135,7 +132,7 @@ public class PedidoService {
 
     @Transactional
     public Pedido criarPedidoDelivery(PedidoDeliveryRequestDTO dto) {
-        Restaurante restaurante = getRestauranteLogado();
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
 
         Pedido novoPedido = new Pedido();
         novoPedido.setRestaurante(restaurante);
@@ -191,7 +188,7 @@ public class PedidoService {
     }
 
     public Map<StatusPedido, List<Pedido>> listarPedidosDeliveryPorStatus() {
-        Restaurante restaurante = getRestauranteLogado();
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
         Map<StatusPedido, List<Pedido>> pedidosAgrupados = new HashMap<>();
         pedidosAgrupados.put(StatusPedido.PENDENTE, pedidoRepository.findByTipoAndStatusAndRestauranteId(TipoPedido.DELIVERY, StatusPedido.PENDENTE, restaurante.getId()));
         pedidosAgrupados.put(StatusPedido.EM_PREPARO, pedidoRepository.findByTipoAndStatusAndRestauranteId(TipoPedido.DELIVERY, StatusPedido.EM_PREPARO, restaurante.getId()));
@@ -201,7 +198,7 @@ public class PedidoService {
 
     @Transactional
     public Pedido atualizarStatusPedidoDelivery(Long pedidoId, StatusPedido novoStatus) {
-        Restaurante restaurante = getRestauranteLogado();
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
         Pedido pedido = pedidoRepository.findById(pedidoId).orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
 
         if (!pedido.getRestaurante().getId().equals(restaurante.getId()) || pedido.getTipo() != TipoPedido.DELIVERY) {
@@ -245,14 +242,14 @@ public class PedidoService {
     }
 
     public List<Pedido> listarUltimos10Finalizados() {
-        Restaurante restaurante = getRestauranteLogado();
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
         return pedidoRepository.findTop10ByRestauranteIdAndTipoAndStatusOrderByDataHoraDesc(
                 restaurante.getId(), TipoPedido.DELIVERY, StatusPedido.FINALIZADO);
     }
 
     @Transactional
     public Pedido imprimirPedidoDelivery(Long pedidoId) {
-        Restaurante restaurante = getRestauranteLogado();
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
         Pedido pedido = pedidoRepository.findById(pedidoId)
                 .orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
         if (!pedido.getRestaurante().getId().equals(restaurante.getId())) {
@@ -263,7 +260,7 @@ public class PedidoService {
     }
 
     public List<Pedido> listarPedidosDeliveryPendentes() {
-        Restaurante restaurante = getRestauranteLogado();
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
         return pedidoRepository.findByTipoAndStatusAndRestauranteId(TipoPedido.DELIVERY, StatusPedido.PENDENTE, restaurante.getId());
     }
 

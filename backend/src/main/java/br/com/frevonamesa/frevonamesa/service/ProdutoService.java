@@ -27,19 +27,16 @@ public class ProdutoService {
     @Autowired
     private RestauranteRepository restauranteRepository;
 
-    private Restaurante getRestauranteLogado() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return restauranteRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Restaurante não encontrado: " + email));
-    }
+    @Autowired
+    private RestauranteService restauranteService;
 
     public List<Produto> listarTodos() {
-        Restaurante restaurante = getRestauranteLogado();
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
         return produtoRepository.findByRestauranteId(restaurante.getId());
     }
 
     public void deletarProduto(Long id) {
-        Restaurante restaurante = getRestauranteLogado();
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
         Produto produto = produtoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Produto com ID " + id + " não encontrado."));
 
@@ -52,7 +49,7 @@ public class ProdutoService {
 
     @Transactional
     public Produto criarProduto(ProdutoDTO dto) {
-        Restaurante restaurante = getRestauranteLogado();
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
 
         Categoria categoria = categoriaRepository.findById(dto.getCategoriaId())
                 .orElseThrow(() -> new RuntimeException("Categoria não encontrada!"));
@@ -71,7 +68,7 @@ public class ProdutoService {
     }
 
     public Produto atualizarProduto(Long id, ProdutoDTO dto) {
-        Restaurante restaurante = getRestauranteLogado();
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
         Produto produtoExistente = produtoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Produto com ID " + id + " não encontrado."));
 

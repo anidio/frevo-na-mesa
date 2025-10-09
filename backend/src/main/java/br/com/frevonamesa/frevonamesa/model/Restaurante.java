@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -23,6 +24,10 @@ public class Restaurante {
     private String senha;
     private String endereco;
 
+    @OneToMany(mappedBy = "restaurante", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference("restaurante-usuario")
+    private List<Usuario> usuarios;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private TipoEstabelecimento tipo;
@@ -33,6 +38,17 @@ public class Restaurante {
     @JsonManagedReference("restaurante-pedido")
     private List<Pedido> pedidos;
 
+    @Column(nullable = false)
+    private String plano = "GRATUITO"; // Ex: GRATUITO, DELIVERY_PRO, PREMIUM
+
+    @Column(nullable = false)
+    private boolean isLegacyFree = false; // TRUE para clientes piloto (Grandfathering)
+
+    // Limites de uso do plano GRATUITO/FREE
+    private Integer limiteMesas = 10;
+    private Integer limiteUsuarios = 3;
+    private Integer pedidosMesAtual = 0; // Contador de pedidos para Pay-per-Use
+
     private String whatsappNumber;
 
     public Restaurante(String nome, String email, String senha, TipoEstabelecimento tipo) {
@@ -40,5 +56,6 @@ public class Restaurante {
         this.email = email;
         this.senha = senha;
         this.tipo = tipo;
+        this.usuarios = new ArrayList<>();
     }
 }

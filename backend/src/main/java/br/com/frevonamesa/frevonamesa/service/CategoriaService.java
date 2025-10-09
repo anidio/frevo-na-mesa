@@ -25,28 +25,24 @@ public class CategoriaService {
     @Autowired
     private ProdutoRepository produtoRepository;
 
-
-    private Restaurante getRestauranteLogado() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return restauranteRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Restaurante não encontrado: " + email));
-    }
+    @Autowired
+    private RestauranteService restauranteService;
 
     public List<Categoria> listarTodas() {
-        Restaurante restaurante = getRestauranteLogado();
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
         return categoriaRepository.findByRestauranteId(restaurante.getId());
     }
 
     @Transactional
     public Categoria criar(Categoria categoria) {
-        Restaurante restaurante = getRestauranteLogado();
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
         categoria.setRestaurante(restaurante);
         return categoriaRepository.save(categoria);
     }
 
     @Transactional
     public Categoria atualizar(Long id, Categoria categoriaAtualizada) {
-        Restaurante restaurante = getRestauranteLogado();
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
         Categoria categoriaExistente = categoriaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Categoria não encontrada."));
 
@@ -60,7 +56,7 @@ public class CategoriaService {
 
     @Transactional
     public void deletar(Long id) {
-        Restaurante restaurante = getRestauranteLogado();
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
         Categoria categoria = categoriaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Categoria não encontrada."));
 

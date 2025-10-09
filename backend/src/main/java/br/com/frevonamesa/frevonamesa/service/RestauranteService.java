@@ -2,10 +2,7 @@ package br.com.frevonamesa.frevonamesa.service;
 
 import br.com.frevonamesa.frevonamesa.dto.*;
 import br.com.frevonamesa.frevonamesa.model.*;
-import br.com.frevonamesa.frevonamesa.repository.CategoriaRepository;
-import br.com.frevonamesa.frevonamesa.repository.MesaRepository; // 3. Importar MesaRepository
-import br.com.frevonamesa.frevonamesa.repository.ProdutoRepository;
-import br.com.frevonamesa.frevonamesa.repository.RestauranteRepository;
+import br.com.frevonamesa.frevonamesa.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -16,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal; // 4. Importar BigDecimal
 import java.util.ArrayList; // 5. Importar ArrayList
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream; // 6. Importar IntStream
 
@@ -38,14 +36,28 @@ public class RestauranteService {
     @Autowired
     private ProdutoRepository produtoRepository;
 
-    private Restaurante getRestauranteLogado() {
+    @Autowired
+    private UsuarioRepository usuarioRepository;
+
+    public Restaurante getRestauranteLogado() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        // 1. Tenta buscar o Usuario
+        Optional<Usuario> usuarioOpt = usuarioRepository.findByEmail(email);
+        if (usuarioOpt.isPresent()) {
+            return usuarioOpt.get().getRestaurante(); // Retorna o restaurante do Usuario
+        }
+
+        // 2. Fallback (Para o código legado, deve ser removido no futuro)
         return restauranteRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Restaurante não encontrado com o email: " + email));
+                .orElseThrow(() -> new UsernameNotFoundException("Restaurante não encontrado: " + email));
     }
 
     public Restaurante cadastrar(RestauranteDTO restauranteDTO) {
         if (restauranteRepository.findByEmail(restauranteDTO.getEmail()).isPresent()) {
+            throw new RuntimeException("Email já cadastrado.");
+        }
+        if (usuarioRepository.findByEmail(restauranteDTO.getEmail()).isPresent()) {
             throw new RuntimeException("Email já cadastrado.");
         }
 
@@ -58,9 +70,16 @@ public class RestauranteService {
                 restauranteDTO.getTipo()
         );
         novoRestaurante.setEndereco(restauranteDTO.getEndereco());
-
-        // Salva o novo restaurante primeiro para que ele tenha um ID
         Restaurante restauranteSalvo = restauranteRepository.save(novoRestaurante);
+
+        Usuario adminUser = new Usuario();
+        adminUser.setNome(restauranteDTO.getNome());
+        adminUser.setEmail(restauranteDTO.getEmail()); // O email do restaurante é o email do primeiro ADMIN
+        adminUser.setSenha(restauranteSalvo.getSenha()); // A senha já está criptografada
+        adminUser.setRestaurante(restauranteSalvo);
+        adminUser.setRole(Role.ADMIN);
+
+        usuarioRepository.save(adminUser);
 
         if (restauranteSalvo.getTipo() == TipoEstabelecimento.APENAS_MESAS || restauranteSalvo.getTipo() == TipoEstabelecimento.MESAS_E_DELIVERY) {
             IntStream.rangeClosed(1, 5).forEach(numero -> {
@@ -78,9 +97,7 @@ public class RestauranteService {
     }
 
     public RestaurantePerfilDTO getPerfilLogado() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        Restaurante restaurante = restauranteRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Restaurante não encontrado: " + email));
+        Restaurante restaurante = getRestauranteLogado();
 
         RestaurantePerfilDTO perfilDto = new RestaurantePerfilDTO();
         perfilDto.setId(restaurante.getId());
@@ -90,7 +107,11 @@ public class RestauranteService {
         perfilDto.setTipo(restaurante.getTipo());
         perfilDto.setImpressaoDeliveryAtivada(restaurante.isImpressaoDeliveryAtivada());
         perfilDto.setImpressaoMesaAtivada(restaurante.isImpressaoMesaAtivada());
-        perfilDto.setWhatsappNumber(restaurante.getWhatsappNumber()); // Corrigido
+        perfilDto.setWhatsappNumber(restaurante.getWhatsappNumber());
+        perfilDto.setPlano(restaurante.getPlano());
+        perfilDto.setLimiteUsuarios(restaurante.getLimiteUsuarios());
+        perfilDto.setLimiteMesas(restaurante.getLimiteMesas());
+        perfilDto.setLegacyFree(restaurante.isLegacyFree());
 
         return perfilDto;
     }

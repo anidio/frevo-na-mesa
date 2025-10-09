@@ -28,15 +28,12 @@ public class MesaService {
     @Autowired
     private RestauranteRepository restauranteRepository;
 
-    private Restaurante getRestauranteLogado() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return restauranteRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Restaurante não encontrado com o email: " + email));
-    }
+    @Autowired
+    private RestauranteService restauranteService;
 
     @Transactional
     public Mesa atualizarStatus(Long id, StatusMesa novoStatus) {
-        Restaurante restaurante = getRestauranteLogado();
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
         Mesa mesa = mesaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Mesa não encontrada!"));
 
@@ -61,12 +58,12 @@ public class MesaService {
 
     // O resto do arquivo continua igual...
     public List<Mesa> listarTodas() {
-        Restaurante restauranteLogado = getRestauranteLogado();
-        return mesaRepository.findByRestauranteId(restauranteLogado.getId());
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
+        return mesaRepository.findByRestauranteId(restaurante.getId());
     }
 
     public Optional<Mesa> buscarPorId(Long id) {
-        Restaurante restaurante = getRestauranteLogado();
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
         Optional<Mesa> mesaOpt = mesaRepository.findById(id);
 
         if (mesaOpt.isPresent() && mesaOpt.get().getRestaurante().getId().equals(restaurante.getId())) {
@@ -77,7 +74,7 @@ public class MesaService {
 
     @Transactional
     public Mesa processarPagamento(Long id, TipoPagamento tipo) {
-        Restaurante restaurante = getRestauranteLogado();
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
         Mesa mesa = mesaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Mesa não encontrada!"));
 
@@ -103,7 +100,7 @@ public class MesaService {
 
     @Transactional
     public Mesa atualizarNomeCliente(Long id, String nomeCliente) {
-        Restaurante restaurante = getRestauranteLogado();
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
         Mesa mesa = mesaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Mesa não encontrada!"));
 
@@ -117,9 +114,18 @@ public class MesaService {
 
     @Transactional
     public Mesa criarMesa(MesaRequestDTO dto) {
-        Restaurante restauranteLogado = getRestauranteLogado();
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
+        Long restauranteId = restaurante.getId(); // Usado para clareza
 
-        if (mesaRepository.existsByNumeroAndRestauranteId(dto.getNumero(), restauranteLogado.getId())) {
+        // --- LÓGICA DE TRAVA DE MONETIZAÇÃO (CORREÇÃO) ---
+        long mesasAtuais = mesaRepository.findByRestauranteId(restauranteId).size();
+
+        // Verifica se o restaurante NÃO é LEGADO (piloto) E se atingiu o limite do plano.
+        if (!restaurante.isLegacyFree() && mesasAtuais >= restaurante.getLimiteMesas()) {
+            throw new RuntimeException("Limite de " + restaurante.getLimiteMesas() + " mesas atingido para o seu plano! Atualize para o plano Salão PDV.");
+        }
+
+        if (mesaRepository.existsByNumeroAndRestauranteId(dto.getNumero(), restaurante.getId())) {
             throw new RuntimeException("Já existe uma mesa com o número " + dto.getNumero() + " para este restaurante.");
         }
 
@@ -129,18 +135,18 @@ public class MesaService {
         novaMesa.setStatus(StatusMesa.LIVRE);
         novaMesa.setValorTotal(BigDecimal.ZERO);
         novaMesa.setPedidos(new ArrayList<>());
-        novaMesa.setRestaurante(restauranteLogado);
+        novaMesa.setRestaurante(restaurante);
 
         return mesaRepository.save(novaMesa);
     }
 
     @Transactional
     public Mesa atualizarNumeroMesa(Long id, int novoNumero) {
-        Restaurante restauranteLogado = getRestauranteLogado();
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
         Mesa mesaParaAtualizar = mesaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Mesa com ID " + id + " não encontrada!"));
 
-        if (!mesaParaAtualizar.getRestaurante().getId().equals(restauranteLogado.getId())) {
+        if (!mesaParaAtualizar.getRestaurante().getId().equals(restaurante.getId())) {
             throw new SecurityException("Acesso negado: Esta mesa não pertence ao seu restaurante.");
         }
 
@@ -148,7 +154,7 @@ public class MesaService {
             return mesaParaAtualizar;
         }
 
-        if (mesaRepository.existsByNumeroAndRestauranteId(novoNumero, restauranteLogado.getId())) {
+        if (mesaRepository.existsByNumeroAndRestauranteId(novoNumero, restaurante.getId())) {
             throw new RuntimeException("O número de mesa " + novoNumero + " já está em uso!");
         }
 

@@ -32,15 +32,12 @@ public class CaixaService {
     private RestauranteRepository restauranteRepository;
     @Autowired
     private RelatorioService relatorioService;
+    @Autowired
+    private RestauranteService restauranteService;
 
-    private Restaurante getRestauranteLogado() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return restauranteRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Restaurante não encontrado com o email: " + email));
-    }
 
     public CaixaDashboardDTO getDashboardInfo() {
-        Restaurante restaurante = getRestauranteLogado();
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
         Long restauranteId = restaurante.getId();
         CaixaDashboardDTO dashboard = new CaixaDashboardDTO();
 
@@ -62,7 +59,7 @@ public class CaixaService {
     }
 
     public void fecharCaixa() {
-        Restaurante restaurante = getRestauranteLogado();
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
 
         // 1. Encontra todos os pedidos do restaurante logado
         List<Mesa> mesasDoRestaurante = mesaRepository.findByRestauranteId(restaurante.getId());

@@ -13,4 +13,8 @@ public class RestaurantePerfilDTO {
     private boolean impressaoDeliveryAtivada;
     private boolean impressaoMesaAtivada = true;
     private String whatsappNumber;
+    private String plano;          // Ex: GRATUITO, DELIVERY_PRO, PREMIUM
+    private Integer limiteUsuarios; // Limite para Garçons/Caixas
+    private Integer limiteMesas;    // Limite para mesas criadas
+    private boolean isLegacyFree;
 }
