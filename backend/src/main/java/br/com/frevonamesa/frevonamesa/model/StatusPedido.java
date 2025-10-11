@@ -5,5 +5,6 @@ public enum StatusPedido {
     CONFIRMADO,    // Pedido de mesa que foi impresso e confirmado
     EM_PREPARO,    // Pedido de delivery que está na cozinha
     PRONTO_PARA_ENTREGA, // Pedido de delivery aguardando o motoboy
-    FINALIZADO     // Pedido de delivery que foi entregue ou de mesa que foi pago
+    FINALIZADO,
+    AGUARDANDO_PGTO_LIMITE
 }

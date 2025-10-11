@@ -1,29 +1,53 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import * as financeiroService from '../services/financeiroService'; 
+import { useAuth } from '../contexts/AuthContext';
 
-const UpgradeModal = ({ onClose, limiteAtual }) => {
+// Adicione a prop onPedidoAceito (função que aceita o pedido após o pagamento)
+const UpgradeModal = ({ onClose, limiteAtual, refreshProfile, onPedidoAceito }) => {
     const navigate = useNavigate();
-
     // Dados para o Pay-per-Use
     const pedidosParaComprar = 10;
     const custoPorPedido = 1.49;
     const custoPorPacote = (pedidosParaComprar * custoPorPedido).toFixed(2);
 
-    // MOCK: Ação de Upgrade (Assinatura)
-    const handleUpgradePro = () => {
-        onClose();
-        // Futuro: Lógica de checkout / redirecionamento para o Plano PRO
-        toast.info("Ação: Redirecionando para a página de checkout do Plano PRO...");
-        navigate('/admin/upgrade-checkout?plano=PRO');
+    // LÓGICA ATUALIZADA: Ação de Upgrade (Assinatura)
+    const handleUpgradePro = async () => {
+        try {
+            await financeiroService.upgradeParaDeliveryPro(); 
+            await refreshProfile(); 
+            toast.success("Upgrade para o Plano Delivery PRO realizado com sucesso! Pedidos ilimitados ativados.");
+            
+            // AÇÃO CRÍTICA: Executa a aceitação do pedido retido
+            if (onPedidoAceito) {
+                onPedidoAceito();
+            }
+            
+            onClose();
+        } catch (error) {
+            toast.error(error.message || "Erro ao realizar o Upgrade. Tente novamente.");
+        }
     };
 
-    // MOCK: Ação de Pay-per-Use
-    const handlePayPerUse = () => {
-        onClose();
-        // Futuro: Lógica de integração com gateway de pagamento (Mercado Pago/Stripe)
-        toast.success(`Ação: Iniciando pagamento de R$ ${custoPorPacote} para ${pedidosParaComprar} pedidos extras.`);
-        // Aqui, após o pagamento, o backend liberaria mais 10 pedidos temporariamente
+    // LÓGICA ATUALIZADA: Ação de Pay-per-Use
+    const handlePayPerUse = async () => {
+        try {
+            // Chamada simulada para compensar o limite
+            await financeiroService.comprarPacotePedidos(); 
+            await refreshProfile(); // Atualiza o perfil (contador)
+            
+            toast.success(`${pedidosParaComprar} pedidos extras liberados!`);
+            
+            // NOVO: Executa a ação de aceite (se aplicável)
+            if (onPedidoAceito) {
+                onPedidoAceito();
+            }
+            
+            onClose();
+        } catch (error) {
+             toast.error(error.message || "Erro ao processar a compra do pacote. Tente novamente.");
+        }
     };
 
 

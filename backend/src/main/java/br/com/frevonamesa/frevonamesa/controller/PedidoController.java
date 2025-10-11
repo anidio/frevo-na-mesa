@@ -73,6 +73,17 @@ public class PedidoController {
         }
     }
 
+    // ROTA PARA ACEITAR UM PEDIDO QUE ESTAVA AGUARDANDO PAGAMENTO DE LIMITE
+    @PatchMapping("/delivery/{id}/aceitar-retido")
+    public ResponseEntity<Pedido> aceitarPedidoRetido(@PathVariable Long id) {
+        try {
+            Pedido pedidoAtualizado = pedidoService.aceitarPedidoRetido(id);
+            return ResponseEntity.ok(pedidoAtualizado);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
     @GetMapping("/delivery/finalizados")
     public ResponseEntity<List<Pedido>> getPedidosDeliveryFinalizados() {
         List<Pedido> pedidos = pedidoService.listarUltimos10Finalizados();

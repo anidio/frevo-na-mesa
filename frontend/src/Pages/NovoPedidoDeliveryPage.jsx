@@ -2,9 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import apiClient from '../services/apiClient';
-import { useAuth } from '../contexts/AuthContext'; // NOVO IMPORT
-// O componente UpgradeModal deve ser importado aqui na próxima fase
-// import UpgradeModal from '../components/UpgradeModal'; 
+import { useAuth } from '../contexts/AuthContext'; 
+import UpgradeModal from '../components/UpgradeModal'; 
 
 const ProdutoCard = ({ produto, onAdicionar }) => {
     return (
@@ -33,10 +32,10 @@ const ProdutoCard = ({ produto, onAdicionar }) => {
 
 const NovoPedidoDeliveryPage = () => {
     const navigate = useNavigate();
-    const { userProfile } = useAuth(); // ADICIONADO: Pega o userProfile
+    const { userProfile, refreshProfile } = useAuth(); 
 
-    // Estado para o modal de upgrade (NOVO)
-    const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false); 
+    // Estado para o modal de upgrade
+    const [isModalOpen, setIsModalOpen] = useState(false); 
 
     // Estado para os dados do cliente
     const [cliente, setCliente] = useState({
@@ -52,8 +51,8 @@ const NovoPedidoDeliveryPage = () => {
     // Estado para o termo de busca de produtos
     const [termoBusca, setTermoBusca] = useState('');
     
-    // --- LÓGICA DE MONETIZAÇÃO (30 PEDIDOS) ---
-    const LIMITE_PEDIDOS_GRATUITO = 5;
+    // --- LÓGICA DE MONETIZAÇÃO (Limites para exibição de alerta) ---
+    const LIMITE_PEDIDOS_GRATUITO = 5; 
     const pedidosAtuais = userProfile?.pedidosMesAtual || 0;
     const isPlanoGratuito = userProfile?.plano === 'GRATUITO'; 
     const isLegacyFree = userProfile?.isLegacyFree;
@@ -85,14 +84,14 @@ const NovoPedidoDeliveryPage = () => {
         setItensPedido(prevItens => {
             const itemExistente = prevItens.find(item => item.id === produto.id);
             if (itemExistente) {
-                return prevItens.map(item => 
+                return prevItens.map(item => 
                     item.id === produto.id ? { ...item, quantidade: item.quantidade + quantidade } : item
                 );
             }
             return [...prevItens, { ...produto, quantidade }];
         });
     };
-    
+    
     // Remove um item do pedido
     const handleRemoverItem = (produtoId) => {
         setItensPedido(prevItens => prevItens.filter(item => item.id !== produtoId));
@@ -103,7 +102,7 @@ const NovoPedidoDeliveryPage = () => {
         if (!termoBusca) return cardapio;
         return cardapio.filter(p => p.nome.toLowerCase().includes(termoBusca.toLowerCase()));
     }, [cardapio, termoBusca]);
-    
+    
     // Calcula o total do pedido
     const totalPedido = useMemo(() => {
         return itensPedido.reduce((acc, item) => acc + (item.preco * item.quantidade), 0);
@@ -111,55 +110,53 @@ const NovoPedidoDeliveryPage = () => {
 
     // Envia o pedido para o backend
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        e.preventDefault();
 
-        // MUDANÇA CRÍTICA: Se atingiu o limite, ABRE O MODAL
-        if (isLimiteAtingido) {
-            setIsUpgradeModalOpen(true); 
-            return;
-        }
+        if (itensPedido.length === 0) {
+            toast.warn('Adicione pelo menos um item ao pedido.');
+            return;
+        }
+        if (!cliente.nome || !cliente.telefone) {
+            toast.warn('Nome e Telefone do cliente são obrigatórios.');
+            return;
+        }
 
-        if (itensPedido.length === 0) {
-            toast.warn('Adicione pelo menos um item ao pedido.');
-            return;
-        }
-        if (!cliente.nome || !cliente.telefone) {
-            toast.warn('Nome e Telefone do cliente são obrigatórios.');
-            return;
-        }
+        const dadosDoPedido = {
+            nomeCliente: cliente.nome,
+            telefoneCliente: cliente.telefone,
+            enderecoCliente: cliente.endereco,
+            pontoReferencia: cliente.pontoReferencia,
+            itens: itensPedido.map(item => ({
+                produtoId: item.id,
+                quantidade: item.quantidade,
+                observacao: '' 
+            }))
+        };
 
-        const dadosDoPedido = {
-            nomeCliente: cliente.nome,
-            telefoneCliente: cliente.telefone,
-            enderecoCliente: cliente.endereco,
-            pontoReferencia: cliente.pontoReferencia,
-            itens: itensPedido.map(item => ({
-                produtoId: item.id,
-                quantidade: item.quantidade,
-                observacao: '' 
-            }))
-        };
-
-        try {
-            await apiClient.post('/api/pedidos/delivery', dadosDoPedido);
-            toast.success('Pedido de delivery criado com sucesso! (Contador incrementado)');
-            navigate('/delivery'); // Volta para o painel do caixa
-        } catch (error) {
-            // O GLOBAL EXCEPTION HANDLER GARANTE QUE ISSO EXIBA A MENSAGEM DO BACKEND
-            toast.error(error.message || 'Erro ao criar pedido de delivery.');
-        }
-    };
-
-    // FUNÇÕES MOCK PARA O MODAL (Serão implementadas na próxima etapa)
-    const handleUpgradePro = () => {
-        toast.info("Redirecionando para a página de checkout do Plano PRO...");
-        setIsUpgradeModalOpen(false);
+        try {
+            await apiClient.post('/api/pedidos/delivery', dadosDoPedido);
+            toast.success('Pedido de delivery criado com sucesso! (Contador incrementado)');
+            await refreshProfile(); 
+            navigate('/delivery'); 
+        } catch (error) {
+            // Log para diagnóstico futuro
+            console.error("ERRO CAPTURADO:", error);
+            
+            // Verifica a mensagem de erro: se o apiClient lançar "PEDIDO_LIMIT_REACHED" ou o erro 400
+            const errorMsg = String(error.message || error);
+    
+            // VERIFICAÇÃO FINAL: Detecta o erro customizado OU o erro HTTP que ele gera.
+            if (errorMsg.includes("PEDIDO_LIMIT_REACHED") || errorMsg.includes("400 Bad Request") || errorMsg.includes("400")) {
+                toast.warn("Limite de pedidos atingido! Realize o pagamento ou upgrade.");
+                setIsModalOpen(true); // ATIVA O MODAL
+            } else {
+                toast.error(errorMsg || 'Erro ao criar pedido de delivery.');
+            }
+        }
     };
-
-    const handlePayPerUse = (qtd, custo) => {
-        toast.info(`Iniciando pagamento de R$ ${custo} para ${qtd} pedidos extras...`);
-        setIsUpgradeModalOpen(false);
-    };
+    
+    // CORREÇÃO: Classe de input unificada
+    const inputClass = "mt-1 w-full p-2 border rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-tema-text-dark";
 
 
     return (
@@ -176,39 +173,41 @@ const NovoPedidoDeliveryPage = () => {
             </div>
 
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-gray-800">Novo Pedido de Delivery</h1>
-                <Link to="/caixa" className="px-4 py-2 rounded-lg font-semibold border bg-gray-200 text-gray-700 hover:bg-gray-300">
-                    Voltar ao Caixa
+                <h1 className="text-3xl font-bold text-tema-text dark:text-tema-text-dark">Novo Pedido de Delivery</h1>
+                <Link to="/delivery" className="px-4 py-2 rounded-lg font-semibold border bg-gray-200 dark:bg-gray-700 text-tema-text dark:text-tema-text-dark hover:bg-gray-300 dark:hover:bg-gray-600">
+                    Voltar ao Delivery
                 </Link>
             </div>
 
             <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Coluna da Esquerda: Dados do Cliente e Itens do Cardápio */}
                 <div className="lg:col-span-2 space-y-6">
-                    <div className="bg-white p-6 rounded-lg shadow-md">
-                        <h2 className="text-xl font-semibold mb-4 text-gray-700">1. Dados do Cliente</h2>
+                    {/* CORREÇÃO TEMA: Usando tema-surface-dark e border-gray-700 */}
+                    <div className="bg-white dark:bg-tema-surface-dark p-6 rounded-lg shadow-md border dark:border-gray-700">
+                        <h2 className="text-xl font-semibold mb-4 text-tema-text dark:text-tema-text-dark">1. Dados do Cliente</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-600">Nome*</label>
-                                <input type="text" name="nome" value={cliente.nome} onChange={handleClienteChange} required className="mt-1 w-full p-2 border rounded-md" />
+                                <label className="block text-sm font-medium text-tema-text-muted dark:text-tema-text-muted-dark">Nome*</label>
+                                <input type="text" name="nome" value={cliente.nome} onChange={handleClienteChange} required className={`${inputClass} border-gray-300`} />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-600">Telefone*</label>
-                                <input type="text" name="telefone" value={cliente.telefone} onChange={handleClienteChange} required className="mt-1 w-full p-2 border rounded-md" />
+                                <label className="block text-sm font-medium text-tema-text-muted dark:text-tema-text-muted-dark">Telefone*</label>
+                                <input type="text" name="telefone" value={cliente.telefone} onChange={handleClienteChange} required className={`${inputClass} border-gray-300`} />
                             </div>
                             <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-600">Endereço de Entrega</label>
-                                <input type="text" name="endereco" value={cliente.endereco} onChange={handleClienteChange} className="mt-1 w-full p-2 border rounded-md" />
+                                <label className="block text-sm font-medium text-tema-text-muted dark:text-tema-text-muted-dark">Endereço de Entrega</label>
+                                <input type="text" name="endereco" value={cliente.endereco} onChange={handleClienteChange} className={`${inputClass} border-gray-300`} />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-600">Ponto de Referência (Opcional)</label>
-                                <input type="text" name="pontoReferencia" value={cliente.pontoReferencia} onChange={handleClienteChange} className="mt-1 w-full p-2 border rounded-md" />
+                                <label className="block text-sm font-medium text-tema-text-muted dark:text-tema-text-muted-dark">Ponto de Referência (Opcional)</label>
+                                <input type="text" name="pontoReferencia" value={cliente.pontoReferencia} onChange={handleClienteChange} className={`${inputClass} border-gray-300`} />
                             </div>
                         </div>
                     </div>
-                    <div className="bg-white p-6 rounded-lg shadow-md">
-                        <h2 className="text-xl font-semibold mb-4 text-gray-700">2. Adicionar Itens</h2>
-                        <input type="text" placeholder="🔎 Buscar no cardápio..." value={termoBusca} onChange={e => setTermoBusca(e.target.value)} className="w-full p-3 border rounded-lg mb-4" />
+                    {/* CORREÇÃO TEMA: Usando tema-surface-dark e border-gray-700 */}
+                    <div className="bg-white dark:bg-tema-surface-dark p-6 rounded-lg shadow-md border dark:border-gray-700">
+                        <h2 className="text-xl font-semibold mb-4 text-tema-text dark:text-tema-text-dark">2. Adicionar Itens</h2>
+                        <input type="text" placeholder="🔎 Buscar no cardápio..." value={termoBusca} onChange={e => setTermoBusca(e.target.value)} className={`${inputClass} p-3 mb-4`} />
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto pr-2">
                             {cardapioFiltrado.map(produto => (
                                 <ProdutoCard key={produto.id} produto={produto} onAdicionar={handleAdicionarItem} />
@@ -219,25 +218,26 @@ const NovoPedidoDeliveryPage = () => {
 
                 {/* Coluna da Direita: Resumo do Pedido */}
                 <div className="lg:col-span-1">
-                    <div className="bg-white p-6 rounded-lg shadow-md sticky top-8">
-                        <h2 className="text-xl font-semibold mb-4 text-gray-700">3. Resumo do Pedido</h2>
-                        <div className="space-y-2 mb-4">
+                    {/* CORREÇÃO TEMA: Usando tema-surface-dark e border-gray-700 */}
+                    <div className="bg-white dark:bg-tema-surface-dark p-6 rounded-lg shadow-md sticky top-8 border dark:border-gray-700">
+                        <h2 className="text-xl font-semibold mb-4 text-tema-text dark:text-tema-text-dark">3. Resumo do Pedido</h2>
+                        <div className="space-y-2 mb-4 text-tema-text dark:text-tema-text-dark">
                             {itensPedido.length > 0 ? (
                                 itensPedido.map(item => (
                                     <div key={item.id} className="flex justify-between items-center text-sm">
                                         <span>{item.quantidade}x {item.nome}</span>
                                         <div className='flex items-center gap-2'>
                                             <span className='font-semibold'>R$ {(item.preco * item.quantidade).toFixed(2).replace('.', ',')}</span>
-                                            <button type="button" onClick={() => handleRemoverItem(item.id)} className="text-red-500 hover:text-red-700">✖</button>
+                                            <button type="button" onClick={() => handleRemoverItem(item.id)} className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-500">✖</button>
                                         </div>
                                     </div>
                                 ))
                             ) : (
-                                <p className="text-gray-500">Nenhum item adicionado.</p>
+                                <p className="text-tema-text-muted dark:text-tema-text-muted-dark">Nenhum item adicionado.</p>
                             )}
                         </div>
-                        <div className="border-t pt-4">
-                            <div className="flex justify-between font-bold text-lg">
+                        <div className="border-t dark:border-gray-700 pt-4">
+                            <div className="flex justify-between font-bold text-lg text-tema-text dark:text-tema-text-dark">
                                 <span>Total:</span>
                                 <span>R$ {totalPedido.toFixed(2).replace('.', ',')}</span>
                             </div>
@@ -248,6 +248,14 @@ const NovoPedidoDeliveryPage = () => {
                     </div>
                 </div>
             </form>
+            {/* Modal de Upgrade/Pagamento */}
+            {isModalOpen && (
+                <UpgradeModal 
+                    onClose={() => setIsModalOpen(false)} 
+                    limiteAtual={LIMITE_PEDIDOS_GRATUITO}
+                    refreshProfile={refreshProfile}
+                />
+            )}
         </div>
     );
 };

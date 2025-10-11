@@ -17,12 +17,31 @@ const getAuthHeaders = () => {
 const handleResponse = async (response) => {
     if (!response.ok) {
         const errorText = await response.text();
+        
+        let errorMsg = errorText || `Erro HTTP: ${response.status}`;
+
+        // 1. Tenta parsear o JSON para buscar o código de erro customizado do backend
         try {
             const errorJson = JSON.parse(errorText);
-            throw new Error(errorJson.message || errorText);
+            
+            if (errorJson.errorCode && errorJson.errorCode.includes("PEDIDO_LIMIT_REACHED")) {
+                // Ação crítica: Lançamos APENAS a string detectável.
+                throw new Error("PEDIDO_LIMIT_REACHED");
+            } else if (errorJson.message) {
+                // Se for outro erro de negócio (RuntimeException), usa a mensagem de erro.
+                errorMsg = errorJson.message;
+            }
+            
         } catch (e) {
-            throw new Error(errorText || `Erro HTTP: ${response.status}`);
+            // Se a exceção já foi lançada no bloco try, relançamos.
+            if (e.message && e.message.includes("PEDIDO_LIMIT_REACHED")) {
+                 throw e; 
+            }
+            // Se o JSON não foi válido, a mensagem de erro será o texto HTTP padrão.
         }
+
+        // Lançamento do erro generalizado, caso não seja o de limite.
+        throw new Error(errorMsg);
     }
     const contentType = response.headers.get("content-type");
     if (contentType && contentType.includes("application/json")) {
@@ -37,7 +56,7 @@ const apiClient = {
     get: async (endpoint) => {
         const response = await fetch(`${API_URL}${endpoint}`, {
             method: 'GET',
-            headers: getAuthHeaders(), // IMPORTANTE
+            headers: getAuthHeaders(),
         });
         return handleResponse(response);
     },
@@ -45,7 +64,7 @@ const apiClient = {
     post: async (endpoint, body) => {
         const response = await fetch(`${API_URL}${endpoint}`, {
             method: 'POST',
-            headers: getAuthHeaders(), // IMPORTANTE
+            headers: getAuthHeaders(),
             body: JSON.stringify(body),
         });
         return handleResponse(response);
@@ -54,7 +73,7 @@ const apiClient = {
     patch: async (endpoint, body) => {
         const response = await fetch(`${API_URL}${endpoint}`, {
             method: 'PATCH',
-            headers: getAuthHeaders(), // IMPORTANTE
+            headers: getAuthHeaders(),
             body: JSON.stringify(body),
         });
         return handleResponse(response);
@@ -63,7 +82,7 @@ const apiClient = {
     put: async (endpoint, body) => {
         const response = await fetch(`${API_URL}${endpoint}`, {
             method: 'PUT',
-            headers: getAuthHeaders(), // IMPORTANTE
+            headers: getAuthHeaders(),
             body: JSON.stringify(body),
         });
         return handleResponse(response);
@@ -72,7 +91,7 @@ const apiClient = {
     delete: async (endpoint) => {
         const response = await fetch(`${API_URL}${endpoint}`, {
             method: 'DELETE',
-            headers: getAuthHeaders(), // IMPORTANTE
+            headers: getAuthHeaders(),
         });
         return handleResponse(response);
     },

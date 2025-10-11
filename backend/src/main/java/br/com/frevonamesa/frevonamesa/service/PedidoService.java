@@ -1,6 +1,7 @@
 package br.com.frevonamesa.frevonamesa.service;
 
 import br.com.frevonamesa.frevonamesa.dto.*;
+import br.com.frevonamesa.frevonamesa.exception.PedidoLimitException;
 import br.com.frevonamesa.frevonamesa.model.*;
 import br.com.frevonamesa.frevonamesa.repository.AdicionalRepository;
 import br.com.frevonamesa.frevonamesa.repository.MesaRepository;
@@ -134,11 +135,15 @@ public class PedidoService {
     public Pedido criarPedidoDelivery(PedidoDeliveryRequestDTO dto) {
         Restaurante restaurante = restauranteService.getRestauranteLogado();
 
-        // Se o restaurante NÃO for LEGADO E atingiu o limite de 30 pedidos
-        if (!restaurante.isLegacyFree() && restaurante.getPedidosMesAtual() >= 5) {
+        // Limite fixo para demonstração
+        int hardLimit = 3;
+
+        // Se o restaurante NÃO for LEGADO E atingiu o limite de pedidos
+        if (!restaurante.isLegacyFree() && restaurante.getPedidosMesAtual() >= hardLimit) {
             // Se o plano for o gratuito (Frevo GO!), trava e informa sobre a cobrança
+            // MANTEMOS A EXCEÇÃO AQUI PARA FORÇAR O MODAL NO FLUXO INTERNO (Novo Pedido)
             if (restaurante.getPlano().equals("GRATUITO")) {
-                throw new RuntimeException("Limite de 30 pedidos mensais atingido! Pague o excedente (R$ 1,49/pedido) ou assine o Plano Delivery PRO.");
+                throw new PedidoLimitException("Limite de pedidos mensais atingido! O pedido não pode ser salvo até que o limite seja liberado.", restaurante.getPedidosMesAtual(), hardLimit);
             }
         }
 
@@ -202,9 +207,20 @@ public class PedidoService {
     public Map<StatusPedido, List<Pedido>> listarPedidosDeliveryPorStatus() {
         Restaurante restaurante = restauranteService.getRestauranteLogado();
         Map<StatusPedido, List<Pedido>> pedidosAgrupados = new HashMap<>();
+
+        // Buscamos pedidos PENDENTES, EM PREPARO e PRONTO PARA ENTREGA normalmente
         pedidosAgrupados.put(StatusPedido.PENDENTE, pedidoRepository.findByTipoAndStatusAndRestauranteId(TipoPedido.DELIVERY, StatusPedido.PENDENTE, restaurante.getId()));
         pedidosAgrupados.put(StatusPedido.EM_PREPARO, pedidoRepository.findByTipoAndStatusAndRestauranteId(TipoPedido.DELIVERY, StatusPedido.EM_PREPARO, restaurante.getId()));
         pedidosAgrupados.put(StatusPedido.PRONTO_PARA_ENTREGA, pedidoRepository.findByTipoAndStatusAndRestauranteId(TipoPedido.DELIVERY, StatusPedido.PRONTO_PARA_ENTREGA, restaurante.getId()));
+
+        // NOVO: Adicionamos pedidos retidos na coluna PENDENTE para que o PainelDelivery os exiba como "Novos Pedidos"
+        List<Pedido> pedidosPendentes = pedidosAgrupados.getOrDefault(StatusPedido.PENDENTE, new ArrayList<>());
+        pedidosPendentes.addAll(pedidoRepository.findByTipoAndStatusAndRestauranteId(TipoPedido.DELIVERY, StatusPedido.AGUARDANDO_PGTO_LIMITE, restaurante.getId()));
+
+        // Ordena para garantir que os mais novos apareçam primeiro
+        pedidosPendentes.sort(Comparator.comparing(Pedido::getDataHora).reversed());
+        pedidosAgrupados.put(StatusPedido.PENDENTE, pedidosPendentes);
+
         return pedidosAgrupados;
     }
 
@@ -215,6 +231,12 @@ public class PedidoService {
 
         if (!pedido.getRestaurante().getId().equals(restaurante.getId()) || pedido.getTipo() != TipoPedido.DELIVERY) {
             throw new SecurityException("Acesso negado.");
+        }
+
+        // BLOQUEIO: Pedido retido só pode ser CANCELADO (FINALIZADO).
+        // Qualquer tentativa de avançar (para PENDENTE ou EM_PREPARO) é bloqueada aqui.
+        if (pedido.getStatus() == StatusPedido.AGUARDANDO_PGTO_LIMITE && novoStatus != StatusPedido.FINALIZADO) {
+            throw new RuntimeException("Pedido retido! O limite deve ser pago antes de iniciar o preparo.");
         }
 
         if (novoStatus == StatusPedido.FINALIZADO && pedido.getTipoPagamento() == null) {
@@ -344,6 +366,10 @@ public class PedidoService {
         Restaurante restaurante = restauranteRepository.findById(dto.getRestauranteId())
                 .orElseThrow(() -> new RuntimeException("Restaurante não encontrado!"));
 
+        // NOVO: Regra de Monetização/Contador para pedidos de cliente final
+        int hardLimit = 3;
+        boolean limitReached = !restaurante.isLegacyFree() && restaurante.getPedidosMesAtual() >= hardLimit && restaurante.getPlano().equals("GRATUITO");
+
         Pedido novoPedido = new Pedido();
         novoPedido.setUuid(UUID.randomUUID());
         novoPedido.setRestaurante(restaurante);
@@ -351,7 +377,11 @@ public class PedidoService {
         novoPedido.setItens(new ArrayList<>());
         novoPedido.setTipo(TipoPedido.DELIVERY);
 
-        if (restaurante.isImpressaoDeliveryAtivada()) {
+        // CORREÇÃO CRÍTICA: Define o status baseado no limite
+        if (limitReached) {
+            // Se o limite foi atingido, o status é de RETENÇÃO
+            novoPedido.setStatus(StatusPedido.AGUARDANDO_PGTO_LIMITE);
+        } else if (restaurante.isImpressaoDeliveryAtivada()) {
             novoPedido.setStatus(StatusPedido.PENDENTE);
         } else {
             novoPedido.setStatus(StatusPedido.EM_PREPARO);
@@ -394,7 +424,37 @@ public class PedidoService {
 
         Pedido pedidoSalvo = pedidoRepository.save(novoPedido);
 
+        // Incrementa o contador APENAS se o pedido NÃO foi retido e está no plano GRATUITO.
+        if (!limitReached && restaurante.getPlano().equals("GRATUITO") && !restaurante.isLegacyFree()) {
+            restaurante.setPedidosMesAtual(restaurante.getPedidosMesAtual() + 1);
+            restauranteRepository.save(restaurante);
+        }
+
         return pedidoSalvo;
+    }
+
+    @Transactional
+    public Pedido aceitarPedidoRetido(Long pedidoId) {
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
+        Pedido pedido = pedidoRepository.findById(pedidoId).orElseThrow(() -> new RuntimeException("Pedido não encontrado."));
+
+        if (!pedido.getRestaurante().getId().equals(restaurante.getId())) {
+            throw new SecurityException("Acesso negado.");
+        }
+
+        // Verifica se o pedido está no status correto antes de aceitar
+        if (pedido.getStatus() != StatusPedido.AGUARDANDO_PGTO_LIMITE) {
+            throw new RuntimeException("O pedido não está no status de retenção (AGUARDANDO_PGTO_LIMITE).");
+        }
+
+        // NOVO STATUS: PENDENTE (se a impressão estiver ativada) ou EM_PREPARO (se não)
+        StatusPedido novoStatus = restaurante.isImpressaoDeliveryAtivada() ? StatusPedido.PENDENTE : StatusPedido.EM_PREPARO;
+
+        pedido.setStatus(novoStatus);
+
+        // Não precisa manipular o contador de pedidos aqui, pois ele já foi ajustado pelo FinanceiroService.
+
+        return pedidoRepository.save(pedido);
     }
 
     public Pedido rastrearPedidoPorUuid(UUID uuid) {

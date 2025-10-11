@@ -1,5 +1,6 @@
 package br.com.frevonamesa.frevonamesa.config;
 
+import br.com.frevonamesa.frevonamesa.exception.PedidoLimitException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -21,6 +22,18 @@ public class GlobalExceptionHandler {
         Map<String, Object> body = new HashMap<>();
         body.put("timestamp", System.currentTimeMillis());
         body.put("message", ex.getMessage()); // A mensagem da sua RuntimeException ("Limite de 30 pedidos...")
+
+        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(PedidoLimitException.class)
+    public ResponseEntity<Object> handlePedidoLimitException(PedidoLimitException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", System.currentTimeMillis());
+        body.put("message", ex.getMessage());
+        body.put("errorCode", "PEDIDO_LIMIT_REACHED"); // Código para o frontend identificar
+        body.put("currentCount", ex.getCurrentCount());
+        body.put("limit", ex.getLimit());
 
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }

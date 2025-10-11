@@ -1,7 +1,8 @@
 import React from 'react';
 import PedidoDeliveryCard from './PedidoDeliveryCard';
 
-const Coluna = ({ titulo, pedidos, onStatusChange, onImprimir, userProfile }) => (
+// Adicione onOpenUpgradeModal como prop
+const Coluna = ({ titulo, pedidos, onStatusChange, onImprimir, userProfile, onOpenUpgradeModal }) => (
     <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3 flex-1 min-w-[300px]">
         <h3 className="font-bold text-tema-text dark:text-tema-text-dark mb-3">{titulo} ({pedidos.length})</h3>
         <div className="space-y-3">
@@ -13,6 +14,7 @@ const Coluna = ({ titulo, pedidos, onStatusChange, onImprimir, userProfile }) =>
                       onStatusChange={onStatusChange}
                       onImprimir={onImprimir}
                       userProfile={userProfile}
+                      onOpenUpgradeModal={onOpenUpgradeModal} // NOVO PROP PASSADO AQUI
                     />
                 ))
             ) : (
@@ -22,16 +24,19 @@ const Coluna = ({ titulo, pedidos, onStatusChange, onImprimir, userProfile }) =>
     </div>
 );
 
-const PainelDelivery = ({ pedidos, onStatusChange, onImprimir, userProfile }) => {
+// Adicione onOpenUpgradeModal como prop
+const PainelDelivery = ({ pedidos, onStatusChange, onImprimir, userProfile, onOpenUpgradeModal }) => {
     const pendentes = pedidos['PENDENTE'] || [];
     const emPreparo = pedidos['EM_PREPARO'] || [];
     const prontos = pedidos['PRONTO_PARA_ENTREGA'] || [];
 
     return (
         <div className="flex gap-4 overflow-x-auto pb-4">
-            <Coluna titulo="Novos Pedidos" pedidos={pendentes} onStatusChange={onStatusChange} onImprimir={onImprimir} userProfile={userProfile} />
-            <Coluna titulo="Em Preparo" pedidos={emPreparo} onStatusChange={onStatusChange} onImprimir={onImprimir} userProfile={userProfile} />
-            <Coluna titulo="Pronto para Entrega/Retirada" pedidos={prontos} onStatusChange={onStatusChange} />
+            {/* Passe o prop para cada coluna */}
+            <Coluna titulo="Novos Pedidos" pedidos={pendentes} onStatusChange={onStatusChange} onImprimir={onImprimir} userProfile={userProfile} onOpenUpgradeModal={onOpenUpgradeModal} />
+            <Coluna titulo="Em Preparo" pedidos={emPreparo} onStatusChange={onStatusChange} onImprimir={onImprimir} userProfile={userProfile} onOpenUpgradeModal={onOpenUpgradeModal} />
+            {/* O modal só é relevante nas colunas PENDENTE e EM PREPARO, mas passamos para ser seguro */}
+            <Coluna titulo="Pronto para Entrega/Retirada" pedidos={prontos} onStatusChange={onStatusChange} onOpenUpgradeModal={onOpenUpgradeModal} />
         </div>
     );
 };
