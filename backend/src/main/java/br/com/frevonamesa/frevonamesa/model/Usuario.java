@@ -1,7 +1,7 @@
 package br.com.frevonamesa.frevonamesa.model;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import jakarta.persistence.*;
+import jakarta.persistence.*; // Certifique-se de que este import está correto
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
@@ -14,7 +14,7 @@ import java.util.List;
 @Entity
 @Data
 @NoArgsConstructor
-public class Usuario implements UserDetails { // Implementa UserDetails para login
+public class Usuario implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,13 +29,15 @@ public class Usuario implements UserDetails { // Implementa UserDetails para log
     private String senha;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private Role role;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "restaurante_id", nullable = false)
-    @JsonBackReference
+    @JsonBackReference("restaurante-usuario")
     private Restaurante restaurante;
 
+    @Transient // NOVO: Garante que o JPA ignore este método e não interfira no Spring Security
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));

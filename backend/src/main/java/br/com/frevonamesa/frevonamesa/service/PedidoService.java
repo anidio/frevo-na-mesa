@@ -134,6 +134,14 @@ public class PedidoService {
     public Pedido criarPedidoDelivery(PedidoDeliveryRequestDTO dto) {
         Restaurante restaurante = restauranteService.getRestauranteLogado();
 
+        // Se o restaurante NÃO for LEGADO E atingiu o limite de 30 pedidos
+        if (!restaurante.isLegacyFree() && restaurante.getPedidosMesAtual() >= 5) {
+            // Se o plano for o gratuito (Frevo GO!), trava e informa sobre a cobrança
+            if (restaurante.getPlano().equals("GRATUITO")) {
+                throw new RuntimeException("Limite de 30 pedidos mensais atingido! Pague o excedente (R$ 1,49/pedido) ou assine o Plano Delivery PRO.");
+            }
+        }
+
         Pedido novoPedido = new Pedido();
         novoPedido.setRestaurante(restaurante);
         novoPedido.setDataHora(LocalDateTime.now());
@@ -184,6 +192,10 @@ public class PedidoService {
         novoPedido.setTotal(totalPedido);
 
         Pedido pedidoSalvo = pedidoRepository.save(novoPedido);
+
+        restaurante.setPedidosMesAtual(restaurante.getPedidosMesAtual() + 1);
+        restauranteRepository.save(restaurante);
+
         return pedidoSalvo;
     }
 
