@@ -49,7 +49,7 @@ const BottomNav = () => {
   const temDelivery = userProfile.tipo === 'APENAS_DELIVERY' || userProfile.tipo === 'MESAS_E_DELIVERY';
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-10">
       <div className="flex items-center gap-2 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm p-2 rounded-full shadow-lg border dark:border-gray-700">
         <NavItem icon={<HomeIcon />} label="Home" to="/" />
 

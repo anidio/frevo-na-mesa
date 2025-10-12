@@ -1,3 +1,5 @@
+// backend/src/main/java/br/com/frevonamesa/frevonamesa/config/SecurityConfig.java
+
 package br.com.frevonamesa.frevonamesa.config;
 
 import br.com.frevonamesa.frevonamesa.config.jwt.JwtRequestFilter;
@@ -55,8 +57,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/restaurante/configuracoes").hasRole("ADMIN")
                         .requestMatchers("/api/caixa/**").hasRole("ADMIN")
 
-                        // 🚨 ADICIONADO: Rotas para o FinanceiroController
-                        .requestMatchers("/api/financeiro/comprar-pedidos-extras").hasAnyRole("ADMIN", "CAIXA")
+                        // 🚨 ATUALIZADO: Rotas para o FinanceiroController
+                        .requestMatchers("/api/financeiro/status-plano").hasRole("ADMIN") // <-- ADICIONADO
+                        .requestMatchers("/api/financeiro/iniciar-pagamento").hasAnyRole("ADMIN", "CAIXA")
                         .requestMatchers("/api/financeiro/upgrade-pro").hasRole("ADMIN")
 
                         // 4. O resto das requisições

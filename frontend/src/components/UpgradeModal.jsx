@@ -52,7 +52,7 @@ const UpgradeModal = ({ onClose, limiteAtual, refreshProfile, onPedidoAceito }) 
 
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4" onClick={onClose}>
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-40 p-4" onClick={onClose}>
             <div className="bg-white dark:bg-tema-surface-dark rounded-xl shadow-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
                 <div className="p-6 md:p-8 text-center">
                     <h2 className="text-3xl font-extrabold text-tema-accent dark:text-red-400 mb-2">
