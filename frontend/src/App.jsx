@@ -19,6 +19,7 @@ import CardapioClientePage from './Pages/CardapioClientePage.jsx';
 import GerenciarAdicionaisPage from './Pages/GerenciarAdicionaisPage.jsx';
 import RastrearPedidoPage from './Pages/RastrearPedidoPage.jsx';
 import GerenciarUsuariosPage from './Pages/GerenciarUsuariosPage.jsx';
+import FinanceiroPage from './Pages/FinanceiroPage.jsx';
 
 const App = () => {
   return (
@@ -42,6 +43,7 @@ const App = () => {
             <Route path="admin/usuarios" element={<GerenciarUsuariosPage />} />
             <Route path="admin/relatorios" element={<RelatorioPage />} />
             <Route path="admin/configuracoes" element={<ConfiguracoesPage />} />
+            <Route path="admin/financeiro" element={<FinanceiroPage />} />
           </Route>
         </Route>
       </Routes>

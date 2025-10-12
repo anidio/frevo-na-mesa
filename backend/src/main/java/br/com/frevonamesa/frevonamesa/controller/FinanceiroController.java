@@ -1,3 +1,5 @@
+// backend/src/main/java/br/com/frevonamesa/frevonamesa/controller/FinanceiroController.java
+
 package br.com.frevonamesa.frevonamesa.controller;
 
 import br.com.frevonamesa.frevonamesa.model.Restaurante;
@@ -54,17 +56,26 @@ public class FinanceiroController {
      * Rota de recebimento de notificação.
      */
     @PostMapping("/webhook/mp")
-    public ResponseEntity<Void> receberNotificacaoMP(@RequestParam("id") String paymentId,
+    public ResponseEntity<Void> receberNotificacaoMP(@RequestParam("id") String resourceId,
                                                      @RequestParam("topic") String topic) {
 
-        // 🚨 CRÍTICO: Na vida real, esta rota faria a validação de segurança e buscaria o status do pagamento na API do MP.
+        System.out.println("WEBHOOK MP RECEBIDO: ID=" + resourceId + ", Tópico=" + topic);
 
-        System.out.println("WEBHOOK MP RECEBIDO: ID=" + paymentId + ", Tópico=" + topic);
+        try {
+            // A validação de segurança e a busca pelo status ocorrem DENTRO do service.
+            financeiroService.processarNotificacaoWebhook(resourceId, topic);
 
-        // Simulação de Sucesso: Na vida real, se o status for 'APROVADO', você chamaria:
-        // financeiroService.compensarLimite(restauranteId_obtido_do_webhook);
+            // Retorna 200 OK para o Mercado Pago, confirmando que a notificação foi recebida.
+            return ResponseEntity.ok().build();
 
-        return ResponseEntity.ok().build();
+        } catch (MPException | MPApiException e) {
+            // Em caso de falha (ex: API do MP inacessível), o MP irá re-enviar
+            System.err.println("ERRO CRÍTICO ao processar webhook MP: " + e.getMessage());
+            return ResponseEntity.status(500).build();
+        } catch (Exception e) {
+            System.err.println("ERRO INESPERADO ao processar webhook: " + e.getMessage());
+            return ResponseEntity.status(500).build();
+        }
     }
 
 
@@ -90,6 +101,17 @@ public class FinanceiroController {
         } catch (RuntimeException e) {
             // Captura outras exceções de regra de negócio (como usuário não encontrado)
             return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/status-plano")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> getStatusPlanoDetalhado() {
+        try {
+            Map<String, Object> status = restauranteService.getStatusPlanoDetalhado();
+            return ResponseEntity.ok(status);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
         }
     }
 }

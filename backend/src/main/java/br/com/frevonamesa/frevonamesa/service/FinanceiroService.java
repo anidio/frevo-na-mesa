@@ -1,3 +1,5 @@
+// backend/src/main/java/br/com/frevonamesa/frevonamesa/service/FinanceiroService.java
+
 package br.com.frevonamesa.frevonamesa.service;
 
 import br.com.frevonamesa.frevonamesa.model.Restaurante;
@@ -14,6 +16,10 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+// NOVOS IMPORTS
+import com.mercadopago.client.payment.PaymentClient;
+import com.mercadopago.resources.payment.Payment;
+// FIM NOVOS IMPORTS
 
 import java.math.BigDecimal;
 import java.util.Collections;
@@ -104,10 +110,64 @@ public class FinanceiroService {
         }
 
         // Subtrai 10 do contador atual para liberar a capacidade de pedidos
-        restaurante.setPedidosMesAtual(restaurante.getPedidosMesAtual() - PEDIDOS_POR_PACOTE);
+        // Usamos Math.max(0, ...) para garantir que o contador não fique negativo
+        restaurante.setPedidosMesAtual(Math.max(0, restaurante.getPedidosMesAtual() - PEDIDOS_POR_PACOTE));
 
         restauranteRepository.save(restaurante);
     }
+
+    /**
+     * NOVO MÉTODO CRÍTICO: Processa a notificação do Mercado Pago (Webhook).
+     */
+    @Transactional
+    public void processarNotificacaoWebhook(String resourceId, String topic) throws MPException, MPApiException {
+        if (!topic.equals("payment")) {
+            System.out.println("INFO: Webhook recebido com tópico diferente de 'payment': " + topic);
+            return;
+        }
+
+        PaymentClient paymentClient = new PaymentClient();
+
+        // 1. Busca os detalhes do pagamento na API do MP
+        Payment payment = paymentClient.get(Long.valueOf(resourceId));
+
+        // 2. Verifica se o pagamento foi aprovado
+        if (payment.getStatus().equals("approved")) {
+
+            // 3. Extrai metadados
+            Map<String, Object> metadata = payment.getMetadata();
+            // Mercado Pago API retorna os metadados como Object, fazemos o cast
+            Long restauranteId = (Long) metadata.get("restaurante_id");
+            String tipoProduto = (String) metadata.get("tipo_produto");
+
+            if (restauranteId == null || tipoProduto == null) {
+                System.err.println("ERRO: Metadados críticos (restaurante_id ou tipo_produto) ausentes no pagamento " + resourceId);
+                return;
+            }
+
+            // 4. Lógica de Compensação baseada no tipo de produto
+            if (tipoProduto.equals("PAY_PER_USE")) {
+                // Chama o método de compensação
+                compensarLimite(restauranteId);
+                System.out.println("SUCESSO: Compensação de limite PAY_PER_USE aplicada para o restaurante " + restauranteId);
+            } else if (tipoProduto.equals("PLANO_PRO")) {
+                // Atualiza o plano para PRO
+                Restaurante restaurante = restauranteRepository.findById(restauranteId)
+                        .orElseThrow(() -> new RuntimeException("Restaurante não encontrado na compensação PRO."));
+                restaurante.setPlano("DELIVERY_PRO");
+                // Zera o contador de pedidos
+                restaurante.setPedidosMesAtual(0);
+                restauranteRepository.save(restaurante);
+                System.out.println("SUCESSO: Upgrade para DELIVERY_PRO aplicado para o restaurante " + restauranteId);
+            } else {
+                System.out.println("INFO: Tipo de produto desconhecido: " + tipoProduto);
+            }
+
+        } else {
+            System.out.println("INFO: Pagamento não aprovado para o ID: " + resourceId + ". Status: " + payment.getStatus());
+        }
+    }
+
 
     /**
      * NOVO MÉTODO: Gera a URL de Upgrade para o Plano PRO.

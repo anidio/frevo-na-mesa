@@ -17,6 +17,12 @@ const UsersIcon = () => (
     </svg>
 );
 
+const DollarIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8v1m0 8v1m-6-9h12a2 2 0 012 2v8a2 2 0 01-2 2H6a2 2 0 01-2-2v-8a2 2 0 012-2z" />
+    </svg>
+);
+
 const AdminCard = ({ to, title, description, icon }) => (
     <Link to={to} className="block bg-white dark:bg-tema-surface-dark p-6 rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 border border-gray-200 dark:border-gray-700 hover:border-tema-primary dark:hover:border-tema-primary">
         <div className="flex justify-center mb-4 text-tema-primary">{icon}</div>
@@ -28,16 +34,14 @@ const AdminCard = ({ to, title, description, icon }) => (
 const AdminPage = () => {
     return (
         <div className="w-full p-4 md:p-8 max-w-4xl mx-auto">
-            <div className="text-center mb-12">
-                <h1 className="text-4xl font-extrabold text-tema-text dark:text-tema-text-dark mb-2">Painel Administrativo</h1>
-                <p className="text-lg text-tema-text-muted dark:text-tema-text-muted-dark">Gerencie os recursos e visualize os dados do sistema.</p>
-            </div>
+            {/* ... (Header) */}
             <LinkCardapio />
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <AdminCard to="/admin/cardapio" title="Gerenciar Cardápio" description="Adicione, edite ou remova produtos do cardápio." icon={<MenuBookIcon />} />
                 <AdminCard to="/admin/adicionais" title="Gerenciar Adicionais" icon={<PlusCircleIcon />} description="Crie e edite os itens extras para seus produtos." />
                 <AdminCard to="/admin/usuarios" title="Gerenciar Usuários" icon={<UsersIcon />} description="Cadastre Garçons e Caixas e gerencie os acessos." />
                 <AdminCard to="/admin/relatorios" title="Relatórios de Vendas" description="Visualize o faturamento do dia, mesas e delivery." icon={<ChartBarIcon />} />
+                <AdminCard to="/admin/financeiro" title="Plano e Cobrança" description="Gerencie seu plano, limites e pagamentos de pedidos extras." icon={<DollarIcon />} /> {/* NOVO CARD */}
                 <AdminCard to="/admin/configuracoes" title="Configurações" description="Ajuste as preferências de impressão e do sistema." icon={<SettingsIcon />} />
             </div>
         </div>

@@ -11,9 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal; // 4. Importar BigDecimal
-import java.util.ArrayList; // 5. Importar ArrayList
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream; // 6. Importar IntStream
 
@@ -125,6 +123,30 @@ public class RestauranteService {
         restaurante.setWhatsappNumber(settingsDTO.getWhatsappNumber()); // Corrigido
         restauranteRepository.save(restaurante);
         return getPerfilLogado();
+    }
+
+    public Map<String, Object> getStatusPlanoDetalhado() {
+        Restaurante restaurante = getRestauranteLogado();
+
+        // Lógica para determinar o status do limite de pedidos
+        int limitePedidos = 5; // Limite fixo do plano GRATUITO para Delivery
+        int pedidosCompensados = Math.max(0, limitePedidos - restaurante.getPedidosMesAtual());
+        boolean limiteAtingido = restaurante.getPlano().equals("GRATUITO") && !restaurante.isLegacyFree() && restaurante.getPedidosMesAtual() >= limitePedidos;
+
+        Map<String, Object> status = new HashMap<>();
+        status.put("planoAtual", restaurante.getPlano());
+        status.put("isLegacyFree", restaurante.isLegacyFree());
+        status.put("limiteMesas", restaurante.getLimiteMesas());
+        status.put("limiteUsuarios", restaurante.getLimiteUsuarios());
+
+        // Informações de Pedidos Delivery (Pay-per-Use)
+        status.put("pedidosMesAtual", restaurante.getPedidosMesAtual());
+        status.put("limitePedidosGratuito", limitePedidos);
+        status.put("pedidosRestantesCompensados", pedidosCompensados); // Quantos pedidos o pagamento de Pay-per-Use liberou
+        status.put("limiteAtingido", limiteAtingido);
+        status.put("statusPagamentos", "Assinatura PRO não implementada no MP."); // Placeholder para status de assinaturas futuras
+
+        return status;
     }
 
     public CardapioPublicoDTO getCardapioPublico(Long restauranteId) {
