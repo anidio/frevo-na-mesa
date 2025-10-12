@@ -16,17 +16,20 @@ const CategoriaModal = ({ categoria, onClose, onSave }) => {
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-            <div className="bg-white dark:bg-tema-surface-dark rounded-lg shadow-xl p-6 w-full max-w-sm">
+            {/* CORREÇÃO: Fundo e borda do modal principal */}
+            <div className="bg-white dark:bg-tema-surface-dark rounded-lg shadow-xl p-6 w-full max-w-sm border dark:border-gray-700">
                 <h2 className="text-2xl font-bold text-tema-text dark:text-tema-text-dark mb-4">
                     {categoria ? 'Editar Categoria' : 'Nova Categoria'}
                 </h2>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome da Categoria</label>
+                    {/* CORREÇÃO: Cor do Label */}
+                    <label className="block text-sm font-medium text-gray-700 dark:text-tema-text-muted-dark">Nome da Categoria</label>
                     <input
                         type="text"
                         value={nome}
                         onChange={(e) => setNome(e.target.value)}
-                        className="mt-1 w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-800 dark:border-gray-600"
+                        // CORREÇÃO CRÍTICA: Cor do Input
+                        className="mt-1 w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-tema-text-dark"
                         autoFocus
                     />
                 </div>
@@ -150,6 +153,7 @@ const GerenciarCardapioPage = () => {
 
     const cardapioFiltrado = useMemo(() => {
         if (filtroCategoria === 'Todos') return cardapio;
+        // @ts-ignore
         return cardapio.filter(produto => produto.categoria.id === filtroCategoria);
     }, [cardapio, filtroCategoria]);
     
@@ -228,17 +232,37 @@ const GerenciarCardapioPage = () => {
 
             {isProdutoModalOpen && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+                    {/* Fundo do modal */}
                     <div className="bg-white dark:bg-tema-surface-dark rounded-lg shadow-xl p-6 w-full max-w-md space-y-4">
                         <h2 className="text-2xl font-bold text-tema-text dark:text-tema-text-dark">{produtoEmEdicao ? 'Editar Item' : 'Novo Item'}</h2>
-                        <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome</label><input type="text" name="nome" value={formState.nome} onChange={e => setFormState({...formState, nome: e.target.value})} className="mt-1 w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-800 dark:border-gray-600" /></div>
-                        <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Descrição</label><input type="text" name="descricao" value={formState.descricao} onChange={e => setFormState({...formState, descricao: e.target.value})} className="mt-1 w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-800 dark:border-gray-600" /></div>
-                        <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Preço</label><input type="number" name="preco" value={formState.preco} onChange={e => setFormState({...formState, preco: e.target.value})} className="mt-1 w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-800 dark:border-gray-600" /></div>
+                        
+                        {/* INPUT NOME */}
+                        <div><label className="block text-sm font-medium text-gray-700 dark:text-tema-text-muted-dark">Nome</label>
+                            <input type="text" name="nome" value={formState.nome} onChange={e => setFormState({...formState, nome: e.target.value})} 
+                                className="mt-1 w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-tema-text-dark" />
+                        </div>
+                        
+                        {/* INPUT DESCRIÇÃO */}
+                        <div><label className="block text-sm font-medium text-gray-700 dark:text-tema-text-muted-dark">Descrição</label>
+                            <input type="text" name="descricao" value={formState.descricao} onChange={e => setFormState({...formState, descricao: e.target.value})} 
+                                className="mt-1 w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-tema-text-dark" />
+                        </div>
+                        
+                        {/* INPUT PREÇO */}
+                        <div><label className="block text-sm font-medium text-gray-700 dark:text-tema-text-muted-dark">Preço</label>
+                            <input type="number" name="preco" value={formState.preco} onChange={e => setFormState({...formState, preco: e.target.value})} 
+                                className="mt-1 w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-tema-text-dark" />
+                        </div>
+                        
+                        {/* SELECT CATEGORIA */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Categoria</label>
-                            <select name="categoriaId" value={formState.categoriaId} onChange={e => setFormState({...formState, categoriaId: e.target.value})} className="mt-1 w-full p-2 border rounded-md bg-white dark:bg-gray-800 dark:border-gray-600">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-tema-text-muted-dark">Categoria</label>
+                            <select name="categoriaId" value={formState.categoriaId} onChange={e => setFormState({...formState, categoriaId: e.target.value})} 
+                                className="mt-1 w-full p-2 border rounded-md bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-tema-text-dark">
                                 {categorias.map(cat => <option key={cat.id} value={cat.id}>{cat.nome}</option>)}
                             </select>
                         </div>
+                        
                         <div className="flex justify-end gap-4 pt-4">
                             <button onClick={() => setIsProdutoModalOpen(false)} className="px-4 py-2 rounded-lg text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 font-semibold">Cancelar</button>
                             <button onClick={handleSalvarProduto} className="px-4 py-2 rounded-lg text-white bg-tema-primary hover:bg-opacity-80 font-semibold">Salvar</button>

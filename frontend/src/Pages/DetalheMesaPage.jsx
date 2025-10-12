@@ -121,9 +121,11 @@ const ProdutoCard = ({ produto, onAdicionar }) => {
       <div className="flex justify-between items-center mt-4">
         <p className="text-xl font-semibold text-tema-text dark:text-tema-text-dark">R$ {produto.preco.toFixed(2).replace('.', ',')}</p>
         <div className="flex items-center gap-2">
-          <button onClick={handleDecrease} className="bg-gray-200 dark:bg-gray-700 rounded-full w-8 h-8 font-bold text-lg flex items-center justify-center">-</button>
-          <span className="w-8 text-center font-bold">{quantidade}</span>
-          <button onClick={handleIncrease} className="bg-gray-200 dark:bg-gray-700 rounded-full w-8 h-8 font-bold text-lg flex items-center justify-center">+</button>
+          <button onClick={handleDecrease} className="bg-gray-200 dark:bg-gray-700 rounded-full w-8 h-8 font-bold text-lg flex items-center justify-center text-tema-text dark:text-tema-text-dark">-</button>
+          
+          <span className="w-8 text-center font-bold text-tema-text dark:text-tema-text-dark">{quantidade}</span>
+          
+          <button onClick={handleIncrease} className="bg-gray-200 dark:bg-gray-700 rounded-full w-8 h-8 font-bold text-lg flex items-center justify-center text-tema-text dark:text-tema-text-dark">+</button>
         </div>
         <button onClick={() => onAdicionar(produto, quantidade)} className="bg-tema-primary text-white font-bold py-2 px-3 rounded-lg hover:bg-opacity-80 transition-colors">Adicionar</button>
       </div>
@@ -279,8 +281,9 @@ const DetalheMesaPage = () => {
                         </button>
                       </div>
                     </div>
-                    <input type="text" placeholder="Adicionar observação..." value={item.observacao || ''} onChange={(e) => handleAtualizarObservacao(item.id, e.target.value)} className="mt-2 w-full text-xs p-1 border rounded bg-gray-50 dark:bg-gray-800 dark:border-gray-600 focus:ring-1 focus:ring-tema-primary focus:border-tema-primary" />
-                  </div>
+<input type="text" placeholder="Adicionar observação..." value={item.observacao || ''} onChange={(e) => handleAtualizarObservacao(item.id, e.target.value)} 
+    // 🚨 CORREÇÃO CRÍTICA AQUI
+    className="mt-2 w-full text-xs p-1 border rounded bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-tema-text-dark focus:ring-1 focus:ring-tema-primary focus:border-tema-primary" />                  </div>
                 ))}
               </div>
             )}

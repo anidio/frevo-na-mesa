@@ -136,7 +136,7 @@ public class PedidoService {
         Restaurante restaurante = restauranteService.getRestauranteLogado();
 
         // Limite fixo para demonstração
-        int hardLimit = 3;
+        int hardLimit = 30;
 
         // Se o restaurante NÃO for LEGADO E atingiu o limite de pedidos
         if (!restaurante.isLegacyFree() && restaurante.getPedidosMesAtual() >= hardLimit) {
@@ -367,7 +367,7 @@ public class PedidoService {
                 .orElseThrow(() -> new RuntimeException("Restaurante não encontrado!"));
 
         // NOVO: Regra de Monetização/Contador para pedidos de cliente final
-        int hardLimit = 3;
+        int hardLimit = 2;
         boolean limitReached = !restaurante.isLegacyFree() && restaurante.getPedidosMesAtual() >= hardLimit && restaurante.getPlano().equals("GRATUITO");
 
         Pedido novoPedido = new Pedido();

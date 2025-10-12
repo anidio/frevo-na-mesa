@@ -23,6 +23,24 @@ body.dark {
   @apply bg-tema-fundo-dark text-tema-text-dark;
 }
 
+/* 🚨 CORREÇÃO GLOBAL PARA FORMULÁRIOS NO DARK MODE */
+/* Garante que o texto, fundo e borda dos inputs sejam CLAROS quando o tema é DARK. */
+body.dark input,
+body.dark textarea,
+body.dark select {
+  /* text-tema-text-dark é o branco acinzentado */
+  /* bg-gray-800 e border-gray-600 dão contraste escuro */
+  @apply text-tema-text-dark bg-gray-800 border-gray-600;
+}
+
+/* Opcional: Garante que os placeholders (textos de sugestão) também fiquem visíveis */
+body.dark input::placeholder,
+body.dark textarea::placeholder {
+  @apply text-tema-text-muted-dark;
+}
+/* FIM CORREÇÃO GLOBAL */
+
+
 #root {
   min-height: 100vh;
   width: 100vw;

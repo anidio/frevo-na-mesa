@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import * as financeiroService from '../services/financeiroService'; 
 import { useAuth } from '../contexts/AuthContext';
 
-// Adicione a prop onPedidoAceito (função que aceita o pedido após o pagamento)
+// Adicione a prop onPedidoAceito
 const UpgradeModal = ({ onClose, limiteAtual, refreshProfile, onPedidoAceito }) => {
     const navigate = useNavigate();
     // Dados para o Pay-per-Use
@@ -12,41 +12,41 @@ const UpgradeModal = ({ onClose, limiteAtual, refreshProfile, onPedidoAceito }) 
     const custoPorPedido = 1.49;
     const custoPorPacote = (pedidosParaComprar * custoPorPedido).toFixed(2);
 
-    // LÓGICA ATUALIZADA: Ação de Upgrade (Assinatura)
+    // LÓGICA ATUALIZADA: Ação de Upgrade (AGORA REDIRECIONA PARA O MP)
     const handleUpgradePro = async () => {
         try {
-            await financeiroService.upgradeParaDeliveryPro(); 
-            await refreshProfile(); 
-            toast.success("Upgrade para o Plano Delivery PRO realizado com sucesso! Pedidos ilimitados ativados.");
+            // 1. Inicia o pagamento do Plano PRO e obtém o URL do MP
+            const upgradeUrl = await financeiroService.iniciarUpgradePro(); 
             
-            // AÇÃO CRÍTICA: Executa a aceitação do pedido retido
-            if (onPedidoAceito) {
-                onPedidoAceito();
-            }
+            toast.info("Redirecionando para o Checkout de Assinatura...");
+            onClose(); 
             
-            onClose();
+            // 2. Redireciona o usuário para o Checkout Pro (Sandbox)
+            window.open(upgradeUrl, '_blank');
+            
+            // Note: A compensação de limite será tratada de forma ASSÍNCRONA pelo WEBHOOK do MP.
+
         } catch (error) {
-            toast.error(error.message || "Erro ao realizar o Upgrade. Tente novamente.");
+            toast.error(error.message || "Erro ao iniciar o Upgrade. Verifique as credenciais.");
         }
     };
 
-    // LÓGICA ATUALIZADA: Ação de Pay-per-Use
+    // LÓGICA ATUALIZADA: Ação de Pay-per-Use (AGORA REDIRECIONA PARA O MP)
     const handlePayPerUse = async () => {
         try {
-            // Chamada simulada para compensar o limite
-            await financeiroService.comprarPacotePedidos(); 
-            await refreshProfile(); // Atualiza o perfil (contador)
+            // 1. Inicia o pagamento no Backend e obtém o URL do MP
+            const paymentUrl = await financeiroService.iniciarPagamentoPedidos(); 
             
-            toast.success(`${pedidosParaComprar} pedidos extras liberados!`);
+            toast.info("Redirecionando para o Checkout Seguro do Mercado Pago...");
+            onClose(); 
             
-            // NOVO: Executa a ação de aceite (se aplicável)
-            if (onPedidoAceito) {
-                onPedidoAceito();
-            }
+            // 2. Redireciona o usuário para o Checkout Pro (Sandbox)
+            window.open(paymentUrl, '_blank');
             
-            onClose();
+            // NOTE: A compensação de limite será tratada de forma ASSÍNCRONA pelo WEBHOOK do MP.
+            
         } catch (error) {
-             toast.error(error.message || "Erro ao processar a compra do pacote. Tente novamente.");
+             toast.error(error.message || "Erro ao iniciar o pagamento. Verifique as credenciais do Mercado Pago.");
         }
     };
 

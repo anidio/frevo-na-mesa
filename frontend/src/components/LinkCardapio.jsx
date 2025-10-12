@@ -22,7 +22,8 @@ const LinkCardapio = () => {
                 type="text" 
                 readOnly 
                 value={link}
-                className="w-full text-center bg-gray-100 dark:bg-gray-800 p-2 rounded-md border dark:border-gray-600"
+                // 🚨 CORREÇÃO CRÍTICA AQUI
+                className="w-full text-center bg-gray-100 dark:bg-gray-800 dark:border-gray-600 dark:text-tema-text-dark p-2 rounded-md border"
             />
             <button
                 onClick={handleCopyLink}
