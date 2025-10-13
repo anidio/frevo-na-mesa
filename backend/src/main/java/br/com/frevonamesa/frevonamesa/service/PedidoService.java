@@ -138,13 +138,15 @@ public class PedidoService {
         // Limite fixo para demonstração
         int hardLimit = 30;
 
-        // Se o restaurante NÃO for LEGADO E atingiu o limite de pedidos
-        if (!restaurante.isLegacyFree() && restaurante.getPedidosMesAtual() >= hardLimit) {
-            // Se o plano for o gratuito (Frevo GO!), trava e informa sobre a cobrança
-            // MANTEMOS A EXCEÇÃO AQUI PARA FORÇAR O MODAL NO FLUXO INTERNO (Novo Pedido)
-            if (restaurante.getPlano().equals("GRATUITO")) {
-                throw new PedidoLimitException("Limite de pedidos mensais atingido! O pedido não pode ser salvo até que o limite seja liberado.", restaurante.getPedidosMesAtual(), hardLimit);
-            }
+        // VERIFICAÇÃO DE LIMITE ATUALIZADA:
+        // O limite só é verificado se o plano for GRATUITO, e o usuário NÃO for Legacy Free NEM Beta Tester.
+        boolean shouldCheckLimit = restaurante.getPlano().equals("GRATUITO")
+                && !restaurante.isLegacyFree()
+                && !restaurante.isBetaTester();
+
+        if (shouldCheckLimit && restaurante.getPedidosMesAtual() >= hardLimit) {
+            // Lança a exceção para abrir o modal de pagamento no painel do staff.
+            throw new PedidoLimitException("Limite de pedidos mensais atingido! O pedido não pode ser salvo até que o limite seja liberado.", restaurante.getPedidosMesAtual(), hardLimit);
         }
 
         Pedido novoPedido = new Pedido();
@@ -198,8 +200,11 @@ public class PedidoService {
 
         Pedido pedidoSalvo = pedidoRepository.save(novoPedido);
 
-        restaurante.setPedidosMesAtual(restaurante.getPedidosMesAtual() + 1);
-        restauranteRepository.save(restaurante);
+        // INCREMENTO ATUALIZADO: Contabiliza APENAS se deve checar o limite e ele não foi atingido
+        if (shouldCheckLimit) {
+            restaurante.setPedidosMesAtual(restaurante.getPedidosMesAtual() + 1);
+            restauranteRepository.save(restaurante);
+        }
 
         return pedidoSalvo;
     }
@@ -368,7 +373,14 @@ public class PedidoService {
 
         // NOVO: Regra de Monetização/Contador para pedidos de cliente final
         int hardLimit = 2;
-        boolean limitReached = !restaurante.isLegacyFree() && restaurante.getPedidosMesAtual() >= hardLimit && restaurante.getPlano().equals("GRATUITO");
+        boolean isLimitedPlan = restaurante.getPlano().equals("GRATUITO");
+
+        // O limite só é verificado se NÃO for Legacy, NÃO for Beta Tester e for Plano GRATUITO.
+        boolean shouldCheckLimit = !restaurante.isLegacyFree()
+                && !restaurante.isBetaTester()
+                && isLimitedPlan;
+
+        boolean limitReached = shouldCheckLimit && restaurante.getPedidosMesAtual() >= hardLimit;
 
         Pedido novoPedido = new Pedido();
         novoPedido.setUuid(UUID.randomUUID());
@@ -424,8 +436,8 @@ public class PedidoService {
 
         Pedido pedidoSalvo = pedidoRepository.save(novoPedido);
 
-        // Incrementa o contador APENAS se o pedido NÃO foi retido e está no plano GRATUITO.
-        if (!limitReached && restaurante.getPlano().equals("GRATUITO") && !restaurante.isLegacyFree()) {
+        // Incrementa o contador APENAS se o restaurante DEVERIA ter limites e o limite NÃO foi atingido.
+        if (shouldCheckLimit && !limitReached) {
             restaurante.setPedidosMesAtual(restaurante.getPedidosMesAtual() + 1);
             restauranteRepository.save(restaurante);
         }

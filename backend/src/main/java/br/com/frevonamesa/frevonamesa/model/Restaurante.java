@@ -42,6 +42,9 @@ public class Restaurante {
     private String plano = "GRATUITO"; // Ex: GRATUITO, DELIVERY_PRO, PREMIUM
 
     @Column(nullable = false)
+    private boolean isBetaTester = false; // NOVO: Flag para Beta Tester
+
+    @Column(nullable = false)
     private boolean isLegacyFree = false; // TRUE para clientes piloto (Grandfathering)
 
     // Limites de uso do plano GRATUITO/FREE

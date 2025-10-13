@@ -35,7 +35,7 @@ public class UsuarioService {
 
         // Se o restaurante não for Legacy e o número atual for maior ou igual ao limite do plano, trava.
         // NOTE: O limiteUsuarios é definido no modelo Restaurante
-        if (!restaurante.isLegacyFree() && usuariosAtuais >= restaurante.getLimiteUsuarios()) {
+        if (!restaurante.isLegacyFree() && !restaurante.isBetaTester() && usuariosAtuais >= restaurante.getLimiteUsuarios()) {
             throw new RuntimeException("Limite de " + restaurante.getLimiteUsuarios() + " usuários ativos atingido! Atualize para o plano Salão PDV.");
         }
         // --- FIM VERIFICAÇÃO DE LIMITE ---

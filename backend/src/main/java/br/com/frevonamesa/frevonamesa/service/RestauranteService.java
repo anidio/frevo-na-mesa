@@ -110,6 +110,7 @@ public class RestauranteService {
         perfilDto.setLimiteUsuarios(restaurante.getLimiteUsuarios());
         perfilDto.setLimiteMesas(restaurante.getLimiteMesas());
         perfilDto.setLegacyFree(restaurante.isLegacyFree());
+        perfilDto.setBetaTester(restaurante.isBetaTester());
 
         return perfilDto;
     }
