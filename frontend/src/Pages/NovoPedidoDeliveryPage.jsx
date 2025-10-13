@@ -110,50 +110,50 @@ const NovoPedidoDeliveryPage = () => {
 
     // Envia o pedido para o backend
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        e.preventDefault();
 
-        if (itensPedido.length === 0) {
-            toast.warn('Adicione pelo menos um item ao pedido.');
-            return;
-        }
-        if (!cliente.nome || !cliente.telefone) {
-            toast.warn('Nome e Telefone do cliente são obrigatórios.');
-            return;
-        }
+        if (itensPedido.length === 0) {
+            toast.warn('Adicione pelo menos um item ao pedido.');
+            return;
+        }
+        if (!cliente.nome || !cliente.telefone) {
+            toast.warn('Nome e Telefone do cliente são obrigatórios.');
+            return;
+        }
 
-        const dadosDoPedido = {
-            nomeCliente: cliente.nome,
-            telefoneCliente: cliente.telefone,
-            enderecoCliente: cliente.endereco,
-            pontoReferencia: cliente.pontoReferencia,
-            itens: itensPedido.map(item => ({
-                produtoId: item.id,
-                quantidade: item.quantidade,
-                observacao: '' 
-            }))
-        };
+        const dadosDoPedido = {
+            nomeCliente: cliente.nome,
+            telefoneCliente: cliente.telefone,
+            enderecoCliente: cliente.endereco,
+            pontoReferencia: cliente.pontoReferencia,
+            itens: itensPedido.map(item => ({
+                produtoId: item.id,
+                quantidade: item.quantidade,
+                observacao: '' 
+            }))
+        };
 
-        try {
-            await apiClient.post('/api/pedidos/delivery', dadosDoPedido);
-            toast.success('Pedido de delivery criado com sucesso! (Contador incrementado)');
-            await refreshProfile(); 
-            navigate('/delivery'); 
-        } catch (error) {
-            // Log para diagnóstico futuro
-            console.error("ERRO CAPTURADO:", error);
-            
-            // Verifica a mensagem de erro: se o apiClient lançar "PEDIDO_LIMIT_REACHED" ou o erro 400
-            const errorMsg = String(error.message || error);
-    
-            // VERIFICAÇÃO FINAL: Detecta o erro customizado OU o erro HTTP que ele gera.
-            if (errorMsg.includes("PEDIDO_LIMIT_REACHED") || errorMsg.includes("400 Bad Request") || errorMsg.includes("400")) {
-                toast.warn("Limite de pedidos atingido! Realize o pagamento ou upgrade.");
-                setIsModalOpen(true); // ATIVA O MODAL
-            } else {
-                toast.error(errorMsg || 'Erro ao criar pedido de delivery.');
-            }
-        }
-    };
+        try {
+            await apiClient.post('/api/pedidos/delivery', dadosDoPedido);
+            toast.success('Pedido de delivery criado com sucesso! (Contador incrementado)');
+            await refreshProfile(); 
+            navigate('/delivery'); 
+        } catch (error) {
+            // Log para diagnóstico futuro
+            console.error("ERRO CAPTURADO:", error);
+            
+            // Verifica a mensagem de erro: se o apiClient lançar "PEDIDO_LIMIT_REACHED" ou o erro 400
+            const errorMsg = String(error.message || error);
+    
+            // VERIFICAÇÃO FINAL: Detecta o erro customizado OU o erro HTTP que ele gera.
+            if (errorMsg.includes("PEDIDO_LIMIT_REACHED") || errorMsg.includes("400 Bad Request") || errorMsg.includes("400")) {
+                toast.warn("Limite de pedidos atingido! Realize o pagamento ou upgrade.");
+                setIsModalOpen(true); // ATIVA O MODAL
+            } else {
+                toast.error(errorMsg || 'Erro ao criar pedido de delivery.');
+            }
+        }
+    };
     
     // CORREÇÃO: Classe de input unificada
     const inputClass = "mt-1 w-full p-2 border rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-tema-text-dark";

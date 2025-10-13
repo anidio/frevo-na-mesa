@@ -1,6 +1,7 @@
 package br.com.frevonamesa.frevonamesa.service;
 
 import br.com.frevonamesa.frevonamesa.model.Restaurante;
+import br.com.frevonamesa.frevonamesa.model.TipoPagamento;
 import br.com.frevonamesa.frevonamesa.repository.RestauranteRepository;
 import com.mercadopago.MercadoPagoConfig;
 import com.mercadopago.client.preference.PreferenceClient;
@@ -13,6 +14,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import com.mercadopago.client.payment.PaymentClient;
@@ -34,6 +36,7 @@ public class FinanceiroService {
     private RestauranteRepository restauranteRepository;
 
     // NOVO: Precisamos injetar o PedidoService para finalizar a ordem após o pagamento
+    @Lazy
     @Autowired
     private PedidoService pedidoService;
 

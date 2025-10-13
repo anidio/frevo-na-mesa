@@ -65,6 +65,7 @@ const CardapioClientePage = () => {
     const [produtoSelecionado, setProdutoSelecionado] = useState(null);
     const [abaAtiva, setAbaAtiva] = useState('cardapio'); 
     const [pedidosDoDia, setPedidosDoDia] = useState([]); 
+    const [tipoPagamentoSelecionado, setTipoPagamentoSelecionado] = useState('ONLINE'); // Estado para a escolha do cliente
     const navigate = useNavigate();
 
     // Busca o cardápio público
@@ -139,39 +140,68 @@ const CardapioClientePage = () => {
                 produtoId: item.produtoId, 
                 quantidade: item.quantidade,
                 observacao: item.observacao,
-                adicionaisIds: [], // Placeholder (Adicionais não estão implementados no DTO)
+                adicionaisIds: [], // Placeholder
             }))
         };
         
         try {
-            // CHAMADA AO NOVO ENDPOINT DE PAGAMENTO
-            const response = await apiClient.post('/api/publico/pagar/delivery', pedidoParaApi);
-            const { paymentUrl } = response;
-            
-            toast.info("Redirecionando para o pagamento seguro...");
-            
-            // O pedido é salvo no banco em status AGUARDANDO_PGTO_LIMITE e será confirmado pelo webhook.
-            // Aqui, salvamos um placeholder para o rastreamento, já que o UUID é gerado no backend antes de ir para o MP.
-            const placeholderPedido = { 
-                uuid: 'pending', // Usamos um placeholder, o rastreio real virá por email
-                data: new Date().toLocaleTimeString('pt-BR'), 
-                total: totalCarrinho,
-                itens: carrinho.map(item => `${item.quantidade}x ${item.nome}`)
-            };
-            
-            // 1. Salva o novo pedido na lista do dia no localStorage
-            const updatedPedidos = [placeholderPedido, ...pedidosDoDia];
-            setPedidosDoDia(updatedPedidos);
-            localStorage.setItem(`pedidosDia_${restauranteId}`, JSON.stringify(updatedPedidos));
+            if (tipoPagamentoSelecionado === 'ONLINE') {
+                // FLUXO 1: PAGAR AGORA (Redireciona para o Mercado Pago)
+                const response = await apiClient.post('/api/publico/pagar/delivery', pedidoParaApi);
+                const { paymentUrl } = response;
+                
+                toast.info("Redirecionando para o pagamento seguro...");
+                
+                // O pedido é salvo no banco em status AGUARDANDO_PGTO_LIMITE e será confirmado pelo webhook.
+                const placeholderPedido = { 
+                    uuid: 'pending', // Usamos um placeholder
+                    data: new Date().toLocaleTimeString('pt-BR'), 
+                    total: totalCarrinho,
+                    itens: carrinho.map(item => `${item.quantidade}x ${item.nome}`)
+                };
+                
+                // 1. Salva o novo pedido na lista do dia no localStorage
+                const updatedPedidos = [placeholderPedido, ...pedidosDoDia];
+                setPedidosDoDia(updatedPedidos);
+                localStorage.setItem(`pedidosDia_${restauranteId}`, JSON.stringify(updatedPedidos));
 
-            setCarrinho([]);
-            setIsCarrinhoOpen(false);
+                setCarrinho([]);
+                setIsCarrinhoOpen(false);
 
-            // REDIRECIONAMENTO CRÍTICO PARA O CHECKOUT
-            window.location.href = paymentUrl;
+                // REDIRECIONAMENTO CRÍTICO PARA O CHECKOUT
+                window.location.href = paymentUrl;
+
+            } else {
+                // FLUXO 2: PAGAR NA ENTREGA (Salva diretamente, usa o endpoint antigo/reabilitado)
+                
+                // Monta a URL com o tipo de pagamento offline
+                const endpoint = `/api/publico/pedido/delivery?pagamento=${tipoPagamentoSelecionado}`;
+                
+                const novoPedido = await apiClient.post(endpoint, pedidoParaApi);
+                
+                toast.success(`Pedido #${novoPedido.id} enviado! Pagamento na entrega: ${tipoPagamentoSelecionado}`);
+                
+                // Lógica de Salvamento e Rastreamento (com UUID real do backend)
+                if (novoPedido && novoPedido.uuid) {
+                    const novoPedidoComDetalhes = { 
+                        uuid: novoPedido.uuid, 
+                        data: new Date().toLocaleTimeString('pt-BR'), 
+                        total: totalCarrinho,
+                        itens: carrinho.map(item => `${item.quantidade}x ${item.nome}`)
+                    };
+                    const updatedPedidos = [novoPedidoComDetalhes, ...pedidosDoDia];
+                    setPedidosDoDia(updatedPedidos);
+                    localStorage.setItem(`pedidosDia_${restauranteId}`, JSON.stringify(updatedPedidos));
+                }
+
+                setCarrinho([]);
+                setIsCarrinhoOpen(false);
+                setAbaAtiva('acompanhar');
+            }
+
 
         } catch (err) {
-            const errorMsg = err.message || "Houve um erro ao iniciar o pagamento.";
+            const errorMsg = err.message || "Houve um erro ao enviar seu pedido. Tente novamente.";
             toast.error(errorMsg);
         }
     };
@@ -310,9 +340,26 @@ const CardapioClientePage = () => {
                             <input type="text" name="telefoneCliente" value={dadosCliente.telefoneCliente} onChange={handleInputChange} placeholder="* Telefone / WhatsApp" className="w-full p-3 border rounded-lg" />
                             <input type="text" name="enderecoCliente" value={dadosCliente.enderecoCliente} onChange={handleInputChange} placeholder="* Endereço para Entrega" className="w-full p-3 border rounded-lg" />
                             <input type="text" name="pontoReferencia" value={dadosCliente.pontoReferencia} onChange={handleInputChange} placeholder="Ponto de referência (opcional)" className="w-full p-3 border rounded-lg" />
+                            
+                            {/* NOVO: SELETOR DE PAGAMENTO */}
+                            <div className="mt-6">
+                                <label className="block text-sm font-bold text-tema-text dark:text-tema-text-dark mb-2">Forma de Pagamento:</label>
+                                <select
+                                    value={tipoPagamentoSelecionado}
+                                    onChange={(e) => setTipoPagamentoSelecionado(e.target.value)}
+                                    className="w-full p-3 border rounded-lg bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-tema-text-dark"
+                                >
+                                    <option value="ONLINE">💳 PIX ou Cartão AGORA</option>
+                                    <option value="DINHEIRO">💰 Dinheiro na Entrega</option>
+                                    <option value="CARTAO_DEBITO">📳 Cartão/Maquineta (Débito)</option>
+                                    <option value="CARTAO_CREDITO">📳 Cartão/Maquineta (Crédito)</option>
+                                    <option value="PIX">Pix na Entrega (Informar Chave)</option>
+                                </select>
+                            </div>
                         </div>
                         <button onClick={handleEnviarPedido} className="w-full mt-6 py-3 rounded-lg font-bold text-white bg-green-600 hover:bg-green-700">
-                            Pagar Pedido com PIX/Cartão
+                            {/* TEXTO CONDICIONAL */}
+                            {tipoPagamentoSelecionado === 'ONLINE' ? 'Pagar e Finalizar Agora' : 'Enviar Pedido (Pagar na Entrega)'}
                         </button>
                     </div>
                 </div>

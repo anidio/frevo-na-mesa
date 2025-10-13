@@ -4,6 +4,7 @@ import br.com.frevonamesa.frevonamesa.dto.CardapioPublicoDTO;
 import br.com.frevonamesa.frevonamesa.dto.PedidoClienteDTO;
 import br.com.frevonamesa.frevonamesa.dto.PedidoDeliveryClienteDTO;
 import br.com.frevonamesa.frevonamesa.model.Pedido;
+import br.com.frevonamesa.frevonamesa.model.TipoPagamento;
 import br.com.frevonamesa.frevonamesa.service.PedidoService;
 import br.com.frevonamesa.frevonamesa.service.RestauranteService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,26 +53,40 @@ public class PublicController {
         }
     }
 
-    @PostMapping("/pedido/delivery")
-    public ResponseEntity<Pedido> criarPedidoDeliveryCliente(@RequestBody PedidoDeliveryClienteDTO pedidoDTO) {
+    @PostMapping("/pedido/delivery") // Reabilitado para Salvar Pedido Offline
+    public ResponseEntity<Pedido> criarPedidoDeliveryCliente(@RequestBody PedidoDeliveryClienteDTO pedidoDTO,
+                                                             @RequestParam(value = "pagamento", required = false) String pagamento) {
         try {
-            Pedido novoPedido = pedidoService.criarPedidoDeliveryCliente(pedidoDTO);
+            // O tipo de pagamento é passado como parâmetro na URL do frontend.
+            TipoPagamento tipoPgto = TipoPagamento.valueOf(pagamento);
+
+            Pedido novoPedido = pedidoService.salvarPedidoDeliveryCliente(pedidoDTO, tipoPgto);
             return ResponseEntity.status(201).body(novoPedido);
+        } catch (IllegalArgumentException e) {
+            // Se o 'pagamento' não for válido (ex: PIX), ele cai aqui.
+            return ResponseEntity.badRequest().body(null);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
     }
 
+    // O endpoint /pedido/delivery FOI REMOVIDO/SUBSTITUÍDO
+    // pela lógica de Pagamento Online Integrado no /pagar/delivery abaixo.
+
     @PostMapping("/pagar/delivery") // NOVO ENDPOINT DE PAGAMENTO PÚBLICO
     public ResponseEntity<?> iniciarPagamentoDeliveryCliente(@RequestBody PedidoDeliveryClienteDTO pedidoDTO) {
         try {
-            // O PedidoService retorna a URL do Mercado Pago
+            // CORREÇÃO: O novo método no PedidoService retorna a URL do Mercado Pago
             String paymentUrl = pedidoService.iniciarPagamentoDeliveryCliente(pedidoDTO);
+
+            // O Controller retorna a URL dentro de um objeto JSON
             return ResponseEntity.ok(Map.of("paymentUrl", paymentUrl));
 
         } catch (RuntimeException e) {
+            // Captura RuntimeExceptions de regras de negócio (ex: produto não encontrado, total 0)
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
+            // Captura exceções do Mercado Pago (MPException/MPApiException)
             return ResponseEntity.status(500).body(Map.of("error", "Erro ao iniciar pagamento: " + e.getMessage()));
         }
     }
