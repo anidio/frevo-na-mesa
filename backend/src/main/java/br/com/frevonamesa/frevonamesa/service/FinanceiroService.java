@@ -1,5 +1,3 @@
-// backend/src/main/java/br/com/frevonamesa/frevonamesa/service/FinanceiroService.java
-
 package br.com.frevonamesa.frevonamesa.service;
 
 import br.com.frevonamesa.frevonamesa.model.Restaurante;
@@ -16,15 +14,15 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-// NOVOS IMPORTS
+
 import com.mercadopago.client.payment.PaymentClient;
 import com.mercadopago.resources.payment.Payment;
-// FIM NOVOS IMPORTS
 
 import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class FinanceiroService {
@@ -34,6 +32,10 @@ public class FinanceiroService {
 
     @Autowired
     private RestauranteRepository restauranteRepository;
+
+    // NOVO: Precisamos injetar o PedidoService para finalizar a ordem após o pagamento
+    @Autowired
+    private PedidoService pedidoService;
 
     @Value("${mp.access-token}")
     private String accessToken;
@@ -48,8 +50,14 @@ public class FinanceiroService {
 
     private static final int PEDIDOS_POR_PACOTE = 10;
     private static final BigDecimal CUSTO_PACOTE = new BigDecimal("14.90");
-    private static final BigDecimal CUSTO_PLANO_PRO = new BigDecimal("69.90"); // NOVO: Preço do Plano PRO
-    private static final int LIMITE_MESAS_PRO = 50;
+
+    // NOVAS CONSTANTES DE PREÇO (FASE II)
+    private static final BigDecimal CUSTO_DELIVERY_PRO = new BigDecimal("29.90");
+    private static final BigDecimal CUSTO_SALAO_PDV = new BigDecimal("35.90");
+    private static final BigDecimal CUSTO_PREMIUM = new BigDecimal("49.90");
+    private static final BigDecimal CUSTO_PREMIUM_ANUAL = new BigDecimal("499.00");
+
+    private static final int LIMITE_MESAS_PRO = 60;
 
     @PostConstruct
     public void init() {
@@ -117,7 +125,39 @@ public class FinanceiroService {
     }
 
     /**
-     * NOVO MÉTODO CRÍTICO: Processa a notificação do Mercado Pago (Webhook).
+     * NOVO: Gera a URL de checkout para um pedido público, usando um UUID temporário.
+     */
+    public String gerarUrlPagamentoPedidoPublico(UUID uuidPedido, BigDecimal totalPedido) throws MPException, MPApiException {
+        PreferenceItemRequest item = PreferenceItemRequest.builder()
+                .title("Pedido Delivery #"+uuidPedido.toString().substring(0, 8))
+                .quantity(1)
+                .unitPrice(totalPedido)
+                .build();
+
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("uuid_pedido", uuidPedido.toString());
+        metadata.put("tipo_produto", "PEDIDO_DELIVERY"); // NOVO TIPO DE PRODUTO
+
+        PreferenceRequest preferenceRequest = PreferenceRequest.builder()
+                .items(Collections.singletonList(item))
+                .notificationUrl(notificationUrl)
+                .metadata(metadata)
+                .externalReference(uuidPedido.toString())
+                .build();
+
+        PreferenceClient client = new PreferenceClient();
+        Preference preference = client.create(preferenceRequest);
+
+        if (sandboxMode) {
+            return preference.getSandboxInitPoint();
+        } else {
+            return preference.getInitPoint();
+        }
+    }
+
+
+    /**
+     * MÉTODO CRÍTICO CORRIGIDO: Processa a notificação do Mercado Pago (Webhook).
      */
     @Transactional
     public void processarNotificacaoWebhook(String resourceId, String topic) throws MPException, MPApiException {
@@ -140,67 +180,105 @@ public class FinanceiroService {
             Long restauranteId = (Long) metadata.get("restaurante_id");
             String tipoProduto = (String) metadata.get("tipo_produto");
 
+            // --- NOVO: Lógica para Pedido Público (Finaliza a ordem no banco) ---
+            if (tipoProduto != null && tipoProduto.equals("PEDIDO_DELIVERY")) {
+                UUID pedidoUuid = UUID.fromString((String) metadata.get("uuid_pedido"));
+
+                if (pedidoUuid != null) {
+                    // Assumimos PIX para pagamento online (simplificação do fluxo de demo)
+                    pedidoService.finalizarPedidoAprovado(pedidoUuid, payment.getPaymentMethodId().equals("pix") ? TipoPagamento.PIX : TipoPagamento.CARTAO_CREDITO);
+                    System.out.println("SUCESSO: Pagamento online de Pedido Delivery finalizado e enviado para preparo. UUID: " + pedidoUuid);
+                }
+                return; // Sai do webhook, pois a lógica de planos não se aplica a pedidos
+            }
+            // --- FIM LÓGICA DE PEDIDO PÚBLICO ---
+
+
             if (restauranteId == null || tipoProduto == null) {
                 System.err.println("ERRO: Metadados críticos (restaurante_id ou tipo_produto) ausentes no pagamento " + resourceId);
                 return;
             }
 
-            // 4. Lógica de Compensação baseada no tipo de produto
-            if (tipoProduto.equals("PAY_PER_USE")) {
-                // Chama o método de compensação
-                compensarLimite(restauranteId);
-                System.out.println("SUCESSO: Compensação de limite PAY_PER_USE aplicada para o restaurante " + restauranteId);
-            } else if (tipoProduto.equals("PLANO_PRO")) {
-                // Atualiza o plano para PRO
-                Restaurante restaurante = restauranteRepository.findById(restauranteId)
-                        .orElseThrow(() -> new RuntimeException("Restaurante não encontrado na compensação PRO."));
-                restaurante.setPlano("DELIVERY_PRO");
-                // Zera o contador de pedidos
-                restaurante.setPedidosMesAtual(0);
-                restauranteRepository.save(restaurante);
-                System.out.println("SUCESSO: Upgrade para DELIVERY_PRO aplicado para o restaurante " + restauranteId);
-            } else {
-                System.out.println("INFO: Tipo de produto desconhecido: " + tipoProduto);
+            Restaurante restaurante = restauranteRepository.findById(restauranteId).orElseThrow(() -> new RuntimeException("Restaurante não encontrado na compensação PRO."));
+
+            switch (tipoProduto) {
+                case "PAY_PER_USE":
+                    compensarLimite(restauranteId);
+                    break;
+                case "PLANO_DELIVERY_MENSAL":
+                    restaurante.setPlano("DELIVERY_PRO");
+                    restaurante.setDeliveryPro(true);
+                    restaurante.setSalaoPro(false);
+                    break;
+                case "PLANO_SALAO_MENSAL":
+                    restaurante.setPlano("SALÃO_PDV");
+                    restaurante.setDeliveryPro(false);
+                    restaurante.setSalaoPro(true);
+                    break;
+                case "PLANO_PREMIUM_MENSAL":
+                case "PLANO_PREMIUM_ANUAL":
+                    restaurante.setPlano("PREMIUM");
+                    restaurante.setDeliveryPro(true);
+                    restaurante.setSalaoPro(true);
+                    break;
+                default:
+                    System.out.println("INFO: Tipo de produto desconhecido: " + tipoProduto);
+                    return;
             }
 
+            // Lógica comum de atualização:
+            restaurante.setPedidosMesAtual(0);
+            restauranteRepository.save(restaurante);
+            System.out.println("SUCESSO: Pagamento de " + tipoProduto + " aplicado para o restaurante " + restauranteId);
         } else {
             System.out.println("INFO: Pagamento não aprovado para o ID: " + resourceId + ". Status: " + payment.getStatus());
         }
     }
 
 
-    /**
-     * NOVO MÉTODO: Gera a URL de Upgrade para o Plano PRO.
-     */
-    public String gerarUrlUpgradePro(Long restauranteId) throws MPException, MPApiException {
-        // 1. Define o item (Assinatura)
+    // MÉTODO GENÉRICO PARA CRIAR PREFERÊNCIA DE PLANO (RECORRÊNCIA SIMULADA)
+    private String criarPreferenciaPlano(Long restauranteId, String planoNome, BigDecimal custo, String tipoProduto, String titulo) throws MPException, MPApiException {
         PreferenceItemRequest item = PreferenceItemRequest.builder()
-                .title("Assinatura Plano Delivery PRO - Mensal")
+                .title(titulo)
                 .quantity(1)
-                .unitPrice(CUSTO_PLANO_PRO)
+                .unitPrice(custo)
                 .build();
 
-        // 2. Metadados
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("restaurante_id", restauranteId);
-        metadata.put("tipo_produto", "PLANO_PRO");
+        metadata.put("tipo_produto", tipoProduto); // Tipo de produto que o Webhook usará
 
-        // 3. Cria a Preferência
         PreferenceRequest preferenceRequest = PreferenceRequest.builder()
                 .items(Collections.singletonList(item))
                 .notificationUrl(notificationUrl)
                 .metadata(metadata)
-                .externalReference(restauranteId.toString() + "_PRO")
+                .externalReference(restauranteId.toString() + "_" + planoNome)
                 .build();
 
         PreferenceClient client = new PreferenceClient();
         Preference preference = client.create(preferenceRequest);
 
-        // 4. Retorna a URL
         if (sandboxMode) {
             return preference.getSandboxInitPoint();
         } else {
             return preference.getInitPoint();
         }
+    }
+
+    // NOVOS MÉTODOS DE UPGRADE
+    public String gerarUrlUpgradeDeliveryMensal(Long restauranteId) throws MPException, MPApiException {
+        return criarPreferenciaPlano(restauranteId, "DELIVERY_M", CUSTO_DELIVERY_PRO, "PLANO_DELIVERY_MENSAL", "Plano Delivery PRO (Pedidos Ilimitados) - Mensal");
+    }
+
+    public String gerarUrlUpgradeSalaoMensal(Long restauranteId) throws MPException, MPApiException {
+        return criarPreferenciaPlano(restauranteId, "SALAO_M", CUSTO_SALAO_PDV, "PLANO_SALAO_MENSAL", "Plano Salão PDV (Mesas Ilimitadas) - Mensal");
+    }
+
+    public String gerarUrlUpgradePremiumMensal(Long restauranteId) throws MPException, MPApiException {
+        return criarPreferenciaPlano(restauranteId, "PREMIUM_M", CUSTO_PREMIUM, "PLANO_PREMIUM_MENSAL", "Plano Premium (Delivery + Salão) - Mensal");
+    }
+
+    public String gerarUrlUpgradePremiumAnual(Long restauranteId) throws MPException, MPApiException {
+        return criarPreferenciaPlano(restauranteId, "PREMIUM_A", CUSTO_PREMIUM_ANUAL, "PLANO_PREMIUM_ANUAL", "Plano Premium (Delivery + Salão) - Anual");
     }
 }

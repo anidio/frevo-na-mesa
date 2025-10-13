@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -58,6 +59,20 @@ public class PublicController {
             return ResponseEntity.status(201).body(novoPedido);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @PostMapping("/pagar/delivery") // NOVO ENDPOINT DE PAGAMENTO PÚBLICO
+    public ResponseEntity<?> iniciarPagamentoDeliveryCliente(@RequestBody PedidoDeliveryClienteDTO pedidoDTO) {
+        try {
+            // O PedidoService retorna a URL do Mercado Pago
+            String paymentUrl = pedidoService.iniciarPagamentoDeliveryCliente(pedidoDTO);
+            return ResponseEntity.ok(Map.of("paymentUrl", paymentUrl));
+
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Erro ao iniciar pagamento: " + e.getMessage()));
         }
     }
 }

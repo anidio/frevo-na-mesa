@@ -28,7 +28,6 @@ const ProdutoModal = ({ produto, onClose, onAddToCart }) => {
                     <p className="text-tema-text-muted dark:text-tema-text-muted-dark mt-2">{produto.descricao}</p>
                     <p className="text-2xl font-bold text-tema-text dark:text-tema-text-dark my-4">R$ {produto.preco.toFixed(2).replace('.', ',')}</p>
                     
-                    {/* CORREÇÃO TEMA: Input agora usa classes para Dark Mode */}
                     <textarea 
                         value={observacao} 
                         onChange={(e) => setObservacao(e.target.value)} 
@@ -64,8 +63,8 @@ const CardapioClientePage = () => {
     const [isCarrinhoOpen, setIsCarrinhoOpen] = useState(false);
     const [dadosCliente, setDadosCliente] = useState({ nomeCliente: '', telefoneCliente: '', enderecoCliente: '', pontoReferencia: '' });
     const [produtoSelecionado, setProdutoSelecionado] = useState(null);
-    const [abaAtiva, setAbaAtiva] = useState('cardapio'); // NOVO ESTADO: Abas Cardápio/Acompanhar
-    const [pedidosDoDia, setPedidosDoDia] = useState([]); // NOVO ESTADO: Pedidos do cliente no dia (armazenados localmente)
+    const [abaAtiva, setAbaAtiva] = useState('cardapio'); 
+    const [pedidosDoDia, setPedidosDoDia] = useState([]); 
     const navigate = useNavigate();
 
     // Busca o cardápio público
@@ -127,6 +126,11 @@ const CardapioClientePage = () => {
             toast.warn("Adicione itens ao carrinho.");
             return;
         }
+        if (totalCarrinho <= 0) {
+            toast.warn("O valor total do pedido deve ser maior que zero.");
+            return;
+        }
+
 
         const pedidoParaApi = {
             restauranteId: Number(restauranteId), // Garante que o ID seja um número
@@ -135,37 +139,40 @@ const CardapioClientePage = () => {
                 produtoId: item.produtoId, 
                 quantidade: item.quantidade,
                 observacao: item.observacao,
-                adicionaisIds: [], // Placeholder
+                adicionaisIds: [], // Placeholder (Adicionais não estão implementados no DTO)
             }))
         };
         
         try {
-            const novoPedido = await apiClient.post('/api/publico/pedido/delivery', pedidoParaApi);
-            toast.success("Pedido enviado com sucesso! Acompanhe as novidades pelo WhatsApp.");
+            // CHAMADA AO NOVO ENDPOINT DE PAGAMENTO
+            const response = await apiClient.post('/api/publico/pagar/delivery', pedidoParaApi);
+            const { paymentUrl } = response;
             
-            // Lógica de Salvamento e Rastreamento
-            if (novoPedido && novoPedido.uuid) {
-                const novoPedidoComDetalhes = { 
-                    uuid: novoPedido.uuid, 
-                    data: new Date().toLocaleTimeString('pt-BR'), 
-                    total: totalCarrinho,
-                    itens: carrinho.map(item => `${item.quantidade}x ${item.nome}`)
-                };
-                
-                // 1. Salva o novo pedido na lista do dia no localStorage
-                const updatedPedidos = [novoPedidoComDetalhes, ...pedidosDoDia]; // Coloca o mais novo em primeiro
-                setPedidosDoDia(updatedPedidos);
-                localStorage.setItem(`pedidosDia_${restauranteId}`, JSON.stringify(updatedPedidos));
-                
-                // 2. Muda para a aba de acompanhamento
-                setAbaAtiva('acompanhar');
-            }
+            toast.info("Redirecionando para o pagamento seguro...");
             
+            // O pedido é salvo no banco em status AGUARDANDO_PGTO_LIMITE e será confirmado pelo webhook.
+            // Aqui, salvamos um placeholder para o rastreamento, já que o UUID é gerado no backend antes de ir para o MP.
+            const placeholderPedido = { 
+                uuid: 'pending', // Usamos um placeholder, o rastreio real virá por email
+                data: new Date().toLocaleTimeString('pt-BR'), 
+                total: totalCarrinho,
+                itens: carrinho.map(item => `${item.quantidade}x ${item.nome}`)
+            };
+            
+            // 1. Salva o novo pedido na lista do dia no localStorage
+            const updatedPedidos = [placeholderPedido, ...pedidosDoDia];
+            setPedidosDoDia(updatedPedidos);
+            localStorage.setItem(`pedidosDia_${restauranteId}`, JSON.stringify(updatedPedidos));
+
             setCarrinho([]);
             setIsCarrinhoOpen(false);
 
+            // REDIRECIONAMENTO CRÍTICO PARA O CHECKOUT
+            window.location.href = paymentUrl;
+
         } catch (err) {
-            toast.error("Houve um erro ao enviar seu pedido. Tente novamente. Se o limite foi atingido, o pedido ficará retido até o restaurante liberar.");
+            const errorMsg = err.message || "Houve um erro ao iniciar o pagamento.";
+            toast.error(errorMsg);
         }
     };
 
@@ -220,7 +227,6 @@ const CardapioClientePage = () => {
                             {pedidosDoDia.map((p, index) => (
                                 <div key={p.uuid} className="bg-white dark:bg-tema-surface-dark p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex justify-between items-center">
                                     <div>
-                                        {/* Exibe o número do pedido baseado na ordem inversa de criação */}
                                         <p className="font-bold text-lg text-tema-text dark:text-tema-text-dark">Pedido #{pedidosDoDia.length - index} <span className="text-sm font-normal text-tema-text-muted dark:text-tema-text-muted-dark">({p.data})</span></p>
                                         <p className="text-sm text-tema-text-muted dark:text-tema-text-muted-dark">Total: R$ {p.total.toFixed(2).replace('.', ',')}</p>
                                         <ul className="text-xs text-tema-text-muted dark:text-tema-text-muted-dark list-disc list-inside pl-2">
@@ -257,7 +263,6 @@ const CardapioClientePage = () => {
                     <h1 className="text-2xl font-bold text-tema-text dark:text-tema-text-dark">{cardapio.nomeRestaurante}</h1>
                     <p className="text-sm text-tema-text-muted dark:text-tema-text-muted-dark">{cardapio.enderecoRestaurante}</p>
                     
-                    {/* NOVO: Abas de navegação */}
                     <div className="flex gap-4 mt-3 border-b dark:border-gray-700">
                         <button 
                             onClick={() => setAbaAtiva('cardapio')} 
@@ -301,14 +306,13 @@ const CardapioClientePage = () => {
                         </div>
                         <p className="text-xl font-bold mt-4 text-right dark:text-tema-text-dark">Total: R$ {totalCarrinho.toFixed(2).replace('.',',')}</p>
                         <div className="mt-6 space-y-4">
-                            {/* CORREÇÃO: INPUTS DO MODAL - Usam as classes de tema globais definidas no index.css */}
                             <input type="text" name="nomeCliente" value={dadosCliente.nomeCliente} onChange={handleInputChange} placeholder="* Seu Nome" className="w-full p-3 border rounded-lg" />
                             <input type="text" name="telefoneCliente" value={dadosCliente.telefoneCliente} onChange={handleInputChange} placeholder="* Telefone / WhatsApp" className="w-full p-3 border rounded-lg" />
                             <input type="text" name="enderecoCliente" value={dadosCliente.enderecoCliente} onChange={handleInputChange} placeholder="* Endereço para Entrega" className="w-full p-3 border rounded-lg" />
                             <input type="text" name="pontoReferencia" value={dadosCliente.pontoReferencia} onChange={handleInputChange} placeholder="Ponto de referência (opcional)" className="w-full p-3 border rounded-lg" />
                         </div>
                         <button onClick={handleEnviarPedido} className="w-full mt-6 py-3 rounded-lg font-bold text-white bg-green-600 hover:bg-green-700">
-                            Enviar Pedido
+                            Pagar Pedido com PIX/Cartão
                         </button>
                     </div>
                 </div>

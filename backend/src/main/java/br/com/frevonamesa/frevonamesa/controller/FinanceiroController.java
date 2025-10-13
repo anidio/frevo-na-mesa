@@ -79,28 +79,51 @@ public class FinanceiroController {
     }
 
 
-    /**
-     * Endpoint para iniciar o fluxo de Upgrade para o Plano PRO.
-     * Agora trata as exceções obrigatórias do Mercado Pago.
-     */
-    @PostMapping("/upgrade-pro")
+    @PostMapping("/upgrade/delivery-mensal")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> iniciarUpgradePro() {
+    public ResponseEntity<?> iniciarUpgradeDeliveryMensal() {
         try {
             Long restauranteId = restauranteService.getRestauranteLogado().getId();
+            String upgradeUrl = financeiroService.gerarUrlUpgradeDeliveryMensal(restauranteId);
+            return ResponseEntity.ok(Map.of("upgradeUrl", upgradeUrl));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Erro ao gerar pagamento: " + e.getMessage());
+        }
+    }
 
-            // A chamada para o método que usa o SDK precisa ser protegida
-            String upgradeUrl = financeiroService.gerarUrlUpgradePro(restauranteId);
+    @PostMapping("/upgrade/salao-mensal")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> iniciarUpgradeSalaoMensal() {
+        try {
+            Long restauranteId = restauranteService.getRestauranteLogado().getId();
+            String upgradeUrl = financeiroService.gerarUrlUpgradeSalaoMensal(restauranteId);
+            return ResponseEntity.ok(Map.of("upgradeUrl", upgradeUrl));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Erro ao gerar pagamento: " + e.getMessage());
+        }
+    }
 
-            Map<String, String> response = Map.of("upgradeUrl", upgradeUrl);
-            return ResponseEntity.ok(response);
+    @PostMapping("/upgrade/premium-mensal")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> iniciarUpgradePremiumMensal() {
+        try {
+            Long restauranteId = restauranteService.getRestauranteLogado().getId();
+            String upgradeUrl = financeiroService.gerarUrlUpgradePremiumMensal(restauranteId);
+            return ResponseEntity.ok(Map.of("upgradeUrl", upgradeUrl));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Erro ao gerar pagamento: " + e.getMessage());
+        }
+    }
 
-        } catch (MPException | MPApiException e) {
-            // Captura exceções lançadas pelo SDK do Mercado Pago
-            return ResponseEntity.status(500).body("Erro ao gerar pagamento de upgrade: " + e.getMessage());
-        } catch (RuntimeException e) {
-            // Captura outras exceções de regra de negócio (como usuário não encontrado)
-            return ResponseEntity.badRequest().body(e.getMessage());
+    @PostMapping("/upgrade/premium-anual")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> iniciarUpgradePremiumAnual() {
+        try {
+            Long restauranteId = restauranteService.getRestauranteLogado().getId();
+            String upgradeUrl = financeiroService.gerarUrlUpgradePremiumAnual(restauranteId);
+            return ResponseEntity.ok(Map.of("upgradeUrl", upgradeUrl));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Erro ao gerar pagamento: " + e.getMessage());
         }
     }
 
@@ -109,6 +132,9 @@ public class FinanceiroController {
     public ResponseEntity<Map<String, Object>> getStatusPlanoDetalhado() {
         try {
             Map<String, Object> status = restauranteService.getStatusPlanoDetalhado();
+            // Adicione aqui os status dos novos booleanos se desejar (opcional, mas bom para debug)
+            // status.put("isDeliveryPro", restauranteService.getRestauranteLogado().isDeliveryPro());
+            // status.put("isSalaoPro", restauranteService.getRestauranteLogado().isSalaoPro());
             return ResponseEntity.ok(status);
         } catch (RuntimeException e) {
             return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));

@@ -18,4 +18,6 @@ public class RestaurantePerfilDTO {
     private Integer limiteMesas;    // Limite para mesas criadas
     private boolean isLegacyFree;
     private boolean isBetaTester;
+    private boolean isDeliveryPro;
+    private boolean isSalaoPro;
 }

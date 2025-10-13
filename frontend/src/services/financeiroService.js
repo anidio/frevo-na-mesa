@@ -9,9 +9,22 @@ export const iniciarPagamentoPedidos = async () => {
     return response.paymentUrl;
 };
 
-// NOVO: Inicia o pagamento do Plano PRO e retorna a URL
-export const iniciarUpgradePro = async () => {
-    const response = await apiClient.post('/api/financeiro/upgrade-pro', {});
-    // O backend retorna { upgradeUrl: "..." }
+export const iniciarUpgradeDeliveryMensal = async () => {
+    const response = await apiClient.post('/api/financeiro/upgrade/delivery-mensal', {}); 
+    return response.upgradeUrl; 
+};
+
+export const iniciarUpgradeSalaoMensal = async () => {
+    const response = await apiClient.post('/api/financeiro/upgrade/salao-mensal', {}); 
+    return response.upgradeUrl; 
+};
+
+export const iniciarUpgradePremiumMensal = async () => {
+    const response = await apiClient.post('/api/financeiro/upgrade/premium-mensal', {}); 
+    return response.upgradeUrl; 
+};
+
+export const iniciarUpgradePremiumAnual = async () => {
+    const response = await apiClient.post('/api/financeiro/upgrade/premium-anual', {});
     return response.upgradeUrl; 
 };

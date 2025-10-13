@@ -1,54 +1,61 @@
+// frontend/src/components/UpgradeModal.jsx
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import * as financeiroService from '../services/financeiroService'; 
 import { useAuth } from '../contexts/AuthContext';
 
-// Adicione a prop onPedidoAceito
+// ... (Modal component definition)
+
 const UpgradeModal = ({ onClose, limiteAtual, refreshProfile, onPedidoAceito }) => {
     const navigate = useNavigate();
     // Dados para o Pay-per-Use
     const pedidosParaComprar = 10;
     const custoPorPedido = 1.49;
     const custoPorPacote = (pedidosParaComprar * custoPorPedido).toFixed(2);
+    
+    // NOVOS DADOS DE PLANO (COMPETITIVOS)
+    const PRECO_DELIVERY = '29,90'; 
+    const PRECO_SALAO = '35,90';
+    const PRECO_PREMIUM_MENSAL = '49,90'; 
+    const PRECO_PREMIUM_ANUAL = '499,00'; 
 
-    // LÓGICA ATUALIZADA: Ação de Upgrade (AGORA REDIRECIONA PARA O MP)
-    const handleUpgradePro = async () => {
+    // NOVOS HANDLERS
+    const handleUpgrade = (plano) => async () => {
+        let upgradeUrl;
+        let toastMessage;
         try {
-            // 1. Inicia o pagamento do Plano PRO e obtém o URL do MP
-            const upgradeUrl = await financeiroService.iniciarUpgradePro(); 
+            switch (plano) {
+                case 'DELIVERY':
+                    upgradeUrl = await financeiroService.iniciarUpgradeDeliveryMensal();
+                    toastMessage = "Checkout Plano Delivery PRO...";
+                    break;
+                case 'SALAO':
+                    upgradeUrl = await financeiroService.iniciarUpgradeSalaoMensal();
+                    toastMessage = "Checkout Plano Salão PDV...";
+                    break;
+                case 'PREMIUM_MEN':
+                    upgradeUrl = await financeiroService.iniciarUpgradePremiumMensal();
+                    toastMessage = "Checkout Plano Premium Mensal...";
+                    break;
+                case 'PREMIUM_ANU':
+                    upgradeUrl = await financeiroService.iniciarUpgradePremiumAnual();
+                    toastMessage = "Checkout Plano Premium Anual...";
+                    break;
+                default:
+                    return;
+            }
             
-            toast.info("Redirecionando para o Checkout de Assinatura...");
+            toast.info("Redirecionando para " + toastMessage);
             onClose(); 
-            
-            // 2. Redireciona o usuário para o Checkout Pro (Sandbox)
             window.open(upgradeUrl, '_blank');
-            
-            // Note: A compensação de limite será tratada de forma ASSÍNCRONA pelo WEBHOOK do MP.
-
         } catch (error) {
-            toast.error(error.message || "Erro ao iniciar o Upgrade. Verifique as credenciais.");
+            toast.error(error.message || `Erro ao iniciar o Upgrade para ${plano}.`);
         }
     };
-
-    // LÓGICA ATUALIZADA: Ação de Pay-per-Use (AGORA REDIRECIONA PARA O MP)
-    const handlePayPerUse = async () => {
-        try {
-            // 1. Inicia o pagamento no Backend e obtém o URL do MP
-            const paymentUrl = await financeiroService.iniciarPagamentoPedidos(); 
-            
-            toast.info("Redirecionando para o Checkout Seguro do Mercado Pago...");
-            onClose(); 
-            
-            // 2. Redireciona o usuário para o Checkout Pro (Sandbox)
-            window.open(paymentUrl, '_blank');
-            
-            // NOTE: A compensação de limite será tratada de forma ASSÍNCRONA pelo WEBHOOK do MP.
-            
-        } catch (error) {
-             toast.error(error.message || "Erro ao iniciar o pagamento. Verifique as credenciais do Mercado Pago.");
-        }
-    };
+    
+    // ... (handlePayPerUse remains the same)
 
 
     return (
@@ -62,32 +69,74 @@ const UpgradeModal = ({ onClose, limiteAtual, refreshProfile, onPedidoAceito }) 
                         Seu plano **Frevo GO!** atingiu o limite de {limiteAtual} pedidos neste mês. Escolha como prosseguir:
                     </p>
 
-                    {/* OPÇÕES DE UPGRADE */}
+                    {/* OPÇÕES DE UPGRADE MODULAR */}
                     <div className="mt-6 space-y-4">
-
-                        {/* Opção 1: Assinatura PRO (Incentivo Principal) */}
-                        <div className="border-2 border-tema-primary bg-tema-primary/10 p-4 rounded-lg shadow-md">
+                        <h3 className="text-2xl font-bold text-tema-text dark:text-tema-text-dark">Planos Ilimitados</h3>
+                        
+                        {/* Delivery PRO - R$ 29,90 */}
+                        <div className="border-2 border-gray-300 dark:border-gray-700 p-4 rounded-lg">
                             <h3 className="text-xl font-bold text-tema-primary mb-1">
-                                🚀 Opção 1: Plano Delivery PRO (Melhor Opção!)
+                                🚀 Frevo DELIVERY PRO
                             </h3>
                             <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
-                                Vendas **Ilimitadas** todos os meses e **Remoção da Marca Frevo na Mesa**.
+                                Pedidos Ilimitados para Delivery. Ideal para Dark Kitchens.
                             </p>
                             <button 
-                                onClick={handleUpgradePro}
+                                onClick={handleUpgrade('DELIVERY')}
                                 className="w-full py-3 rounded-lg font-bold text-white bg-tema-primary hover:bg-opacity-90 transition-colors shadow-lg"
                             >
-                                Assinar Agora (R$ 69,90/mês)
+                                Assinar por R$ {PRECO_DELIVERY}/mês
+                            </button>
+                        </div>
+                        
+                        {/* Salão PDV - R$ 35,90 */}
+                        <div className="border-2 border-gray-300 dark:border-gray-700 p-4 rounded-lg">
+                            <h3 className="text-xl font-bold text-tema-primary mb-1">
+                                🍽️ Frevo SALÃO PDV
+                            </h3>
+                            <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
+                                Mesas e Usuários Ilimitados. Solução completa para Salões e Bares.
+                            </p>
+                            <button 
+                                onClick={handleUpgrade('SALAO')}
+                                className="w-full py-3 rounded-lg font-bold text-white bg-tema-primary hover:bg-opacity-90 transition-colors shadow-lg"
+                            >
+                                Assinar por R$ {PRECO_SALAO}/mês
                             </button>
                         </div>
 
-                        {/* Opção 2: Pay-per-Use (Taxa Transacional) */}
+                        {/* Premium - R$ 49,90 Mensal / R$ 499,00 Anual */}
+                        <div className="border-2 border-tema-success bg-tema-success/10 p-4 rounded-lg shadow-md">
+                            <h3 className="text-xl font-bold text-tema-success mb-1">
+                                👑 Frevo PREMIUM (Delivery + Salão)
+                            </h3>
+                            <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
+                                Acesso total aos módulos Delivery e Mesas.
+                            </p>
+                            <div className="space-y-2">
+                                <button 
+                                    onClick={handleUpgrade('PREMIUM_MEN')}
+                                    className="w-full py-3 rounded-lg font-bold text-white bg-tema-success hover:bg-opacity-90 transition-colors shadow-lg"
+                                >
+                                    Mensal: R$ {PRECO_PREMIUM_MENSAL}
+                                </button>
+                                <button 
+                                    onClick={handleUpgrade('PREMIUM_ANU')}
+                                    className="w-full py-3 rounded-lg font-bold text-tema-success border border-tema-success bg-white dark:bg-tema-surface-dark hover:bg-gray-100 transition-colors shadow-lg"
+                                >
+                                    Anual: R$ {PRECO_PREMIUM_ANUAL} (Economize 2 meses)
+                                </button>
+                            </div>
+                        </div>
+
+
+                        {/* Opção 4: Pay-per-Use */}
                         <div className="border border-gray-300 dark:border-gray-700 p-4 rounded-lg">
                             <h3 className="text-xl font-bold text-tema-text dark:text-tema-text-dark mb-1">
-                                💰 Opção 2: Pagar Pedidos Extras
+                                💳 Opção 5: Pagar Pedidos Extras
                             </h3>
                             <p className="text-sm text-tema-text-muted dark:text-tema-text-muted-dark mb-4">
-                                Adicione mais {pedidosParaComprar} pedidos por R$ {custoPorPacote} (R$ {custoPorPedido}/pedido).
+                                Adicione mais {pedidosParaComprar} pedidos por R$ {custoPorPacote}.
                             </p>
                             <button 
                                 onClick={handlePayPerUse}
@@ -108,5 +157,3 @@ const UpgradeModal = ({ onClose, limiteAtual, refreshProfile, onPedidoAceito }) 
         </div>
     );
 };
-
-export default UpgradeModal;

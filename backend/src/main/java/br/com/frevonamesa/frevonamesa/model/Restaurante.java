@@ -47,9 +47,14 @@ public class Restaurante {
     @Column(nullable = false)
     private boolean isLegacyFree = false; // TRUE para clientes piloto (Grandfathering)
 
+    @Column(nullable = false)
+    private boolean isDeliveryPro = false; // Permite pedidos ilimitados
+    @Column(nullable = false)
+    private boolean isSalaoPro = false;
+
     // Limites de uso do plano GRATUITO/FREE
     private Integer limiteMesas = 10;
-    private Integer limiteUsuarios = 3;
+    private Integer limiteUsuarios = 4;
     private Integer pedidosMesAtual = 0; // Contador de pedidos para Pay-per-Use
 
     private String whatsappNumber;
