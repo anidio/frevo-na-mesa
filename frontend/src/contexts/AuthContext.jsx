@@ -19,6 +19,7 @@ export const AuthProvider = ({ children }) => {
         try {
             setLoadingProfile(true);
             const profileData = await restauranteService.getMeuPerfil();
+            // profileData AGORA CONTÉM isDeliveryPro e isSalaoPro
             setUserProfile(profileData);
         } catch (error) {
             console.error("Falha ao buscar perfil, fazendo logout.", error);

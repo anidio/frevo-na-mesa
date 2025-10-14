@@ -1,6 +1,7 @@
 // src/components/Footer.jsx
 
 import React from 'react';
+import { useAuth } from '../contexts/AuthContext'; // IMPORTAR AUTH
 
 // Ícone do Instagram atualizado para herdar a cor do texto
 const InstagramIcon = () => (
@@ -11,44 +12,61 @@ const InstagramIcon = () => (
 );
 
 const Footer = () => {
-  return (
-    <footer className="bg-gray-100 text-gray-600 py-8 px-4 dark:bg-tema-fundo-dark dark:text-tema-text-muted-dark">
-      <div className="container mx-auto text-center">
-        
-        {/* Branding da Empresa */}
-        <p className="text-sm font-semibold text-tema-text dark:text-tema-text-dark">
-          Este é um produto <span className="font-bold text-tema-primary dark:text-tema-link-dark">MangueBit Code</span>.
-        </p>
-        <p className="text-xs mt-1">
-          Criamos tecnologia sob medida para simplificar processos, aumentar resultados e impulsionar o seu negócio. Fale com a gente e descubra como podemos ajudar você.
-        </p>
+    const { userProfile, isLoggedIn } = useAuth();
+    
+    // Whitelabel é ativo se qualquer plano PRO/PREMIUM estiver ativo
+    const isWhitelabelActive = isLoggedIn && (userProfile?.isDeliveryPro || userProfile?.isSalaoPro);
 
-        {/* Link para o Instagram atualizado */}
-        <div className="mt-4">
-          <a 
-            href="https://www.instagram.com/nomedaempresa" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 p-2 rounded-lg transition-colors border-2 border-transparent hover:border-tema-primary dark:hover:border-tema-link-dark text-tema-primary dark:text-tema-link-dark"
-          >
-            <InstagramIcon />
-            <span className="font-bold">Siga-nos no Instagram!</span>
-          </a>
-        </div>
+    // Se o Whitelabel estiver ativo, o footer deve ser mínimo ou oculto
+    if (isWhitelabelActive) {
+        return (
+            <footer className="bg-gray-100 text-gray-600 py-4 px-4 dark:bg-tema-fundo-dark dark:text-tema-text-muted-dark">
+                <div className="container mx-auto text-center">
+                    <p className="text-xs mt-1">© 2025 Todos os direitos reservados.</p>
+                </div>
+            </footer>
+        );
+    }
+    
+    // Conteúdo original para planos GRATUITOS/deslogados
+    return (
+        <footer className="bg-gray-100 text-gray-600 py-8 px-4 dark:bg-tema-fundo-dark dark:text-tema-text-muted-dark">
+            <div className="container mx-auto text-center">
+                
+                {/* Branding da Empresa */}
+                <p className="text-sm font-semibold text-tema-text dark:text-tema-text-dark">
+                    Este é um produto <span className="font-bold text-tema-primary dark:text-tema-link-dark">MangueBit Code</span>.
+                </p>
+                <p className="text-xs mt-1">
+                    Criamos tecnologia sob medida para simplificar processos, aumentar resultados e impulsionar o seu negócio. Fale com a gente e descubra como podemos ajudar você.
+                </p>
 
-        {/* Informações de Contato */}
-        <div className="mt-4 border-t border-gray-300 dark:border-gray-700 pt-4">
-          <p className="text-xs">
-            Contato: contato@manguebitcode.com | (81) 99999-8888
-          </p>
-          <p className="text-xs mt-1">
-            © 2025 MagueBit Code. Todos os direitos reservados.
-          </p>
-        </div>
+                {/* Link para o Instagram atualizado */}
+                <div className="mt-4">
+                    <a 
+                        href="https://www.instagram.com/nomedaempresa" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 p-2 rounded-lg transition-colors border-2 border-transparent hover:border-tema-primary dark:hover:border-tema-link-dark text-tema-primary dark:text-tema-link-dark"
+                    >
+                        <InstagramIcon />
+                        <span className="font-bold">Siga-nos no Instagram!</span>
+                    </a>
+                </div>
 
-      </div>
-    </footer>
-  );
+                {/* Informações de Contato */}
+                <div className="mt-4 border-t border-gray-300 dark:border-gray-700 pt-4">
+                    <p className="text-xs">
+                        Contato: contato@manguebitcode.com | (81) 99999-8888
+                    </p>
+                    <p className="text-xs mt-1">
+                        © 2025 MagueBit Code. Todos os direitos reservados.
+                    </p>
+                </div>
+
+            </div>
+        </footer>
+    );
 };
 
 export default Footer;

@@ -66,6 +66,7 @@ const CardapioClientePage = () => {
     const [abaAtiva, setAbaAtiva] = useState('cardapio'); 
     const [pedidosDoDia, setPedidosDoDia] = useState([]); 
     const [tipoPagamentoSelecionado, setTipoPagamentoSelecionado] = useState('ONLINE'); // Estado para a escolha do cliente
+    const [taxaEntrega, setTaxaEntrega] = useState(0); // NOVO ESTADO: Taxa de entrega do restaurante
     const navigate = useNavigate();
 
     // Busca o cardápio público
@@ -74,6 +75,7 @@ const CardapioClientePage = () => {
             try {
                 const data = await apiClient.get(`/api/publico/cardapio/${restauranteId}`);
                 setCardapio(data);
+                setTaxaEntrega(data.taxaEntrega || 0); // NOVO: Puxa a taxa de entrega
             } catch (err) {
                 setError("Cardápio não encontrado ou indisponível.");
             } finally {
@@ -109,10 +111,17 @@ const CardapioClientePage = () => {
         const { name, value } = e.target;
         setDadosCliente(prev => ({ ...prev, [name]: value }));
     };
-
-    const totalCarrinho = useMemo(() => {
+    
+    // CALCULA O SUBTOTAL (Itens * Preço)
+    const subtotalCarrinho = useMemo(() => {
         return carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0);
     }, [carrinho]);
+
+    // CALCULA O TOTAL GERAL (Subtotal + Taxa de Entrega)
+    const totalCarrinho = useMemo(() => {
+        return subtotalCarrinho + taxaEntrega;
+    }, [subtotalCarrinho, taxaEntrega]);
+
 
     const totalItensCarrinho = useMemo(() => {
         return carrinho.reduce((acc, item) => acc + item.quantidade, 0);
@@ -152,15 +161,15 @@ const CardapioClientePage = () => {
                 
                 toast.info("Redirecionando para o pagamento seguro...");
                 
-                // O pedido é salvo no banco em status AGUARDANDO_PGTO_LIMITE e será confirmado pelo webhook.
+                // O pedido é salvo no banco em status AGUARDANDO_PGTO_LIMITE
                 const placeholderPedido = { 
-                    uuid: 'pending', // Usamos um placeholder
+                    uuid: 'pending', 
                     data: new Date().toLocaleTimeString('pt-BR'), 
                     total: totalCarrinho,
                     itens: carrinho.map(item => `${item.quantidade}x ${item.nome}`)
                 };
                 
-                // 1. Salva o novo pedido na lista do dia no localStorage
+                // Salva na lista do dia no localStorage
                 const updatedPedidos = [placeholderPedido, ...pedidosDoDia];
                 setPedidosDoDia(updatedPedidos);
                 localStorage.setItem(`pedidosDia_${restauranteId}`, JSON.stringify(updatedPedidos));
@@ -172,7 +181,7 @@ const CardapioClientePage = () => {
                 window.location.href = paymentUrl;
 
             } else {
-                // FLUXO 2: PAGAR NA ENTREGA (Salva diretamente, usa o endpoint antigo/reabilitado)
+                // FLUXO 2: PAGAR NA ENTREGA (Salva diretamente, usa o endpoint com query param)
                 
                 // Monta a URL com o tipo de pagamento offline
                 const endpoint = `/api/publico/pedido/delivery?pagamento=${tipoPagamentoSelecionado}`;
@@ -321,7 +330,7 @@ const CardapioClientePage = () => {
                     <div className="max-w-6xl mx-auto">
                         <button onClick={() => setIsCarrinhoOpen(true)} className="w-full bg-tema-primary text-white font-bold py-3 rounded-lg flex justify-between items-center px-4">
                             <span>Ver Sacola</span>
-                            <span>{totalItensCarrinho} itens - R$ {totalCarrinho.toFixed(2).replace('.', ',')}</span>
+                            <span>{totalItensCarrinho} itens - R$ {subtotalCarrinho.toFixed(2).replace('.', ',')}</span>
                         </button>
                     </div>
                 </div>
@@ -334,7 +343,21 @@ const CardapioClientePage = () => {
                         <div className="space-y-2 max-h-40 overflow-y-auto mb-4 border-b pb-4 dark:border-gray-700">
                             {carrinho.map(item => <p key={item.itemId} className="dark:text-tema-text-dark">{item.quantidade}x {item.nome} {item.observacao && `(${item.observacao})`}</p>)}
                         </div>
-                        <p className="text-xl font-bold mt-4 text-right dark:text-tema-text-dark">Total: R$ {totalCarrinho.toFixed(2).replace('.',',')}</p>
+                        
+                        {/* NOVO: DETALHES DE PREÇO */}
+                        <div className="text-sm dark:text-tema-text-dark">
+                            <div className="flex justify-between">
+                                <span>Subtotal:</span>
+                                <span>R$ {subtotalCarrinho.toFixed(2).replace('.',',')}</span>
+                            </div>
+                            <div className="flex justify-between font-bold text-lg pt-1">
+                                <span>Taxa de Entrega:</span>
+                                <span>R$ {taxaEntrega.toFixed(2).replace('.',',')}</span>
+                            </div>
+                        </div>
+                        
+                        <p className="text-xl font-bold mt-4 text-right dark:text-tema-text-dark border-t dark:border-gray-700 pt-2">Total: R$ {totalCarrinho.toFixed(2).replace('.',',')}</p>
+                        
                         <div className="mt-6 space-y-4">
                             <input type="text" name="nomeCliente" value={dadosCliente.nomeCliente} onChange={handleInputChange} placeholder="* Seu Nome" className="w-full p-3 border rounded-lg" />
                             <input type="text" name="telefoneCliente" value={dadosCliente.telefoneCliente} onChange={handleInputChange} placeholder="* Telefone / WhatsApp" className="w-full p-3 border rounded-lg" />

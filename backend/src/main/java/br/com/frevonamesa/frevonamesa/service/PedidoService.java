@@ -38,7 +38,6 @@ public class PedidoService {
     @Autowired private RestauranteRepository restauranteRepository;
     @Autowired private AdicionalRepository adicionalRepository;
 
-    // >>> INJEÇÃO DE DEPENDÊNCIA FALTANTE (Resolver o outro lado do ciclo)
     @Autowired
     private FinanceiroService financeiroService;
 
@@ -47,6 +46,12 @@ public class PedidoService {
 
     @Autowired
     private RestauranteService restauranteService;
+
+    // MÉTODO AUXILIAR para calcular o valor total do pedido com a taxa de entrega
+    private BigDecimal calcularTotalComFrete(Restaurante restaurante, BigDecimal subtotal) {
+        return subtotal.add(restaurante.getTaxaEntrega());
+    }
+
 
     @Transactional
     public Pedido criarPedido(PedidoRequestDTO dto) {
@@ -376,39 +381,6 @@ public class PedidoService {
     }
 
     /**
-     * ATUALIZADO: O método antigo criarPedidoDeliveryCliente foi removido.
-     */
-    // Método criarPedidoDeliveryCliente (antigo) não existe mais.
-
-    @Transactional
-    public Pedido aceitarPedidoRetido(Long pedidoId) {
-        Restaurante restaurante = restauranteService.getRestauranteLogado();
-        Pedido pedido = pedidoRepository.findById(pedidoId).orElseThrow(() -> new RuntimeException("Pedido não encontrado."));
-
-        if (!pedido.getRestaurante().getId().equals(restaurante.getId())) {
-            throw new SecurityException("Acesso negado.");
-        }
-
-        // Verifica se o pedido está no status correto antes de aceitar
-        if (pedido.getStatus() != StatusPedido.AGUARDANDO_PGTO_LIMITE) {
-            throw new RuntimeException("O pedido não está no status de retenção (AGUARDANDO_PGTO_LIMITE).");
-        }
-
-        // NOVO STATUS: PENDENTE (se a impressão estiver ativada) ou EM_PREPARO (se não)
-        StatusPedido novoStatus = restaurante.isImpressaoDeliveryAtivada() ? StatusPedido.PENDENTE : StatusPedido.EM_PREPARO;
-
-        pedido.setStatus(novoStatus);
-
-        // Não precisa manipular o contador de pedidos aqui, pois ele já foi ajustado pelo FinanceiroService.
-
-        return pedidoRepository.save(pedido);
-    }
-
-    public Pedido rastrearPedidoPorUuid(UUID uuid) {
-        return pedidoRepository.findByUuid(uuid).orElse(null);
-    }
-
-    /**
      * NOVO: Salva um pedido de cliente final com pagamento offline (DINHEIRO/CARTAO)
      * @param dto Dados do pedido.
      * @param tipoPagamento Tipo de pagamento offline selecionado (DINHEIRO, CARTAO_DEBITO, etc.)
@@ -449,36 +421,50 @@ public class PedidoService {
         // Define o pagamento AQUI
         novoPedido.setTipoPagamento(tipoPagamento);
 
-        // Lógica de cálculo (reutilizando a lógica do iniciarPagamentoDeliveryCliente para itens)
-        BigDecimal totalPedido = BigDecimal.ZERO;
+        // Lógica de cálculo (COMPLETA E CORRIGIDA)
+        BigDecimal subtotalPedido = BigDecimal.ZERO;
         List<Adicional> adicionaisDisponiveis = adicionalRepository.findByRestauranteId(restaurante.getId());
+        List<ItemPedido> itensParaSalvar = new ArrayList<>();
+
 
         for (var itemDto : dto.getItens()) {
             Produto produto = produtoRepository.findById(itemDto.getProdutoId())
                     .orElseThrow(() -> new RuntimeException("Produto não encontrado!"));
 
-            // Lógica de cálculo (omito para brevidade, mas deve ser a mesma do iniciarPagamentoDeliveryCliente)
-            // ... (Cálculo do subtotal e criação de ItemPedido)
+            ItemPedido itemPedido = new ItemPedido();
+            itemPedido.setProduto(produto);
+            itemPedido.setQuantidade(itemDto.getQuantidade());
+            itemPedido.setPrecoUnitario(produto.getPreco());
+            itemPedido.setObservacao(itemDto.getObservacao());
 
-            ItemPedido itemPedido = new ItemPedido(); // Crie o item para popular o novoPedido
-            // ... (popule os campos do itemPedido)
+            // É necessário setar o Pedido antes de calcular o subtotal para que ItemPedido.getSubtotal() funcione
+            itemPedido.setPedido(novoPedido);
 
-            // IMPORTANTE: Recalcule o total aqui para ter certeza.
-            BigDecimal precoTotalUnitario = produto.getPreco(); // Simplificado, inclua a lógica de adicionais
-            totalPedido = totalPedido.add(precoTotalUnitario.multiply(BigDecimal.valueOf(itemDto.getQuantidade())));
+            if (itemDto.getAdicionaisIds() != null && !itemDto.getAdicionaisIds().isEmpty()) {
+                for (Long adicionalId : itemDto.getAdicionaisIds()) {
+                    Adicional adicional = adicionaisDisponiveis.stream()
+                            .filter(a -> a.getId().equals(adicionalId))
+                            .findFirst()
+                            .orElseThrow(() -> new RuntimeException("Adicional inválido."));
+                    itemPedido.getAdicionais().add(new ItemPedidoAdicional(itemPedido, adicional));
+                }
+            }
 
-            // ... (Adicione ItemPedido ao novoPedido.getItens())
+            BigDecimal subtotalItem = itemPedido.getSubtotal();
+            subtotalPedido = subtotalPedido.add(subtotalItem);
+
+            itensParaSalvar.add(itemPedido);
         }
 
-        // Simulação de cálculo simplificada para fins de exemplo:
-        if (dto.getItens() != null && !dto.getItens().isEmpty()) {
-            // Recálculo real dos itens (usando a lógica completa do iniciarPagamentoDeliveryCliente)
-            // Para evitar duplicidade de código, idealmente essa lógica de cálculo estaria em um método auxiliar.
-            // Para o exemplo, vamos apenas simular o total para avançar:
-            totalPedido = BigDecimal.TEN; // Apenas para simular. VOCÊ DEVE USAR A LÓGICA DE CÁLCULO COMPLETA.
+        // CORREÇÃO CRÍTICA: Calcula o total com Frete
+        BigDecimal totalComFrete = calcularTotalComFrete(restaurante, subtotalPedido);
+
+        if (totalComFrete.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new RuntimeException("O valor do pedido deve ser maior que zero.");
         }
 
-        novoPedido.setTotal(totalPedido);
+        novoPedido.setTotal(totalComFrete);
+        novoPedido.setItens(itensParaSalvar); // Associa os itens ao novo pedido
 
         Pedido pedidoSalvo = pedidoRepository.save(novoPedido);
 
@@ -504,37 +490,26 @@ public class PedidoService {
 
         // --- 1. Criação do Pedido e Cálculo do Total ---
         UUID pedidoUuid = UUID.randomUUID();
-        BigDecimal totalPedido = BigDecimal.ZERO;
+        BigDecimal subtotalPedido = BigDecimal.ZERO;
         List<Adicional> adicionaisDisponiveis = adicionalRepository.findByRestauranteId(restaurante.getId());
         List<ItemPedido> itensParaSalvar = new ArrayList<>();
+
+        // Cria um pedido temporário para associar os itens e calcular os subtotais corretamente
+        Pedido pedidoTemporario = new Pedido();
 
         for (var itemDto : dto.getItens()) {
             Produto produto = produtoRepository.findById(itemDto.getProdutoId())
                     .orElseThrow(() -> new RuntimeException("Produto não encontrado!"));
 
-            BigDecimal precoUnitario = produto.getPreco();
-            BigDecimal precoDosAdicionais = BigDecimal.ZERO;
-
-            if (itemDto.getAdicionaisIds() != null) {
-                for (Long adicionalId : itemDto.getAdicionaisIds()) {
-                    Adicional adicional = adicionaisDisponiveis.stream()
-                            .filter(a -> a.getId().equals(adicionalId))
-                            .findFirst()
-                            .orElseThrow(() -> new RuntimeException("Adicional inválido."));
-                    precoDosAdicionais = precoDosAdicionais.add(adicional.getPreco());
-                }
-            }
-
-            BigDecimal precoTotalUnitario = precoUnitario.add(precoDosAdicionais);
-            totalPedido = totalPedido.add(precoTotalUnitario.multiply(BigDecimal.valueOf(itemDto.getQuantidade())));
-
-            // Cria o Item Pedido Pre-pago
             ItemPedido itemPedido = new ItemPedido();
             itemPedido.setProduto(produto);
             itemPedido.setQuantidade(itemDto.getQuantidade());
-            itemPedido.setPrecoUnitario(precoUnitario); // Salva o preco base
+            itemPedido.setPrecoUnitario(produto.getPreco());
             itemPedido.setObservacao(itemDto.getObservacao());
-            // Adiciona a lógica de adicionais
+
+            // Associa o pedido temporário para que getSubtotal() funcione com adicionais
+            itemPedido.setPedido(pedidoTemporario);
+
             if (itemDto.getAdicionaisIds() != null && !itemDto.getAdicionaisIds().isEmpty()) {
                 for (Long adicionalId : itemDto.getAdicionaisIds()) {
                     Adicional adicional = adicionaisDisponiveis.stream()
@@ -544,21 +519,28 @@ public class PedidoService {
                     itemPedido.getAdicionais().add(new ItemPedidoAdicional(itemPedido, adicional));
                 }
             }
+
+            BigDecimal subtotalItem = itemPedido.getSubtotal();
+            subtotalPedido = subtotalPedido.add(subtotalItem);
+
             itensParaSalvar.add(itemPedido);
         }
 
-        if (totalPedido.compareTo(BigDecimal.ZERO) <= 0) {
+        // 2. Calcula o total com o frete
+        BigDecimal totalComFrete = calcularTotalComFrete(restaurante, subtotalPedido);
+
+        if (totalComFrete.compareTo(BigDecimal.ZERO) <= 0) {
             throw new RuntimeException("O valor do pedido deve ser maior que zero.");
         }
 
         // --- 3. Salva o Pedido Pre-Pago ---
         Pedido pedidoPrePago = new Pedido();
-        pedidoPrePago.setUuid(UUID.randomUUID());
+        pedidoPrePago.setUuid(pedidoUuid);
         pedidoPrePago.setRestaurante(restaurante);
         pedidoPrePago.setDataHora(LocalDateTime.now());
         pedidoPrePago.setTipo(TipoPedido.DELIVERY);
-        pedidoPrePago.setTotal(totalPedido);
-        pedidoPrePago.setStatus(StatusPedido.AGUARDANDO_PGTO_LIMITE); // STATUS: AGUARDANDO PAGAMENTO EXTERNO
+        pedidoPrePago.setTotal(totalComFrete); // Total com frete
+        pedidoPrePago.setStatus(StatusPedido.AGUARDANDO_PGTO_LIMITE);
 
         pedidoPrePago.setNomeClienteDelivery(dto.getNomeCliente());
         pedidoPrePago.setTelefoneClienteDelivery(dto.getTelefoneCliente());
@@ -575,7 +557,7 @@ public class PedidoService {
         pedidoRepository.save(pedidoPrePago);
 
         // 4. Geração da URL de pagamento (Chama FinanceiroService)
-        return financeiroService.gerarUrlPagamentoPedidoPublico(pedidoUuid, totalPedido);
+        return financeiroService.gerarUrlPagamentoPedidoPublico(pedidoUuid, totalComFrete);
     }
 
 
@@ -608,5 +590,31 @@ public class PedidoService {
         }
 
         return pedidoRepository.save(pedido);
+    }
+
+    @Transactional
+    public Pedido aceitarPedidoRetido(Long pedidoId) {
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
+        Pedido pedido = pedidoRepository.findById(pedidoId).orElseThrow(() -> new RuntimeException("Pedido não encontrado."));
+
+        if (!pedido.getRestaurante().getId().equals(restaurante.getId())) {
+            throw new SecurityException("Acesso negado.");
+        }
+
+        // Verifica se o pedido está no status correto antes de aceitar
+        if (pedido.getStatus() != StatusPedido.AGUARDANDO_PGTO_LIMITE) {
+            throw new RuntimeException("O pedido não está no status de retenção (AGUARDANDO_PGTO_LIMITE).");
+        }
+
+        // NOVO STATUS: PENDENTE (se a impressão estiver ativada) ou EM_PREPARO (se não)
+        StatusPedido novoStatus = restaurante.isImpressaoDeliveryAtivada() ? StatusPedido.PENDENTE : StatusPedido.EM_PREPARO;
+
+        pedido.setStatus(novoStatus);
+
+        return pedidoRepository.save(pedido);
+    }
+
+    public Pedido rastrearPedidoPorUuid(UUID uuid) {
+        return pedidoRepository.findByUuid(uuid).orElse(null);
     }
 }

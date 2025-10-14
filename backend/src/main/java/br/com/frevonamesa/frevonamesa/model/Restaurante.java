@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -58,6 +59,7 @@ public class Restaurante {
     private Integer pedidosMesAtual = 0; // Contador de pedidos para Pay-per-Use
 
     private String whatsappNumber;
+    private BigDecimal taxaEntrega = BigDecimal.ZERO;
 
     public Restaurante(String nome, String email, String senha, TipoEstabelecimento tipo) {
         this.nome = nome;

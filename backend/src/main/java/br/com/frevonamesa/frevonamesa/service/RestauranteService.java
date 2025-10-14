@@ -113,6 +113,7 @@ public class RestauranteService {
         perfilDto.setBetaTester(restaurante.isBetaTester());
         perfilDto.setDeliveryPro(restaurante.isDeliveryPro());
         perfilDto.setSalaoPro(restaurante.isSalaoPro());
+        perfilDto.setTaxaEntrega(restaurante.getTaxaEntrega());
 
         return perfilDto;
     }
@@ -123,7 +124,8 @@ public class RestauranteService {
         Restaurante restaurante = getRestauranteLogado();
         restaurante.setImpressaoMesaAtivada(settingsDTO.isImpressaoMesaAtivada());
         restaurante.setImpressaoDeliveryAtivada(settingsDTO.isImpressaoDeliveryAtivada());
-        restaurante.setWhatsappNumber(settingsDTO.getWhatsappNumber()); // Corrigido
+        restaurante.setWhatsappNumber(settingsDTO.getWhatsappNumber());
+        restaurante.setTaxaEntrega(settingsDTO.getTaxaEntrega());
         restauranteRepository.save(restaurante);
         return getPerfilLogado();
     }
@@ -162,6 +164,7 @@ public class RestauranteService {
         CardapioPublicoDTO cardapioDTO = new CardapioPublicoDTO();
         cardapioDTO.setNomeRestaurante(restaurante.getNome());
         cardapioDTO.setEnderecoRestaurante(restaurante.getEndereco());
+        cardapioDTO.setTaxaEntrega(restaurante.getTaxaEntrega());
 
         List<CategoriaCardapioDTO> categoriasDTO = categorias.stream().map(categoria -> {
             CategoriaCardapioDTO categoriaDTO = new CategoriaCardapioDTO();

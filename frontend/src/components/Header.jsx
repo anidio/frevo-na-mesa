@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import AuthStatus from './AuthStatus';
 import ThemeToggle from './ThemeToggle';
+import { useAuth } from '../contexts/AuthContext'; // IMPORTADO
 
 // Ícone da sombrinha para o header
 const FrevoUmbrellaIcon = () => (
@@ -29,15 +30,38 @@ const CloseIcon = () => (
 
 const Header = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const { userProfile, isLoggedIn } = useAuth(); // Usar o hook de autenticação
+
+    // Determina se o Whitelabel está ativo (usuário logado E tem plano PRO/PREMIUM ativo)
+    const isWhitelabelActive = isLoggedIn && (userProfile?.isDeliveryPro || userProfile?.isSalaoPro);
+    const restauranteNome = userProfile?.nome || 'Frevo na Mesa';
+
+    const renderBranding = () => {
+        if (isWhitelabelActive) {
+            // Se Whitelabel está ativo, mostra apenas o nome do restaurante
+            return (
+                <span className="text-xl font-bold text-tema-text dark:text-tema-text-dark">
+                    {restauranteNome}
+                </span>
+            );
+        }
+        
+        // Se plano GRATUITO ou deslogado, mostra o branding completo
+        return (
+            <>
+                <FrevoUmbrellaIcon />
+                <span className="text-xl font-bold text-tema-text dark:text-tema-text-dark">
+                    Frevo na Mesa
+                </span>
+            </>
+        );
+    }
 
     return (
         <header className="bg-white/70 dark:bg-tema-surface-dark/70 backdrop-blur-sm shadow-sm sticky top-0 z-40 border-b border-gray-200 dark:border-gray-700">
             <div className="container mx-auto px-4 py-3 flex justify-between items-center">
                 <Link to="/" className="flex items-center gap-2">
-                    <FrevoUmbrellaIcon />
-                    <span className="text-xl font-bold text-tema-text dark:text-tema-text-dark">
-                        Frevo na Mesa
-                    </span>
+                    {renderBranding()}
                 </Link>
                 
                 {/* Menu em telas grandes (md+) */}

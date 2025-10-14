@@ -3,6 +3,8 @@ package br.com.frevonamesa.frevonamesa.dto;
 import br.com.frevonamesa.frevonamesa.model.TipoEstabelecimento;
 import lombok.Data;
 
+import java.math.BigDecimal;
+
 @Data
 public class RestaurantePerfilDTO {
     private Long id;
@@ -20,4 +22,5 @@ public class RestaurantePerfilDTO {
     private boolean isBetaTester;
     private boolean isDeliveryPro;
     private boolean isSalaoPro;
+    private BigDecimal taxaEntrega;
 }

@@ -26,7 +26,8 @@ const ConfiguracoesPage = () => {
     const [settings, setSettings] = useState({
         impressaoMesaAtivada: true,
         impressaoDeliveryAtivada: true,
-        whatsappNumber: '', // CORRETO: Estado inicial para o número de WhatsApp
+        whatsappNumber: '', 
+        taxaEntrega: 0, // NOVO: Inicializa Taxa de Entrega
     });
     const [loading, setLoading] = useState(true);
 
@@ -35,7 +36,8 @@ const ConfiguracoesPage = () => {
             setSettings({
                 impressaoMesaAtivada: userProfile.impressaoMesaAtivada,
                 impressaoDeliveryAtivada: userProfile.impressaoDeliveryAtivada,
-                whatsappNumber: userProfile.whatsappNumber || '', // CORRETO: Carrega o número do perfil
+                whatsappNumber: userProfile.whatsappNumber || '', 
+                taxaEntrega: userProfile.taxaEntrega || 0, // NOVO: Carrega taxa
             });
             setLoading(false);
         }
@@ -43,7 +45,9 @@ const ConfiguracoesPage = () => {
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setSettings(prev => ({ ...prev, [name]: value }));
+        // Lida com a entrada de número para taxaEntrega, garantindo que seja numérico
+        const newValue = name === 'taxaEntrega' ? parseFloat(value) || 0 : value; 
+        setSettings(prev => ({ ...prev, [name]: newValue }));
     };
 
     const handleSaveSettings = async () => {
@@ -84,7 +88,26 @@ const ConfiguracoesPage = () => {
                     </div>
                 </div>
 
-                {/* --- SEÇÃO CORRIGIDA --- */}
+                {/* --- SEÇÃO TAXA DE ENTREGA (NOVO) --- */}
+                <div>
+                    <h2 className="text-xl font-bold text-tema-text dark:text-tema-text-dark mb-3">Taxa de Entrega</h2>
+                    <div className="space-y-4 bg-white dark:bg-tema-surface-dark p-4 rounded-lg border dark:border-gray-700">
+                        <div>
+                            <label className="block text-sm font-medium">Valor Fixo da Taxa de Entrega (R$)</label>
+                            <input 
+                                type="number" 
+                                name="taxaEntrega" 
+                                value={settings.taxaEntrega} 
+                                onChange={handleInputChange} 
+                                className="mt-1 w-full p-2 border rounded-md dark:bg-gray-800 dark:border-gray-600" 
+                                placeholder="Ex: 5.00"
+                                step="0.01" // Permite decimais
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* --- SEÇÃO WHATSAPP --- */}
                 <div>
                     <h2 className="text-xl font-bold text-tema-text dark:text-tema-text-dark mb-3">Automação do WhatsApp</h2>
                     <div className="space-y-4 bg-white dark:bg-tema-surface-dark p-4 rounded-lg border dark:border-gray-700">
