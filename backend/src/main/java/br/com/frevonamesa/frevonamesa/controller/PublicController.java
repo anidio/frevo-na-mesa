@@ -5,12 +5,14 @@ import br.com.frevonamesa.frevonamesa.dto.PedidoClienteDTO;
 import br.com.frevonamesa.frevonamesa.dto.PedidoDeliveryClienteDTO;
 import br.com.frevonamesa.frevonamesa.model.Pedido;
 import br.com.frevonamesa.frevonamesa.model.TipoPagamento;
+import br.com.frevonamesa.frevonamesa.service.AreaEntregaService;
 import br.com.frevonamesa.frevonamesa.service.PedidoService;
 import br.com.frevonamesa.frevonamesa.service.RestauranteService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.Map;
 import java.util.UUID;
 
@@ -23,6 +25,9 @@ public class PublicController {
 
     @Autowired
     private PedidoService pedidoService;
+
+    @Autowired
+    private AreaEntregaService areaEntregaService;
 
     @GetMapping("/cardapio/{restauranteId}")
     public ResponseEntity<CardapioPublicoDTO> getCardapioPublico(@PathVariable Long restauranteId) {
@@ -89,5 +94,26 @@ public class PublicController {
             // Captura exceções do Mercado Pago (MPException/MPApiException)
             return ResponseEntity.status(500).body(Map.of("error", "Erro ao iniciar pagamento: " + e.getMessage()));
         }
+    }
+
+    @GetMapping("/frete/{restauranteId}/{cep}")
+    public ResponseEntity<Map<String, Object>> calcularFrete(
+            @PathVariable Long restauranteId,
+            @PathVariable String cep) {
+
+        BigDecimal taxa = areaEntregaService.calcularTaxa(restauranteId, cep);
+
+        if (taxa.compareTo(new BigDecimal("-1.00")) == 0) {
+            // Código -1.00 significa que o CEP não foi encontrado em nenhuma área
+            return ResponseEntity.badRequest().body(Map.of("error", "Entrega indisponível para este CEP."));
+        }
+
+        if (taxa.compareTo(new BigDecimal("-2.00")) == 0) {
+            // Código -2.00 significa que o CEP é inválido
+            return ResponseEntity.badRequest().body(Map.of("error", "CEP inválido."));
+        }
+
+        // Retorna a taxa de entrega
+        return ResponseEntity.ok(Map.of("taxaEntrega", taxa));
     }
 }
