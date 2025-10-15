@@ -21,12 +21,7 @@ public class AreaEntrega {
     private Restaurante restaurante;
 
     private String nome;
-
-    // Armazena o CEP inicial (ex: 50000-000)
-    private String cepInicial;
-
-    // Armazena o CEP final (ex: 51999-999)
-    private String cepFinal;
+    private Double maxDistanceKm;
 
     @Column(nullable = false)
     private BigDecimal valorEntrega;

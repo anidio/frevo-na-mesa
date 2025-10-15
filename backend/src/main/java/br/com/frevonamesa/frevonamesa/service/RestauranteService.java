@@ -9,6 +9,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import br.com.frevonamesa.frevonamesa.dto.RestauranteUpdateDTO;
 
 import java.math.BigDecimal; // 4. Importar BigDecimal
 import java.util.*;
@@ -188,4 +189,36 @@ public class RestauranteService {
         cardapioDTO.setCategorias(categoriasDTO);
         return cardapioDTO;
     }
+
+    @Transactional
+    public RestaurantePerfilDTO atualizarPerfil(RestauranteUpdateDTO dto) {
+        Restaurante restaurante = getRestauranteLogado();
+
+        restaurante.setNome(dto.getNome());
+        restaurante.setEndereco(dto.getEndereco());
+        restaurante.setLogoUrl(dto.getLogoUrl());
+        restaurante.setLatitude(dto.getLatitude());
+        restaurante.setLongitude(dto.getLongitude());
+
+        restauranteRepository.save(restaurante);
+        return getPerfilLogado();
+    }
+
+    public RestaurantePerfilDTO getPerfilLogado() {
+        Restaurante restaurante = getRestauranteLogado();
+
+        RestaurantePerfilDTO perfilDto = new RestaurantePerfilDTO();
+// ... código existente (todos os getters) ...
+        perfilDto.setDeliveryPro(restaurante.isDeliveryPro());
+        perfilDto.setSalaoPro(restaurante.isSalaoPro());
+        perfilDto.setTaxaEntrega(restaurante.getTaxaEntrega());
+
+        // NOVOS CAMPOS
+        perfilDto.setLogoUrl(restaurante.getLogoUrl());
+        perfilDto.setLatitude(restaurante.getLatitude());
+        perfilDto.setLongitude(restaurante.getLongitude());
+
+        return perfilDto;
+    }
+
 }

@@ -23,6 +23,10 @@ const DollarIcon = () => (
     </svg>
 );
 
+const UserSettingsIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M5.121 17.804A13.935 13.935 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 9a2 2 0 002-2v-2c0-1.1-.9-2-2-2h-2c-1.1 0-2 .9-2 2v2c0 1.1.9 2 2 2h2z" /></svg>
+);
+
 const AdminCard = ({ to, title, description, icon }) => (
     <Link to={to} className="block bg-white dark:bg-tema-surface-dark p-6 rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 border border-gray-200 dark:border-gray-700 hover:border-tema-primary dark:hover:border-tema-primary">
         <div className="flex justify-center mb-4 text-tema-primary">{icon}</div>
@@ -37,6 +41,7 @@ const AdminPage = () => {
             {/* ... (Header) */}
             <LinkCardapio />
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <AdminCard to="/admin/perfil" title="Gerenciar Perfil" description="Atualize nome, endereço e logo do restaurante." icon={<UserSettingsIcon />} />
                 <AdminCard to="/admin/cardapio" title="Gerenciar Cardápio" description="Adicione, edite ou remova produtos do cardápio." icon={<MenuBookIcon />} />
                 <AdminCard to="/admin/adicionais" title="Gerenciar Adicionais" icon={<PlusCircleIcon />} description="Crie e edite os itens extras para seus produtos." />
                 <AdminCard to="/admin/usuarios" title="Gerenciar Usuários" icon={<UsersIcon />} description="Cadastre Garçons e Caixas e gerencie os acessos." />

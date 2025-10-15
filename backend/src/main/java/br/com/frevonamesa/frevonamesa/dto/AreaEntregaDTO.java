@@ -7,8 +7,7 @@ import java.math.BigDecimal;
 public class AreaEntregaDTO {
     private Long id;
     private String nome;
-    private String cepInicial;
-    private String cepFinal;
+    private Double maxDistanceKm;
     private BigDecimal valorEntrega;
     private BigDecimal valorMinimoPedido;
 }

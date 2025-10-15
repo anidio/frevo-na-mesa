@@ -6,7 +6,8 @@ import apiClient from '../services/apiClient';
 const AreaRow = ({ area, onEdit, onDelete }) => (
     <tr className="hover:bg-gray-50 dark:hover:bg-gray-800">
         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">{area.nome}</td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{area.cepInicial} a {area.cepFinal}</td>
+        {/* ALTERADO: Exibe a Distância Máxima em KM */}
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">Até {area.maxDistanceKm.toFixed(1)} km</td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">R$ {area.valorEntrega.toFixed(2).replace('.', ',')}</td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">R$ {area.valorMinimoPedido.toFixed(2).replace('.', ',')}</td>
         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-4">
@@ -20,15 +21,15 @@ const AreaRow = ({ area, onEdit, onDelete }) => (
 const AreaModal = ({ area, onClose, onSave }) => {
     const [formState, setFormState] = useState({
         nome: area?.nome || '',
-        cepInicial: area?.cepInicial || '',
-        cepFinal: area?.cepFinal || '',
+        // ALTERADO: Inicializa com maxDistanceKm ou 0
+        maxDistanceKm: area?.maxDistanceKm || 0.00,
         valorEntrega: area?.valorEntrega || 0.00,
         valorMinimoPedido: area?.valorMinimoPedido || 0.00,
     });
 
     const handleSave = () => {
-        if (!formState.nome || !formState.cepInicial || !formState.cepFinal) {
-            toast.warn('Todos os campos de nome e CEP são obrigatórios.');
+        if (!formState.nome || formState.maxDistanceKm <= 0) {
+            toast.warn('O nome e a Distância Máxima (KM) são obrigatórios e devem ser maiores que zero.');
             return;
         }
         onSave({ ...area, ...formState });
@@ -40,20 +41,17 @@ const AreaModal = ({ area, onClose, onSave }) => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
             <div className="bg-white dark:bg-tema-surface-dark rounded-lg shadow-xl p-6 w-full max-w-lg space-y-4">
                 <h2 className="text-2xl font-bold text-tema-text dark:text-tema-text-dark mb-4">
-                    {area ? 'Editar Área de Entrega' : 'Nova Área de Entrega'}
+                    {area ? 'Editar Faixa de Distância' : 'Nova Faixa de Distância'}
                 </h2>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome da Área</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome da Faixa</label>
                     <input type="text" name="nome" value={formState.nome} onChange={e => setFormState({...formState, nome: e.target.value})} className={inputClass} autoFocus />
                 </div>
+                {/* ALTERADO: Campo de Distância Máxima */}
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">CEP Inicial (Ex: 50000-000)</label>
-                        <input type="text" name="cepInicial" value={formState.cepInicial} onChange={e => setFormState({...formState, cepInicial: e.target.value})} className={inputClass} />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">CEP Final (Ex: 51999-999)</label>
-                        <input type="text" name="cepFinal" value={formState.cepFinal} onChange={e => setFormState({...formState, cepFinal: e.target.value})} className={inputClass} />
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Distância Máxima (KM)</label>
+                        <input type="number" name="maxDistanceKm" value={formState.maxDistanceKm} onChange={e => setFormState({...formState, maxDistanceKm: parseFloat(e.target.value) || 0})} className={inputClass} step="0.1" />
                     </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -85,10 +83,11 @@ const GerenciarAreasEntregaPage = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
+            // A rota antiga continua a mesma, mas agora retorna objetos com Faixa de Distância
             const data = await apiClient.get('/api/areas-entrega');
             setAreas(data);
         } catch (error) {
-            toast.error("Não foi possível carregar as áreas de entrega.");
+            toast.error("Não foi possível carregar as faixas de distância.");
         } finally {
             setLoading(false);
         }
@@ -105,25 +104,25 @@ const GerenciarAreasEntregaPage = () => {
 
     const handleSaveArea = async (area) => {
         const endpoint = area.id ? `/api/areas-entrega/${area.id}` : '/api/areas-entrega';
-        const method = area.id ? 'put' : 'post';
+        // Se a área tem ID, é PUT (atualizar), caso contrário é POST (criar)
+        const method = area.id ? 'put' : 'post'; 
 
         try {
             await apiClient[method](endpoint, area);
-            toast.success(`Área ${area.id ? 'atualizada' : 'adicionada'} com sucesso!`);
+            toast.success(`Faixa ${area.id ? 'atualizada' : 'adicionada'} com sucesso!`);
             setIsModalOpen(false);
             fetchData();
         } catch (error) {
-            // O erro 400 do backend pode ser útil
-            const errorMsg = error.message || 'Erro ao salvar área de entrega.';
+            const errorMsg = error.message || 'Erro ao salvar faixa de distância.';
             toast.error(errorMsg);
         }
     };
     
     const handleDeletarArea = (areaId, nome) => {
-        if (!window.confirm(`Tem certeza que deseja deletar a área "${nome}"?`)) return;
+        if (!window.confirm(`Tem certeza que deseja deletar a faixa "${nome}"?`)) return;
         apiClient.delete(`/api/areas-entrega/${areaId}`)
             .then(() => {
-                toast.success(`Área "${nome}" deletada.`);
+                toast.success(`Faixa "${nome}" deletada.`);
                 fetchData();
             })
             .catch(error => toast.error(`Erro ao deletar: ${error.message}`));
@@ -136,18 +135,25 @@ const GerenciarAreasEntregaPage = () => {
         <>
             <div className="w-full p-4 md:p-8 max-w-4xl mx-auto space-y-8">
                 <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-3xl font-bold text-tema-text dark:text-tema-text-dark">Gerenciar Áreas de Entrega</h1>
+                    {/* ALTERADO: Título */}
+                    <h1 className="text-3xl font-bold text-tema-text dark:text-tema-text-dark">Gerenciar Frete por Distância (KM)</h1>
                     <button onClick={() => handleOpenModal()} className="bg-tema-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-opacity-80 transition-colors flex items-center gap-2">
-                        + Nova Área
+                        + Nova Faixa
                     </button>
+                </div>
+                
+                {/* NOVO ALERTA: Instruções de uso */}
+                <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative" role="alert">
+                    <strong className="font-bold">IMPORTANTE:</strong>
+                    <span className="block sm:inline ml-2">Esta funcionalidade simula o cálculo de distância real. O valor final do frete será a **primeira faixa** em que o KM calculado se encaixar (da menor para a maior distância).</span>
                 </div>
 
                 <div className="bg-white dark:bg-tema-surface-dark shadow-md rounded-lg overflow-x-auto border dark:border-gray-700">
                     <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                         <thead className="bg-gray-50 dark:bg-gray-800">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nome</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Faixa de CEP</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nome da Faixa</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Distância Máx. (KM)</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Entrega (R$)</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pedido Mín. (R$)</th>
                                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ações</th>

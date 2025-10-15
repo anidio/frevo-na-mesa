@@ -24,6 +24,9 @@ public class Restaurante {
     private String email;
     private String senha;
     private String endereco;
+    private Double latitude;
+    private Double longitude;
+    private String logoUrl;
 
     @OneToMany(mappedBy = "restaurante", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference("restaurante-usuario")

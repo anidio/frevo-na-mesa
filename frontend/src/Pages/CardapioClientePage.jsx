@@ -20,8 +20,13 @@ const ProdutoModal = ({ produto, onClose, onAddToCart }) => {
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50" onClick={onClose}>
             <div className="bg-white dark:bg-tema-surface-dark rounded-lg shadow-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
-                <div className="w-full h-48 bg-gray-200 dark:bg-gray-700 rounded-t-lg flex items-center justify-center">
-                    <span className="text-gray-400">Imagem do Produto</span>
+                {/* ALTERADO: Exibir Imagem do Produto */}
+                <div className="w-full h-48 bg-gray-200 dark:bg-gray-700 rounded-t-lg flex items-center justify-center overflow-hidden">
+                    {produto.imageUrl ? (
+                        <img src={produto.imageUrl} alt={produto.nome} className="w-full h-full object-cover" />
+                    ) : (
+                        <span className="text-gray-400">Imagem do Produto</span>
+                    )}
                 </div>
                 <div className="p-6">
                     <h2 className="text-2xl font-bold text-tema-text dark:text-tema-text-dark">{produto.nome}</h2>
@@ -281,8 +286,13 @@ const CardapioClientePage = () => {
                                                 <p className="text-sm text-tema-text-muted dark:text-tema-text-muted-dark mt-1">{produto.descricao}</p>
                                                 <p className="font-semibold text-tema-text dark:text-tema-text-dark mt-2">R$ {produto.preco.toFixed(2).replace('.', ',')}</p>
                                             </div>
-                                            <div className="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-md flex-shrink-0 flex items-center justify-center">
-                                                <span className="text-xs text-gray-400">Imagem</span>
+                                            {/* NOVO: Exibir Imagem do Produto no Cardápio */}
+                                            <div className="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-md flex-shrink-0 flex items-center justify-center overflow-hidden">
+                                                {produto.imageUrl ? (
+                                                     <img src={produto.imageUrl} alt={produto.nome} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span className="text-xs text-gray-400">Imagem</span>
+                                                )}
                                             </div>
                                         </div>
                                     ))}
@@ -337,7 +347,12 @@ const CardapioClientePage = () => {
         <div className="w-full min-h-screen bg-gray-100 dark:bg-tema-fundo-dark">
             <header className="bg-white dark:bg-tema-surface-dark shadow-md p-4 sticky top-0 z-20">
                 <div className="max-w-6xl mx-auto">
-                    <h1 className="text-2xl font-bold text-tema-text dark:text-tema-text-dark">{cardapio.nomeRestaurante}</h1>
+                    {/* NOVO: Exibir Logo do Restaurante se existir */}
+                    {cardapio.logoUrl ? (
+                         <img src={cardapio.logoUrl} alt={cardapio.nomeRestaurante} className="h-10 mb-2 object-contain mx-auto md:mx-0" />
+                    ) : (
+                        <h1 className="text-2xl font-bold text-tema-text dark:text-tema-text-dark">{cardapio.nomeRestaurante}</h1>
+                    )}
                     <p className="text-sm text-tema-text-muted dark:text-tema-text-muted-dark">{cardapio.enderecoRestaurante}</p>
                     
                     <div className="flex gap-4 mt-3 border-b dark:border-gray-700">

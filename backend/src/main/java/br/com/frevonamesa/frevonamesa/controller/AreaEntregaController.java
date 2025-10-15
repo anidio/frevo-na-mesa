@@ -28,4 +28,26 @@ public class AreaEntregaController {
         AreaEntrega novaArea = areaEntregaService.criar(dto);
         return ResponseEntity.status(201).body(novaArea);
     }
+
+    // NOVO: Atualizar faixa de distância
+    @PutMapping("/{id}")
+    public ResponseEntity<AreaEntrega> atualizarArea(@PathVariable Long id, @RequestBody AreaEntregaDTO dto) {
+        try {
+            AreaEntrega atualizada = areaEntregaService.atualizar(id, dto);
+            return ResponseEntity.ok(atualizada);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    // NOVO: Deletar faixa de distância
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deletarArea(@PathVariable Long id) {
+        try {
+            areaEntregaService.deletar(id);
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }

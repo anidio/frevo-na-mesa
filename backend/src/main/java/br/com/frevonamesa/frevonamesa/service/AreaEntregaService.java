@@ -10,7 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Comparator; // NOVO IMPORT
 
 @Service
 public class AreaEntregaService {
@@ -21,12 +21,26 @@ public class AreaEntregaService {
     @Autowired
     private RestauranteService restauranteService;
 
-    // Helper: Normaliza CEP (remove hífens e pontos)
-    public String normalizarCep(String cep) {
-        // Garante que o CEP não é nulo antes de tentar normalizar
-        if (cep == null) return "";
-        return cep.replaceAll("[^0-9]", "");
+    // SIMULAÇÃO: No ambiente de produção, esta função chamaria uma API externa
+    // (Ex: Google Maps Distance Matrix) para calcular a distância REAL do Restaurante ao CEP.
+    private Double simularDistanciaKm(Long restauranteId, String cepCliente) {
+        // Lógica de simulação baseada no tamanho do CEP para fins de demonstração
+        // Em um cenário real, o CEP seria geocodificado para Lat/Long e a distância calculada.
+
+        String cepNormalizado = cepCliente.replaceAll("[^0-9]", "");
+
+        if (cepNormalizado.length() < 8) return -2.0; // CEP Inválido
+
+        // Simula uma lógica simples de distância baseada nos 3 primeiros dígitos do CEP.
+        // O valor 50 é um chute.
+        try {
+            int base = Integer.parseInt(cepNormalizado.substring(0, 3));
+            return (double) ((base % 10) + 1) / 2.0; // Distância entre 0.5 e 5 km (simulação)
+        } catch (NumberFormatException e) {
+            return 10.0; // Distância padrão em caso de erro na simulação
+        }
     }
+
 
     public List<AreaEntrega> listarTodas() {
         Restaurante restaurante = restauranteService.getRestauranteLogado();
@@ -39,8 +53,8 @@ public class AreaEntregaService {
 
         AreaEntrega novaArea = new AreaEntrega();
         novaArea.setNome(dto.getNome());
-        novaArea.setCepInicial(dto.getCepInicial());
-        novaArea.setCepFinal(dto.getCepFinal());
+        // ALTERADO: Agora salva a distância máxima em KM
+        novaArea.setMaxDistanceKm(dto.getMaxDistanceKm());
         novaArea.setValorEntrega(dto.getValorEntrega());
         novaArea.setValorMinimoPedido(dto.getValorMinimoPedido());
         novaArea.setRestaurante(restaurante);
@@ -48,38 +62,64 @@ public class AreaEntregaService {
         return areaEntregaRepository.save(novaArea);
     }
 
-    // Você pode adicionar métodos de atualizar e deletar aqui
+    // NOVO: Método de atualização para faixas de distância
+    @Transactional
+    public AreaEntrega atualizar(Long id, AreaEntregaDTO dto) {
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
+        AreaEntrega existente = areaEntregaRepository.findById(id).orElseThrow(() -> new RuntimeException("Faixa de Distância não encontrada"));
+
+        if (!existente.getRestaurante().getId().equals(restaurante.getId())) {
+            throw new SecurityException("Acesso negado.");
+        }
+
+        existente.setNome(dto.getNome());
+        existente.setMaxDistanceKm(dto.getMaxDistanceKm());
+        existente.setValorEntrega(dto.getValorEntrega());
+        existente.setValorMinimoPedido(dto.getValorMinimoPedido());
+
+        return areaEntregaRepository.save(existente);
+    }
+
+    // NOVO: Método para deletar (necessário para o frontend)
+    @Transactional
+    public void deletar(Long id) {
+        Restaurante restaurante = restauranteService.getRestauranteLogado();
+        AreaEntrega existente = areaEntregaRepository.findById(id).orElseThrow(() -> new RuntimeException("Faixa de Distância não encontrada"));
+
+        if (!existente.getRestaurante().getId().equals(restaurante.getId())) {
+            throw new SecurityException("Acesso negado.");
+        }
+        areaEntregaRepository.delete(existente);
+    }
+
 
     /**
-     * Lógica CRÍTICA: Calcula a taxa de entrega baseada no CEP fornecido.
+     * Lógica CRÍTICA ATUALIZADA: Calcula a taxa de entrega baseada na DISTÂNCIA REAL (simulada).
      * @param restauranteId ID do restaurante.
      * @param cepCliente CEP fornecido pelo cliente.
      * @return BigDecimal da taxa de entrega ou -1.00 se a entrega for indisponível.
      */
     public BigDecimal calcularTaxa(Long restauranteId, String cepCliente) {
-        String cepNormalizado = normalizarCep(cepCliente);
+        Double distanciaKm = simularDistanciaKm(restauranteId, cepCliente);
 
-        // Se o CEP tiver menos de 8 dígitos (após normalização), é inválido para busca.
-        if (cepNormalizado.length() < 8) {
-            // Retorna um valor negativo específico para ser tratado como 'CEP Inválido'
+        // Retorna um valor negativo se o CEP for inválido na simulação
+        if (distanciaKm == -2.0) {
             return new BigDecimal("-2.00");
         }
 
-        List<AreaEntrega> areas = areaEntregaRepository.findByRestauranteId(restauranteId);
+        List<AreaEntrega> faixas = areaEntregaRepository.findByRestauranteId(restauranteId);
 
-        // 1. Procura a área que abrange o CEP
-        for (AreaEntrega area : areas) {
-            String inicio = normalizarCep(area.getCepInicial());
-            String fim = normalizarCep(area.getCepFinal());
+        // Ordena as faixas pela distância máxima para garantir que a lógica funcione corretamente
+        faixas.sort(Comparator.comparing(AreaEntrega::getMaxDistanceKm));
 
-            // Lógica de range: (cep >= inicio) AND (cep <= fim)
-            // A comparação lexicográfica funciona para CEPs.
-            if (cepNormalizado.compareTo(inicio) >= 0 && cepNormalizado.compareTo(fim) <= 0) {
-                return area.getValorEntrega();
+        // 1. Procura a faixa que abrange a distância
+        for (AreaEntrega faixa : faixas) {
+            if (distanciaKm <= faixa.getMaxDistanceKm()) {
+                return faixa.getValorEntrega();
             }
         }
 
-        // 2. Se nenhuma área for encontrada, assume que a entrega não é possível
+        // 2. Se nenhuma faixa for encontrada (distância maior que todas as faixas), assume que a entrega não é possível
         return new BigDecimal("-1.00");
     }
 }

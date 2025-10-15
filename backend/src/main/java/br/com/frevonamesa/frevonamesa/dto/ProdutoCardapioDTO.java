@@ -9,4 +9,5 @@ public class ProdutoCardapioDTO {
     private String nome;
     private String descricao;
     private BigDecimal preco;
+    private String imageUrl;
 }

@@ -55,8 +55,9 @@ const GerenciarCardapioPage = () => {
     const [isCategoriaModalOpen, setIsCategoriaModalOpen] = useState(false);
     const [categoriaEmEdicao, setCategoriaEmEdicao] = useState(null);
 
+    // ALTERADO: Adicionado imageUrl ao estado inicial
     const [formState, setFormState] = useState({
-        nome: '', descricao: '', preco: '', categoriaId: ''
+        nome: '', descricao: '', preco: '', categoriaId: '', imageUrl: ''
     });
 
     const fetchData = async () => {
@@ -93,10 +94,12 @@ const GerenciarCardapioPage = () => {
     const handleOpenProdutoModal = (produto = null) => {
         if (produto) {
             setProdutoEmEdicao(produto);
-            setFormState({ ...produto, categoriaId: produto.categoria.id });
+            // ALTERADO: Pega imageUrl do produto
+            setFormState({ ...produto, categoriaId: produto.categoria.id, imageUrl: produto.imageUrl || '' });
         } else {
             setProdutoEmEdicao(null);
-            setFormState({ nome: '', descricao: '', preco: '', categoriaId: categorias[0]?.id || '' });
+            // ALTERADO: Adicionado imageUrl ao estado padrão
+            setFormState({ nome: '', descricao: '', preco: '', categoriaId: categorias[0]?.id || '', imageUrl: '' });
         }
         setIsProdutoModalOpen(true);
     };
@@ -110,8 +113,11 @@ const GerenciarCardapioPage = () => {
         const endpoint = produtoEmEdicao ? `/api/produtos/${produtoEmEdicao.id}` : '/api/produtos';
         const method = produtoEmEdicao ? 'put' : 'post';
 
+        // NOVO: Garantir que a URL da imagem não é nula
+        const dataToSend = { ...formState, imageUrl: formState.imageUrl || null };
+        
         try {
-            await apiClient[method](endpoint, formState);
+            await apiClient[method](endpoint, dataToSend);
             toast.success(`Produto ${produtoEmEdicao ? 'atualizado' : 'adicionado'} com sucesso!`);
             setIsProdutoModalOpen(false);
             fetchData();
@@ -246,6 +252,13 @@ const GerenciarCardapioPage = () => {
                         <div><label className="block text-sm font-medium text-gray-700 dark:text-tema-text-muted-dark">Descrição</label>
                             <input type="text" name="descricao" value={formState.descricao} onChange={e => setFormState({...formState, descricao: e.target.value})} 
                                 className="mt-1 w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-tema-text-dark" />
+                        </div>
+
+                        {/* NOVO INPUT URL IMAGEM */}
+                        <div><label className="block text-sm font-medium text-gray-700 dark:text-tema-text-muted-dark">URL da Imagem</label>
+                            <input type="text" name="imageUrl" value={formState.imageUrl} onChange={e => setFormState({...formState, imageUrl: e.target.value})} 
+                                className="mt-1 w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-tema-text-dark" />
+                            {formState.imageUrl && <img src={formState.imageUrl} alt="Pré-visualização" className="mt-2 h-16 w-16 object-cover rounded" />}
                         </div>
                         
                         {/* INPUT PREÇO */}

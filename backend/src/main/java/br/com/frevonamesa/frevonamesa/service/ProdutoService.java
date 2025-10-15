@@ -62,6 +62,7 @@ public class ProdutoService {
         novoProduto.setNome(dto.getNome());
         novoProduto.setDescricao(dto.getDescricao());
         novoProduto.setPreco(dto.getPreco());
+        novoProduto.setImageUrl(dto.getImageUrl());
         novoProduto.setCategoria(categoria); // ATUALIZADO
         novoProduto.setRestaurante(restaurante);
         return produtoRepository.save(novoProduto);
@@ -86,6 +87,7 @@ public class ProdutoService {
         produtoExistente.setNome(dto.getNome());
         produtoExistente.setDescricao(dto.getDescricao());
         produtoExistente.setPreco(dto.getPreco());
+        produtoExistente.setImageUrl(dto.getImageUrl());
         produtoExistente.setCategoria(categoria);
         return produtoRepository.save(produtoExistente);
     }
