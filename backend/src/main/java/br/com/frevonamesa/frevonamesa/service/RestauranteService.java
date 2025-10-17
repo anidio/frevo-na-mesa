@@ -9,12 +9,11 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import br.com.frevonamesa.frevonamesa.dto.RestauranteUpdateDTO;
 
-import java.math.BigDecimal; // 4. Importar BigDecimal
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream; // 6. Importar IntStream
+import java.util.stream.IntStream;
 
 @Service
 @Transactional
@@ -95,6 +94,7 @@ public class RestauranteService {
         return restauranteSalvo;
     }
 
+    // VERSÃO CORRIGIDA E FINAL DO getPerfilLogado()
     public RestaurantePerfilDTO getPerfilLogado() {
         Restaurante restaurante = getRestauranteLogado();
 
@@ -116,6 +116,11 @@ public class RestauranteService {
         perfilDto.setSalaoPro(restaurante.isSalaoPro());
         perfilDto.setTaxaEntrega(restaurante.getTaxaEntrega());
 
+        // NOVOS CAMPOS
+        perfilDto.setLogoUrl(restaurante.getLogoUrl());
+        perfilDto.setLatitude(restaurante.getLatitude());
+        perfilDto.setLongitude(restaurante.getLongitude());
+
         return perfilDto;
     }
 
@@ -127,6 +132,20 @@ public class RestauranteService {
         restaurante.setImpressaoDeliveryAtivada(settingsDTO.isImpressaoDeliveryAtivada());
         restaurante.setWhatsappNumber(settingsDTO.getWhatsappNumber());
         restaurante.setTaxaEntrega(settingsDTO.getTaxaEntrega());
+        restauranteRepository.save(restaurante);
+        return getPerfilLogado();
+    }
+
+    @Transactional
+    public RestaurantePerfilDTO atualizarPerfil(RestauranteUpdateDTO dto) {
+        Restaurante restaurante = getRestauranteLogado();
+
+        restaurante.setNome(dto.getNome());
+        restaurante.setEndereco(dto.getEndereco());
+        restaurante.setLogoUrl(dto.getLogoUrl());
+        restaurante.setLatitude(dto.getLatitude());
+        restaurante.setLongitude(dto.getLongitude());
+
         restauranteRepository.save(restaurante);
         return getPerfilLogado();
     }
@@ -167,6 +186,9 @@ public class RestauranteService {
         cardapioDTO.setEnderecoRestaurante(restaurante.getEndereco());
         cardapioDTO.setTaxaEntrega(restaurante.getTaxaEntrega());
 
+        // NOVO CAMPO
+        cardapioDTO.setLogoUrl(restaurante.getLogoUrl());
+
         List<CategoriaCardapioDTO> categoriasDTO = categorias.stream().map(categoria -> {
             CategoriaCardapioDTO categoriaDTO = new CategoriaCardapioDTO();
             categoriaDTO.setNome(categoria.getNome());
@@ -179,6 +201,8 @@ public class RestauranteService {
                         produtoDTO.setNome(produto.getNome());
                         produtoDTO.setDescricao(produto.getDescricao());
                         produtoDTO.setPreco(produto.getPreco());
+                        // NOVO CAMPO
+                        produtoDTO.setImageUrl(produto.getImageUrl());
                         return produtoDTO;
                     }).collect(Collectors.toList());
 
@@ -189,36 +213,4 @@ public class RestauranteService {
         cardapioDTO.setCategorias(categoriasDTO);
         return cardapioDTO;
     }
-
-    @Transactional
-    public RestaurantePerfilDTO atualizarPerfil(RestauranteUpdateDTO dto) {
-        Restaurante restaurante = getRestauranteLogado();
-
-        restaurante.setNome(dto.getNome());
-        restaurante.setEndereco(dto.getEndereco());
-        restaurante.setLogoUrl(dto.getLogoUrl());
-        restaurante.setLatitude(dto.getLatitude());
-        restaurante.setLongitude(dto.getLongitude());
-
-        restauranteRepository.save(restaurante);
-        return getPerfilLogado();
-    }
-
-    public RestaurantePerfilDTO getPerfilLogado() {
-        Restaurante restaurante = getRestauranteLogado();
-
-        RestaurantePerfilDTO perfilDto = new RestaurantePerfilDTO();
-// ... código existente (todos os getters) ...
-        perfilDto.setDeliveryPro(restaurante.isDeliveryPro());
-        perfilDto.setSalaoPro(restaurante.isSalaoPro());
-        perfilDto.setTaxaEntrega(restaurante.getTaxaEntrega());
-
-        // NOVOS CAMPOS
-        perfilDto.setLogoUrl(restaurante.getLogoUrl());
-        perfilDto.setLatitude(restaurante.getLatitude());
-        perfilDto.setLongitude(restaurante.getLongitude());
-
-        return perfilDto;
-    }
-
 }

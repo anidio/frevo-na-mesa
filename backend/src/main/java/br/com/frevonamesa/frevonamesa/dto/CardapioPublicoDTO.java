@@ -11,4 +11,5 @@ public class CardapioPublicoDTO {
     private String enderecoRestaurante;
     private List<CategoriaCardapioDTO> categorias;
     private BigDecimal taxaEntrega;
+    private String logoUrl;
 }

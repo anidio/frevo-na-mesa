@@ -11,6 +11,9 @@ public class RestaurantePerfilDTO {
     private String nome;
     private String email;
     private String endereco;
+    private Double latitude;
+    private Double longitude;
+    private String logoUrl;
     private TipoEstabelecimento tipo;
     private boolean impressaoDeliveryAtivada;
     private boolean impressaoMesaAtivada = true;
