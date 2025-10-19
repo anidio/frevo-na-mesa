@@ -27,7 +27,7 @@ const ConfiguracoesPage = () => {
         impressaoMesaAtivada: true,
         impressaoDeliveryAtivada: true,
         whatsappNumber: '', 
-        taxaEntrega: 0, // NOVO: Inicializa Taxa de Entrega
+        taxaEntrega: 0, // REINTRODUZIDO
     });
     const [loading, setLoading] = useState(true);
 
@@ -37,7 +37,7 @@ const ConfiguracoesPage = () => {
                 impressaoMesaAtivada: userProfile.impressaoMesaAtivada,
                 impressaoDeliveryAtivada: userProfile.impressaoDeliveryAtivada,
                 whatsappNumber: userProfile.whatsappNumber || '', 
-                taxaEntrega: userProfile.taxaEntrega || 0, // NOVO: Carrega taxa
+                taxaEntrega: userProfile.taxaEntrega || 0, // CARREGA TAXA FIXA
             });
             setLoading(false);
         }
@@ -88,9 +88,9 @@ const ConfiguracoesPage = () => {
                     </div>
                 </div>
 
-                {/* --- SEÇÃO TAXA DE ENTREGA (NOVO) --- */}
+                {/* --- SEÇÃO TAXA DE ENTREGA FIXA (REINTRODUZIDA) --- */}
                 <div>
-                    <h2 className="text-xl font-bold text-tema-text dark:text-tema-text-dark mb-3">Taxa de Entrega</h2>
+                    <h2 className="text-xl font-bold text-tema-text dark:text-tema-text-dark mb-3">Taxa de Entrega (Fixa)</h2>
                     <div className="space-y-4 bg-white dark:bg-tema-surface-dark p-4 rounded-lg border dark:border-gray-700">
                         <div>
                             <label className="block text-sm font-medium">Valor Fixo da Taxa de Entrega (R$)</label>

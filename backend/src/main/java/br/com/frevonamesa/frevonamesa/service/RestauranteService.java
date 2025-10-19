@@ -94,7 +94,6 @@ public class RestauranteService {
         return restauranteSalvo;
     }
 
-    // VERSÃO CORRIGIDA E FINAL DO getPerfilLogado()
     public RestaurantePerfilDTO getPerfilLogado() {
         Restaurante restaurante = getRestauranteLogado();
 
@@ -114,12 +113,11 @@ public class RestauranteService {
         perfilDto.setBetaTester(restaurante.isBetaTester());
         perfilDto.setDeliveryPro(restaurante.isDeliveryPro());
         perfilDto.setSalaoPro(restaurante.isSalaoPro());
-        perfilDto.setTaxaEntrega(restaurante.getTaxaEntrega());
+        perfilDto.setTaxaEntrega(restaurante.getTaxaEntrega()); // INCLUÍDO NOVAMENTE
 
-        // NOVOS CAMPOS
+        // CAMPOS DE IMAGEM/CEP
         perfilDto.setLogoUrl(restaurante.getLogoUrl());
-        perfilDto.setLatitude(restaurante.getLatitude());
-        perfilDto.setLongitude(restaurante.getLongitude());
+        perfilDto.setCepRestaurante(restaurante.getCepRestaurante());
 
         return perfilDto;
     }
@@ -131,7 +129,7 @@ public class RestauranteService {
         restaurante.setImpressaoMesaAtivada(settingsDTO.isImpressaoMesaAtivada());
         restaurante.setImpressaoDeliveryAtivada(settingsDTO.isImpressaoDeliveryAtivada());
         restaurante.setWhatsappNumber(settingsDTO.getWhatsappNumber());
-        restaurante.setTaxaEntrega(settingsDTO.getTaxaEntrega());
+        restaurante.setTaxaEntrega(settingsDTO.getTaxaEntrega()); // INCLUÍDO NOVAMENTE
         restauranteRepository.save(restaurante);
         return getPerfilLogado();
     }
@@ -143,8 +141,9 @@ public class RestauranteService {
         restaurante.setNome(dto.getNome());
         restaurante.setEndereco(dto.getEndereco());
         restaurante.setLogoUrl(dto.getLogoUrl());
-        restaurante.setLatitude(dto.getLatitude());
-        restaurante.setLongitude(dto.getLongitude());
+        restaurante.setCepRestaurante(dto.getCepRestaurante()); // NOVO: Salvar CEP
+        // Removido: restaurante.setLatitude(dto.getLatitude());
+        // Removido: restaurante.setLongitude(dto.getLongitude());
 
         restauranteRepository.save(restaurante);
         return getPerfilLogado();

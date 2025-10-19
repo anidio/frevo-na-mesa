@@ -9,8 +9,7 @@ const GerenciarPerfilPage = () => {
         nome: '',
         endereco: '',
         logoUrl: '',
-        latitude: '',
-        longitude: ''
+        cepRestaurante: '', // NOVO: Campo CEP do Restaurante
     });
     const [loading, setLoading] = useState(true);
 
@@ -20,8 +19,7 @@ const GerenciarPerfilPage = () => {
                 nome: userProfile.nome || '',
                 endereco: userProfile.endereco || '',
                 logoUrl: userProfile.logoUrl || '',
-                latitude: userProfile.latitude || '',
-                longitude: userProfile.longitude || ''
+                cepRestaurante: userProfile.cepRestaurante || '', // CARREGA O NOVO CAMPO
             });
             setLoading(false);
         }
@@ -36,8 +34,7 @@ const GerenciarPerfilPage = () => {
         try {
             await apiClient.put('/api/restaurante/perfil', {
                 ...formState,
-                latitude: parseFloat(formState.latitude) || null,
-                longitude: parseFloat(formState.longitude) || null,
+                // Removido: latitude e longitude
             });
             toast.success('Dados do Perfil atualizados!');
             await refreshProfile();
@@ -61,7 +58,7 @@ const GerenciarPerfilPage = () => {
 
             <div className="space-y-6">
                 <div className="bg-white dark:bg-tema-surface-dark p-6 rounded-lg shadow-md border dark:border-gray-700">
-                    <h2 className="text-xl font-bold text-tema-text dark:text-tema-text-dark mb-3">Informações Básicas</h2>
+                    <h2 className="text-xl font-bold text-tema-text dark:text-tema-text-dark mb-3">Informações Básicas e Endereço</h2>
                     <div>
                         <label className="block text-sm font-medium">Nome do Restaurante</label>
                         <input type="text" name="nome" value={formState.nome} onChange={handleInputChange} className={inputClass} />
@@ -70,29 +67,17 @@ const GerenciarPerfilPage = () => {
                         <label className="block text-sm font-medium">Endereço Completo</label>
                         <input type="text" name="endereco" value={formState.endereco} onChange={handleInputChange} className={inputClass} />
                     </div>
+                    {/* NOVO CAMPO PARA CEP DO RESTAURANTE */}
+                    <div className="mt-4">
+                        <label className="block text-sm font-medium">CEP do Restaurante (Ponto de Partida para Frete)</label>
+                        <input type="text" name="cepRestaurante" value={formState.cepRestaurante} onChange={handleInputChange} className={inputClass} placeholder="Ex: 50000000" />
+                    </div>
                     <div className="mt-4">
                         <label className="block text-sm font-medium">URL da Logo (ou Imagem)</label>
                         <input type="text" name="logoUrl" value={formState.logoUrl} onChange={handleInputChange} className={inputClass} placeholder="Ex: https://seusite.com/logo.png" />
                         {formState.logoUrl && (
                             <img src={formState.logoUrl} alt="Pré-visualização da Logo" className="mt-2 h-20 border rounded object-contain" />
                         )}
-                    </div>
-                </div>
-
-                <div className="bg-white dark:bg-tema-surface-dark p-6 rounded-lg shadow-md border dark:border-gray-700">
-                    <h2 className="text-xl font-bold text-tema-text dark:text-tema-text-dark mb-3">Localização (Frete por Distância)</h2>
-                    <p className="text-sm text-tema-text-muted dark:text-tema-text-muted-dark mb-4">
-                        Estas coordenadas são usadas para calcular a distância do Delivery. Use uma ferramenta externa (ex: Google Maps) para obter a Lat/Long do seu restaurante.
-                    </p>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium">Latitude</label>
-                            <input type="number" name="latitude" value={formState.latitude} onChange={handleInputChange} className={inputClass} step="any" placeholder="-8.0578" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium">Longitude</label>
-                            <input type="number" name="longitude" value={formState.longitude} onChange={handleInputChange} className={inputClass} step="any" placeholder="-34.8828" />
-                        </div>
                     </div>
                 </div>
 

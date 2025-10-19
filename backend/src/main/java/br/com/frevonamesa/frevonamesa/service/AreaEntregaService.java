@@ -4,13 +4,23 @@ import br.com.frevonamesa.frevonamesa.dto.AreaEntregaDTO;
 import br.com.frevonamesa.frevonamesa.model.AreaEntrega;
 import br.com.frevonamesa.frevonamesa.model.Restaurante;
 import br.com.frevonamesa.frevonamesa.repository.AreaEntregaRepository;
+import br.com.frevonamesa.frevonamesa.repository.RestauranteRepository;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Comparator; // NOVO IMPORT
+import java.util.Comparator;
+import java.util.Optional;
 
 @Service
 public class AreaEntregaService {
@@ -21,24 +31,46 @@ public class AreaEntregaService {
     @Autowired
     private RestauranteService restauranteService;
 
-    // SIMULAÇÃO: No ambiente de produção, esta função chamaria uma API externa
-    // (Ex: Google Maps Distance Matrix) para calcular a distância REAL do Restaurante ao CEP.
-    private Double simularDistanciaKm(Long restauranteId, String cepCliente) {
-        // Lógica de simulação baseada no tamanho do CEP para fins de demonstração
-        // Em um cenário real, o CEP seria geocodificado para Lat/Long e a distância calculada.
+    @Autowired
+    private RestauranteRepository restauranteRepository;
 
-        String cepNormalizado = cepCliente.replaceAll("[^0-9]", "");
+    // COMENTADO: A chave da API do Google Maps não será usada por enquanto
+    //@Value("${google.maps.api.key}")
+    //private String googleMapsApiKey;
 
-        if (cepNormalizado.length() < 8) return -2.0; // CEP Inválido
+    // COMENTADO: Os métodos de integração externa também serão desativados
+    // private final RestTemplate restTemplate = new RestTemplate();
+    // private static final String GOOGLE_GEOCODING_URL = "https://maps.googleapis.com/maps/api/geocode/json";
 
-        // Simula uma lógica simples de distância baseada nos 3 primeiros dígitos do CEP.
-        // O valor 50 é um chute.
-        try {
-            int base = Integer.parseInt(cepNormalizado.substring(0, 3));
-            return (double) ((base % 10) + 1) / 2.0; // Distância entre 0.5 e 5 km (simulação)
-        } catch (NumberFormatException e) {
-            return 10.0; // Distância padrão em caso de erro na simulação
-        }
+    /**
+     * COMENTADO: O cálculo Haversine não é mais usado na taxa fixa.
+     */
+    private double calcularDistanciaHaversine(double lat1, double lon1, double lat2, double lon2) {
+        final int R = 6371;
+        double latDistance = Math.toRadians(lat2 - lat1);
+        double lonDistance = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
+
+    /**
+     * COMENTADO: A busca de coordenadas foi desativada.
+     */
+    private double[] fetchCoordinates(String cep) {
+        // Implementação removida/comentada para desativar a dependência externa.
+        return null;
+    }
+
+
+    /**
+     * COMENTADO: O cálculo de distância real foi desativado.
+     */
+    private Double obterDistanciaRealKm(String cepRestaurante, String cepCliente) {
+        // Implementação removida/comentada para desativar a dependência externa.
+        return 0.0;
     }
 
 
@@ -53,7 +85,6 @@ public class AreaEntregaService {
 
         AreaEntrega novaArea = new AreaEntrega();
         novaArea.setNome(dto.getNome());
-        // ALTERADO: Agora salva a distância máxima em KM
         novaArea.setMaxDistanceKm(dto.getMaxDistanceKm());
         novaArea.setValorEntrega(dto.getValorEntrega());
         novaArea.setValorMinimoPedido(dto.getValorMinimoPedido());
@@ -62,7 +93,6 @@ public class AreaEntregaService {
         return areaEntregaRepository.save(novaArea);
     }
 
-    // NOVO: Método de atualização para faixas de distância
     @Transactional
     public AreaEntrega atualizar(Long id, AreaEntregaDTO dto) {
         Restaurante restaurante = restauranteService.getRestauranteLogado();
@@ -80,7 +110,6 @@ public class AreaEntregaService {
         return areaEntregaRepository.save(existente);
     }
 
-    // NOVO: Método para deletar (necessário para o frontend)
     @Transactional
     public void deletar(Long id) {
         Restaurante restaurante = restauranteService.getRestauranteLogado();
@@ -94,32 +123,18 @@ public class AreaEntregaService {
 
 
     /**
-     * Lógica CRÍTICA ATUALIZADA: Calcula a taxa de entrega baseada na DISTÂNCIA REAL (simulada).
-     * @param restauranteId ID do restaurante.
-     * @param cepCliente CEP fornecido pelo cliente.
-     * @return BigDecimal da taxa de entrega ou -1.00 se a entrega for indisponível.
+     * LÓGICA FINAL: Revertido para retornar a taxa FIXA cadastrada.
+     * As faixas de distância (AreaEntrega) podem ser mantidas, mas serão ignoradas para o cálculo do frete.
      */
     public BigDecimal calcularTaxa(Long restauranteId, String cepCliente) {
-        Double distanciaKm = simularDistanciaKm(restauranteId, cepCliente);
 
-        // Retorna um valor negativo se o CEP for inválido na simulação
-        if (distanciaKm == -2.0) {
-            return new BigDecimal("-2.00");
+        Optional<Restaurante> restauranteOpt = restauranteRepository.findById(restauranteId);
+        if (restauranteOpt.isEmpty()) {
+            throw new RuntimeException("Restaurante de ID " + restauranteId + " não encontrado.");
         }
+        Restaurante restaurante = restauranteOpt.get();
 
-        List<AreaEntrega> faixas = areaEntregaRepository.findByRestauranteId(restauranteId);
-
-        // Ordena as faixas pela distância máxima para garantir que a lógica funcione corretamente
-        faixas.sort(Comparator.comparing(AreaEntrega::getMaxDistanceKm));
-
-        // 1. Procura a faixa que abrange a distância
-        for (AreaEntrega faixa : faixas) {
-            if (distanciaKm <= faixa.getMaxDistanceKm()) {
-                return faixa.getValorEntrega();
-            }
-        }
-
-        // 2. Se nenhuma faixa for encontrada (distância maior que todas as faixas), assume que a entrega não é possível
-        return new BigDecimal("-1.00");
+        // Retorna a taxa fixa que está salva no modelo do Restaurante.
+        return restaurante.getTaxaEntrega();
     }
 }

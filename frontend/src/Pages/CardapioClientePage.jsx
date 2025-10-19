@@ -71,41 +71,14 @@ const CardapioClientePage = () => {
     const [abaAtiva, setAbaAtiva] = useState('cardapio'); 
     const [pedidosDoDia, setPedidosDoDia] = useState([]); 
     const [tipoPagamentoSelecionado, setTipoPagamentoSelecionado] = useState('ONLINE'); // Estado para a escolha do cliente
-    const [taxaEntrega, setTaxaEntrega] = useState(0); // NOVO ESTADO: Taxa de entrega do restaurante (FIXA ou Dinâmica)
-    const [cepBusca, setCepBusca] = useState(''); // NOVO: Campo para CEP
-    const [statusFrete, setStatusFrete] = useState('Digite seu CEP para calcular o frete.'); // NOVO: Mensagem de status
+    // Taxa de entrega fixa carregada do perfil do restaurante
+    const [taxaEntrega, setTaxaEntrega] = useState(0); 
+    // CEP Busca e Status Frete não são mais necessários na lógica
+    const [cepBusca, setCepBusca] = useState(''); 
+    const [statusFrete, setStatusFrete] = useState(''); 
     const navigate = useNavigate();
 
-    // Função de Busca de Frete
-    const buscarFrete = async (cep) => {
-        const cepLimpo = cep.replace(/\D/g, '');
-        if (cepLimpo.length < 8) {
-            setTaxaEntrega(0);
-            setStatusFrete('CEP incompleto.');
-            return;
-        }
-
-        try {
-            setStatusFrete('Calculando...');
-            // CHAMA O NOVO ENDPOINT DE CÁLCULO DE FRETE
-            const response = await apiClient.get(`/api/publico/frete/${restauranteId}/${cepLimpo}`);
-            
-            setTaxaEntrega(response.taxaEntrega);
-            setStatusFrete('Entrega disponível!');
-
-        } catch (error) {
-            const errorMsg = error.message || "Entrega indisponível para este CEP.";
-            
-            try {
-                 const errorJson = JSON.parse(errorMsg);
-                 setStatusFrete(errorJson.error || 'Entrega indisponível.');
-            } catch (e) {
-                 setStatusFrete('Entrega indisponível para este CEP.');
-            }
-
-            setTaxaEntrega(0);
-        }
-    };
+    // REMOVENDO FUNÇÃO buscarFrete
 
     // Busca o cardápio público
     useEffect(() => {
@@ -113,8 +86,10 @@ const CardapioClientePage = () => {
             try {
                 const data = await apiClient.get(`/api/publico/cardapio/${restauranteId}`);
                 setCardapio(data);
-                // A taxa de entrega será definida pelo cálculo de CEP
-                // setTaxaEntrega(data.taxaEntrega || 0); 
+                
+                // CRÍTICO: Usa a taxa fixa retornada pelo endpoint público
+                setTaxaEntrega(data.taxaEntrega || 0); 
+                
             } catch (err) {
                 setError("Cardápio não encontrado ou indisponível.");
             } finally {
@@ -158,6 +133,7 @@ const CardapioClientePage = () => {
 
     // CALCULA O TOTAL GERAL (Subtotal + Taxa de Entrega)
     const totalCarrinho = useMemo(() => {
+        // Agora o total é o subtotal mais a taxa fixa
         return subtotalCarrinho + taxaEntrega;
     }, [subtotalCarrinho, taxaEntrega]);
 
@@ -179,10 +155,7 @@ const CardapioClientePage = () => {
             toast.warn("O valor total do pedido deve ser maior que zero.");
             return;
         }
-        if (taxaEntrega <= 0 && tipoPagamentoSelecionado !== 'ONLINE') {
-            toast.warn("Calcule o frete antes de enviar o pedido.");
-            return;
-        }
+        // A validação de frete por CEP/taxa <= 0 foi removida, usando apenas a taxa fixa.
 
 
         const pedidoParaApi = {
@@ -397,8 +370,8 @@ const CardapioClientePage = () => {
                             {carrinho.map(item => <p key={item.itemId} className="dark:text-tema-text-dark">{item.quantidade}x {item.nome} {item.observacao && `(${item.observacao})`}</p>)}
                         </div>
                         
-                        {/* NOVO: SEÇÃO DE CEP E CÁLCULO DE FRETE */}
-                        <div className="mt-6">
+                        {/* SEÇÃO DE CEP E CÁLCULO DE FRETE - AGORA OCULTA */}
+                        {/* <div className="mt-6">
                             <label className="block text-sm font-bold text-tema-text dark:text-tema-text-dark mb-2">CEP para cálculo de Frete:</label>
                             <div className="flex gap-2">
                                 <input 
@@ -410,27 +383,35 @@ const CardapioClientePage = () => {
                                 />
                                 <button
                                     type="button"
-                                    onClick={() => buscarFrete(cepBusca)}
+                                    onClick={() => toast.info("O cálculo por CEP está temporariamente desativado. Usando taxa fixa.")}
                                     className="bg-tema-primary text-white font-bold px-4 py-2 rounded-lg hover:bg-opacity-80 transition-colors"
                                 >
                                     Calcular
                                 </button>
                             </div>
-                            <p className={`text-xs mt-1 ${taxaEntrega > 0 ? 'text-tema-success' : 'text-red-500'}`}>{statusFrete}</p>
+                            <p className="text-xs mt-1 text-tema-text-muted dark:text-tema-text-muted-dark">
+                                Taxa de entrega fixa utilizada: **R$ {taxaEntrega.toFixed(2).replace('.', ',')}** (Para ativar o cálculo por CEP, use a área Admin).
+                            </p>
                         </div>
+                        */}
                         
-                        {/* DETALHES DE PREÇO */}
-                        <div className="text-sm dark:text-tema-text-dark mt-4 border-t dark:border-gray-700 pt-2">
+                        {/* DETALHES DE PREÇO (MOSTRANDO APENAS SUBTOTAL E TOTAL GERAL) */}
+                        <div className="text-sm dark:text-tema-text-dark mt-4 pt-2">
                             <div className="flex justify-between">
                                 <span>Subtotal:</span>
                                 <span>R$ {subtotalCarrinho.toFixed(2).replace('.',',')}</span>
                             </div>
-                            <div className="flex justify-between font-bold text-lg pt-1">
-                                <span>Taxa de Entrega:</span>
-                                <span className={taxaEntrega > 0 ? 'text-tema-accent' : 'text-gray-500'}>R$ {taxaEntrega.toFixed(2).replace('.',',')}</span>
-                            </div>
+                            
+                            {/* LINHA DE TAXA DE ENTREGA (CONDICIONAL) */}
+                            {taxaEntrega > 0 && (
+                                <div className="flex justify-between font-bold text-lg pt-1 text-gray-500">
+                                    <span>Taxa de Entrega:</span>
+                                    <span>R$ {taxaEntrega.toFixed(2).replace('.',',')}</span>
+                                </div>
+                            )}
                         </div>
                         
+                        {/* TOTAL GERAL SEMPRE NO FINAL */}
                         <p className="text-xl font-bold mt-4 text-right dark:text-tema-text-dark border-t dark:border-gray-700 pt-2">Total Geral: R$ {totalCarrinho.toFixed(2).replace('.',',')}</p>
                         
                         <div className="mt-6 space-y-4">
@@ -457,8 +438,7 @@ const CardapioClientePage = () => {
                         </div>
                         <button 
                             onClick={handleEnviarPedido} 
-                            // DESABILITA se o frete for 0 e o pagamento não for online (impede pagamento na entrega sem frete)
-                            disabled={taxaEntrega <= 0 && tipoPagamentoSelecionado !== 'ONLINE'} 
+                            disabled={totalCarrinho <= 0} 
                             className="w-full mt-6 py-3 rounded-lg font-bold text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                         >
                             {/* TEXTO CONDICIONAL */}

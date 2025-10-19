@@ -3,9 +3,19 @@ import { toast } from 'react-toastify';
 import { useAuth } from '../contexts/AuthContext';
 
 const LinkCardapio = () => {
-    const { userProfile } = useAuth();
+    const { userProfile, loadingProfile } = useAuth(); // Puxar loadingProfile
 
-    if (!userProfile) return null;
+    if (loadingProfile) {
+        // Retorna um placeholder enquanto carrega o perfil
+        return (
+            <div className="bg-white dark:bg-tema-surface-dark p-4 rounded-xl shadow-lg border dark:border-gray-700 text-center mb-4">
+                <p className="text-tema-text-muted dark:text-tema-text-muted-dark">Carregando informações do perfil...</p>
+            </div>
+        );
+    }
+    
+    // Verifica se o perfil existe E se o ID do restaurante existe (evita o erro do link ser "/cardapio/null")
+    if (!userProfile || !userProfile.id) return null;
 
     const link = `${window.location.origin}/cardapio/${userProfile.id}`;
 

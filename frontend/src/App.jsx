@@ -21,6 +21,7 @@ import RastrearPedidoPage from './Pages/RastrearPedidoPage.jsx';
 import GerenciarUsuariosPage from './Pages/GerenciarUsuariosPage.jsx';
 import FinanceiroPage from './Pages/FinanceiroPage.jsx';
 import GerenciarPerfilPage from './Pages/GerenciarPerfilPage.jsx';
+import GerenciarAreasEntregaPage from './Pages/GerenciarAreasEntregaPage.jsx'; // NOVO IMPORT
 
 const App = () => {
   return (
@@ -42,6 +43,7 @@ const App = () => {
             <Route path="admin/perfil" element={<GerenciarPerfilPage />}/>
             <Route path="admin/cardapio" element={<GerenciarCardapioPage />} />
             <Route path="admin/adicionais" element={<GerenciarAdicionaisPage />} />
+            <Route path="admin/areas-entrega" element={<GerenciarAreasEntregaPage />} /> {/* NOVA ROTA */}
             <Route path="admin/usuarios" element={<GerenciarUsuariosPage />} />
             <Route path="admin/relatorios" element={<RelatorioPage />} />
             <Route path="admin/configuracoes" element={<ConfiguracoesPage />} />
