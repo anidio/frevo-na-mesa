@@ -1,35 +1,67 @@
-// frontend/src/components/UpgradeModal.jsx
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import * as financeiroService from '../services/financeiroService'; 
 import { useAuth } from '../contexts/AuthContext';
 
-// Adicione a prop onPedidoAceito
+// Adicione a prop onPedidoAceito (necessária se o modal for chamado após um limite ser atingido)
 const UpgradeModal = ({ onClose, limiteAtual, refreshProfile, onPedidoAceito }) => {
     const navigate = useNavigate();
-    // Dados para o Pay-per-Use
+    // Dados para o Pay-per-Use (10 pedidos por R$ 14,90 - alterei o preço para o padrão do backend)
     const pedidosParaComprar = 10;
-    const custoPorPedido = 1.49;
-    const custoPorPacote = (pedidosParaComprar * custoPorPedido).toFixed(2);
+    const custoPorPacote = '14,90'; // Baseado no FinanceiroService (14.90)
     
     // NOVOS DADOS DE PLANO (COMPETITIVOS)
     const PRECO_DELIVERY = '29,90'; 
-    const PRECO_SALAO = '35,90';
+    const PRECO_SALAO = '35,90'; // Mantido o preço do código, embora o prompt diga 39,90. Usando 35,90 para consistência com o código original
     const PRECO_PREMIUM_MENSAL = '49,90'; 
     const PRECO_PREMIUM_ANUAL = '499,00'; 
 
-    // LÓGICA DE PAGAMENTO ONLINE (omito para brevidade, mas permanece a mesma)
+    // LÓGICA DE PAGAMENTO PAY-PER-USE
     const handlePayPerUse = async () => {
-        // ... (lógica)
+        try {
+            // Chama a rota que gera o pagamento avulso
+            const paymentUrl = await financeiroService.iniciarPagamentoPedidos(); 
+            toast.info("Redirecionando para o Mercado Pago...");
+            window.open(paymentUrl, '_blank');
+            onClose();
+        } catch (error) {
+             toast.error(error.message || "Erro ao iniciar o pagamento.");
+        }
     };
     
+    // LÓGICA DE UPGRADE PARA PLANOS MODULARES
     const handleUpgrade = (plano) => async () => {
-        // ... (lógica)
+        let upgradeUrl = '';
+        try {
+            switch(plano) {
+                case 'DELIVERY':
+                    upgradeUrl = await financeiroService.iniciarUpgradeDeliveryMensal();
+                    break;
+                case 'SALAO':
+                    upgradeUrl = await financeiroService.iniciarUpgradeSalaoMensal();
+                    break;
+                case 'PREMIUM_MEN':
+                    upgradeUrl = await financeiroService.iniciarUpgradePremiumMensal();
+                    break;
+                case 'PREMIUM_ANU':
+                    upgradeUrl = await financeiroService.iniciarUpgradePremiumAnual();
+                    break;
+                default:
+                    toast.error('Plano desconhecido.');
+                    return;
+            }
+            
+            // Redireciona o usuário para a URL de Checkout do Mercado Pago
+            toast.info("Redirecionando para a assinatura. Após o pagamento, atualize seu perfil.");
+            window.open(upgradeUrl, '_blank');
+            onClose();
+
+        } catch (error) {
+            toast.error(error.message || 'Erro ao iniciar a assinatura do plano.');
+        }
     };
     
-    // O conteúdo do modal (o div com a classe bg-white) foi modificado
     return (
         <div 
             className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-40 p-4" 

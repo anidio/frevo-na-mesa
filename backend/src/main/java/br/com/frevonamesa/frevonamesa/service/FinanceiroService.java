@@ -21,6 +21,7 @@ import com.mercadopago.client.payment.PaymentClient;
 import com.mercadopago.resources.payment.Payment;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime; // NOVO IMPORT: Para calcular a expiração
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -161,6 +162,7 @@ public class FinanceiroService {
 
     /**
      * MÉTODO CRÍTICO CORRIGIDO: Processa a notificação do Mercado Pago (Webhook).
+     * Adiciona a lógica de data de expiração para o CHURN.
      */
     @Transactional
     public void processarNotificacaoWebhook(String resourceId, String topic) throws MPException, MPApiException {
@@ -183,7 +185,7 @@ public class FinanceiroService {
             Long restauranteId = (Long) metadata.get("restaurante_id");
             String tipoProduto = (String) metadata.get("tipo_produto");
 
-            // --- NOVO: Lógica para Pedido Público (Finaliza a ordem no banco) ---
+            // --- Lógica para Pedido Público (Finaliza a ordem no banco) ---
             if (tipoProduto != null && tipoProduto.equals("PEDIDO_DELIVERY")) {
                 UUID pedidoUuid = UUID.fromString((String) metadata.get("uuid_pedido"));
 
@@ -192,7 +194,7 @@ public class FinanceiroService {
                     pedidoService.finalizarPedidoAprovado(pedidoUuid, payment.getPaymentMethodId().equals("pix") ? TipoPagamento.PIX : TipoPagamento.CARTAO_CREDITO);
                     System.out.println("SUCESSO: Pagamento online de Pedido Delivery finalizado e enviado para preparo. UUID: " + pedidoUuid);
                 }
-                return; // Sai do webhook, pois a lógica de planos não se aplica a pedidos
+                return; // Sai do webhook
             }
             // --- FIM LÓGICA DE PEDIDO PÚBLICO ---
 
@@ -204,6 +206,9 @@ public class FinanceiroService {
 
             Restaurante restaurante = restauranteRepository.findById(restauranteId).orElseThrow(() -> new RuntimeException("Restaurante não encontrado na compensação PRO."));
 
+            // NOVO: Variável para rastrear a data de expiração
+            LocalDateTime novaExpiracao = null;
+
             switch (tipoProduto) {
                 case "PAY_PER_USE":
                     compensarLimite(restauranteId);
@@ -212,17 +217,25 @@ public class FinanceiroService {
                     restaurante.setPlano("DELIVERY_PRO");
                     restaurante.setDeliveryPro(true);
                     restaurante.setSalaoPro(false);
+                    novaExpiracao = LocalDateTime.now().plusMonths(1); // Expira em 1 mês
                     break;
                 case "PLANO_SALAO_MENSAL":
                     restaurante.setPlano("SALÃO_PDV");
                     restaurante.setDeliveryPro(false);
                     restaurante.setSalaoPro(true);
+                    novaExpiracao = LocalDateTime.now().plusMonths(1); // Expira em 1 mês
                     break;
                 case "PLANO_PREMIUM_MENSAL":
+                    restaurante.setPlano("PREMIUM");
+                    restaurante.setDeliveryPro(true);
+                    restaurante.setSalaoPro(true);
+                    novaExpiracao = LocalDateTime.now().plusMonths(1); // Expira em 1 mês
+                    break;
                 case "PLANO_PREMIUM_ANUAL":
                     restaurante.setPlano("PREMIUM");
                     restaurante.setDeliveryPro(true);
                     restaurante.setSalaoPro(true);
+                    novaExpiracao = LocalDateTime.now().plusYears(1); // Expira em 1 ano
                     break;
                 default:
                     System.out.println("INFO: Tipo de produto desconhecido: " + tipoProduto);
@@ -231,8 +244,9 @@ public class FinanceiroService {
 
             // Lógica comum de atualização:
             restaurante.setPedidosMesAtual(0);
+            restaurante.setDataExpiracaoPlano(novaExpiracao); // SALVA A DATA DE EXPIRAÇÃO
             restauranteRepository.save(restaurante);
-            System.out.println("SUCESSO: Pagamento de " + tipoProduto + " aplicado para o restaurante " + restauranteId);
+            System.out.println("SUCESSO: Pagamento de " + tipoProduto + " aplicado para o restaurante " + restauranteId + " e expiração definida para: " + novaExpiracao);
         } else {
             System.out.println("INFO: Pagamento não aprovado para o ID: " + resourceId + ". Status: " + payment.getStatus());
         }

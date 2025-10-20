@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -62,6 +63,8 @@ public class Restaurante {
 
     private String whatsappNumber;
     private BigDecimal taxaEntrega = BigDecimal.ZERO;
+
+    private LocalDateTime dataExpiracaoPlano;
 
     public Restaurante(String nome, String email, String senha, TipoEstabelecimento tipo) {
         this.nome = nome;
