@@ -64,6 +64,9 @@ public class Restaurante {
     private String whatsappNumber;
     private BigDecimal taxaEntrega = BigDecimal.ZERO;
 
+    private String stripeCustomerId;      // ID do Cliente no Stripe (cus_...)
+    private String stripeSubscriptionId;
+
     private LocalDateTime dataExpiracaoPlano;
 
     public Restaurante(String nome, String email, String senha, TipoEstabelecimento tipo) {

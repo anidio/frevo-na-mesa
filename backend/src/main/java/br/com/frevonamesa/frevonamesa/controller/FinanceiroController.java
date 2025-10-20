@@ -1,12 +1,10 @@
-// backend/src/main/java/br/com/frevonamesa/frevonamesa/controller/FinanceiroController.java
-
 package br.com.frevonamesa.frevonamesa.controller;
 
 import br.com.frevonamesa.frevonamesa.model.Restaurante;
 import br.com.frevonamesa.frevonamesa.service.FinanceiroService;
 import br.com.frevonamesa.frevonamesa.service.RestauranteService;
-import com.mercadopago.exceptions.MPApiException;
-import com.mercadopago.exceptions.MPException;
+// IMPORTS DO MERCADO PAGO REMOVIDOS
+import com.stripe.exception.StripeException; // NOVO IMPORT
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,59 +23,66 @@ public class FinanceiroController {
     private RestauranteService restauranteService;
 
     /**
-     * Endpoint chamado pelo Front-end para iniciar o fluxo de pagamento do Pay-per-Use.
-     * Retorna a URL de Checkout do Mercado Pago.
+     * Endpoint para iniciar o pagamento do Pay-per-Use (Stripe Payment - Avulso).
+     * Retorna a URL de Checkout do Stripe.
      */
     @PostMapping("/iniciar-pagamento")
     @PreAuthorize("hasAnyRole('ADMIN', 'CAIXA')")
     public ResponseEntity<?> iniciarPagamento() {
         try {
             Restaurante restaurante = restauranteService.getRestauranteLogado();
-            // Verifica se o usuário tem o plano correto para evitar chamadas desnecessárias à API do MP
+
             if (!restaurante.getPlano().equals("GRATUITO")) {
                 return ResponseEntity.badRequest().body("Usuário já tem pedidos ilimitados.");
             }
 
+            // O service agora retorna a URL de Checkout do Stripe Session
             String paymentUrl = financeiroService.gerarUrlPagamento(restaurante.getId());
 
             // Retorna a URL para o Front-end redirecionar o usuário
             Map<String, String> response = Map.of("paymentUrl", paymentUrl);
             return ResponseEntity.ok(response);
 
-        } catch (MPException | MPApiException e) {
-            return ResponseEntity.status(500).body("Erro ao gerar pagamento: " + e.getMessage());
+        } catch (StripeException e) {
+            // Captura as exceções do Stripe SDK
+            System.err.println("ERRO STRIPE ao gerar pagamento: " + e.getMessage());
+            return ResponseEntity.status(500).body("Erro ao gerar pagamento Stripe: " + e.getMessage());
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
     /**
-     * Webhook (IPN) do Mercado Pago para notificar sobre a mudança de status do pagamento.
-     * Rota de recebimento de notificação.
+     * NOVO: Endpoint do Webhook para receber as notificações do Stripe.
+     * Esta rota deve ser exposta publicamente e não exige autenticação.
      */
-    @PostMapping("/webhook/mp")
-    public ResponseEntity<Void> receberNotificacaoMP(@RequestParam("id") String resourceId,
-                                                     @RequestParam("topic") String topic) {
-
-        System.out.println("WEBHOOK MP RECEBIDO: ID=" + resourceId + ", Tópico=" + topic);
-
+    @PostMapping("/webhook/stripe")
+    public ResponseEntity<String> receberNotificacaoStripe(@RequestBody String payload,
+                                                           @RequestHeader("Stripe-Signature") String sigHeader) {
         try {
-            // A validação de segurança e a busca pelo status ocorrem DENTRO do service.
-            financeiroService.processarNotificacaoWebhook(resourceId, topic);
+            // A validação de segurança e o processamento do evento são delegados ao service.
+            financeiroService.processarWebhookStripe(payload, sigHeader);
 
-            // Retorna 200 OK para o Mercado Pago, confirmando que a notificação foi recebida.
-            return ResponseEntity.ok().build();
+            // Retorna 200 OK para o Stripe, confirmando o recebimento
+            return ResponseEntity.ok().body("Success");
 
-        } catch (MPException | MPApiException e) {
-            // Em caso de falha (ex: API do MP inacessível), o MP irá re-enviar
-            System.err.println("ERRO CRÍTICO ao processar webhook MP: " + e.getMessage());
-            return ResponseEntity.status(500).build();
+        } catch (StripeException e) {
+            // Erro na API do Stripe ou na validação do Webhook
+            System.err.println("ERRO STRIPE na assinatura do Webhook: " + e.getMessage());
+            return ResponseEntity.status(400).body("Webhook Error: Assinatura inválida.");
+        } catch (RuntimeException e) {
+            // Erros internos de regra de negócio, como restaurante não encontrado
+            System.err.println("ERRO INTERNO no Webhook: " + e.getMessage());
+            return ResponseEntity.status(500).body("Internal Server Error: " + e.getMessage());
         } catch (Exception e) {
-            System.err.println("ERRO INESPERADO ao processar webhook: " + e.getMessage());
-            return ResponseEntity.status(500).build();
+            System.err.println("ERRO INESPERADO no Webhook: " + e.getMessage());
+            return ResponseEntity.status(500).body("Internal Server Error: " + e.getMessage());
         }
     }
 
+    // REMOVIDO: O endpoint /webhook/mp foi removido.
+
+    // --- ENDPOINTS DE UPGRADE (Stripe Subscription) ---
 
     @PostMapping("/upgrade/delivery-mensal")
     @PreAuthorize("hasRole('ADMIN')")
@@ -87,6 +92,7 @@ public class FinanceiroController {
             String upgradeUrl = financeiroService.gerarUrlUpgradeDeliveryMensal(restauranteId);
             return ResponseEntity.ok(Map.of("upgradeUrl", upgradeUrl));
         } catch (Exception e) {
+            // Captura StripeException ou RuntimeException
             return ResponseEntity.badRequest().body("Erro ao gerar pagamento: " + e.getMessage());
         }
     }
@@ -127,14 +133,12 @@ public class FinanceiroController {
         }
     }
 
+    // --- ENDPOINT DE STATUS (MANTIDO) ---
     @GetMapping("/status-plano")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> getStatusPlanoDetalhado() {
         try {
             Map<String, Object> status = restauranteService.getStatusPlanoDetalhado();
-            // Adicione aqui os status dos novos booleanos se desejar (opcional, mas bom para debug)
-            // status.put("isDeliveryPro", restauranteService.getRestauranteLogado().isDeliveryPro());
-            // status.put("isSalaoPro", restauranteService.getRestauranteLogado().isSalaoPro());
             return ResponseEntity.ok(status);
         } catch (RuntimeException e) {
             return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));

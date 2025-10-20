@@ -23,9 +23,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.beans.factory.annotation.Value;
 
-// IMPORTS NECESSÁRIOS PARA O FLUXO DE PAGAMENTO ONLINE
-import com.mercadopago.exceptions.MPApiException;
-import com.mercadopago.exceptions.MPException;
+// IMPORTS DO MERCADO PAGO REMOVIDOS (MPApiException, MPException)
 import java.util.UUID;
 
 
@@ -481,10 +479,10 @@ public class PedidoService {
     /**
      * NOVO: Inicia o fluxo de pagamento para um pedido de cliente final (Cardápio Público).
      * @param dto Dados do pedido.
-     * @return URL de pagamento do Mercado Pago.
+     * @return URL de pagamento do Stripe.
      */
     @Transactional
-    public String iniciarPagamentoDeliveryCliente(PedidoDeliveryClienteDTO dto) throws MPException, MPApiException {
+    public String iniciarPagamentoDeliveryCliente(PedidoDeliveryClienteDTO dto) {
         Restaurante restaurante = restauranteRepository.findById(dto.getRestauranteId())
                 .orElseThrow(() -> new RuntimeException("Restaurante não encontrado!"));
 
@@ -557,7 +555,14 @@ public class PedidoService {
         pedidoRepository.save(pedidoPrePago);
 
         // 4. Geração da URL de pagamento (Chama FinanceiroService)
-        return financeiroService.gerarUrlPagamentoPedidoPublico(pedidoUuid, totalComFrete);
+        // O THROW EXPLICITO FOI REMOVIDO DA ASSINATURA, MAS O METODO AINDA PODE LANÇAR EXCEPTION
+        try {
+            // O método gerarUrlPagamentoPedidoPublico AGORA está no FinanceiroService
+            // e deve ser refatorado para usar o Stripe. O try/catch é para capturar StripeException.
+            return financeiroService.gerarUrlPagamentoPedidoPublico(pedidoUuid, totalComFrete);
+        } catch (Exception e) {
+            throw new RuntimeException("Erro ao gerar URL de pagamento: " + e.getMessage(), e);
+        }
     }
 
 

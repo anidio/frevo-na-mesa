@@ -1,15 +1,16 @@
 // frontend/src/services/financeiroService.js
 import apiClient from './apiClient';
 
-// MÉTODO CRÍTICO: Inicia o pagamento no Backend e retorna o URL do Mercado Pago
+// Pay-per-Use (compra única)
 export const iniciarPagamentoPedidos = async () => {
-    // Chama o endpoint que gera a Preferência de Pagamento via SDK do Mercado Pago
+    // Chama /api/financeiro/iniciar-pagamento, que agora gera o Stripe Checkout Session Mode.PAYMENT
     const response = await apiClient.post('/api/financeiro/iniciar-pagamento', {});
-    // O backend retorna { paymentUrl: "..." }
-    return response.paymentUrl;
+    return response.paymentUrl; // Retorna a URL do Stripe
 };
 
+// Upgrade Delivery PRO (assinatura recorrente)
 export const iniciarUpgradeDeliveryMensal = async () => {
+    // Chama /api/financeiro/upgrade/delivery-mensal, que gera o Stripe Checkout Session Mode.SUBSCRIPTION
     const response = await apiClient.post('/api/financeiro/upgrade/delivery-mensal', {}); 
     return response.upgradeUrl; 
 };
