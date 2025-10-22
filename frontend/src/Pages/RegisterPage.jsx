@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import * as authService from '../services/authService';
+import * as authService from '../services/authService'; // Importe o authService atualizado
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
@@ -12,7 +12,7 @@ const RegisterPage = () => {
     const [endereco, setEndereco] = useState('');
     const [confirmaSenha, setConfirmaSenha] = useState('');
     const [erroSenha, setErroSenha] = useState('');
-    const [tipo, setTipo] = useState('APENAS_DELIVERY');
+    // const [tipo, setTipo] = useState('APENAS_DELIVERY'); // <<< REMOVIDO
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
@@ -26,7 +26,8 @@ const RegisterPage = () => {
         setErroSenha('');
 
         try {
-            await authService.registrar(nome, email, senha, tipo, endereco);
+            // Chama o registrar SEM o 'tipo'
+            await authService.registrar(nome, email, senha, endereco);
             toast.success('Restaurante registrado com sucesso! Faça o login.');
             navigate('/login');
         } catch (error) {
@@ -37,7 +38,7 @@ const RegisterPage = () => {
     const inputClass = "w-full px-3 py-2 mt-1 border rounded-md shadow-sm dark:bg-gray-800 dark:text-white dark:border-gray-600 focus:ring-tema-primary focus:border-tema-primary";
     const senhaInputClass = erroSenha
         ? `${inputClass} border-red-500`
-        : `${inputClass} border-gray-300`;
+        : `${inputClass} border-gray-300 dark:border-gray-600`; // Adicionado dark:border-gray-600
 
     return (
         <div className="flex flex-col min-h-screen bg-tema-fundo dark:bg-tema-fundo-dark">
@@ -58,18 +59,9 @@ const RegisterPage = () => {
                             <label className="block text-sm font-medium text-tema-text-muted dark:text-tema-text-muted-dark">Endereço Completo</label>
                             <input type="text" value={endereco} onChange={(e) => setEndereco(e.target.value)} required className={inputClass} />
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-tema-text-muted dark:text-tema-text-muted-dark">Qual o seu tipo de negócio?</label>
-                            <select
-                                value={tipo}
-                                onChange={(e) => setTipo(e.target.value)}
-                                className={`${inputClass} bg-white dark:bg-gray-800`}
-                            >
-                                <option value="APENAS_DELIVERY">Apenas Delivery</option>
-                                <option value="APENAS_MESAS">Apenas Gestão de Mesas (Restaurante/Bar)</option>
-                                <option value="MESAS_E_DELIVERY">Plano Completo (Mesas e Delivery)</option>
-                            </select>
-                        </div>
+
+                        {/* Bloco <select> REMOVIDO */}
+
                         <div>
                             <label className="block text-sm font-medium text-tema-text-muted dark:text-tema-text-muted-dark">Senha</label>
                             <input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} required className={senhaInputClass} />
@@ -89,7 +81,7 @@ const RegisterPage = () => {
                     </form>
                     <p className="text-sm text-center text-tema-text-muted dark:text-tema-text-muted-dark">
                         Já tem uma conta?{' '}
-                        <Link to="/login" className="font-medium text-tema-primary hover:underline">
+                        <Link to="/login" className="font-medium text-tema-primary hover:underline dark:text-tema-link-dark">
                             Faça o login
                         </Link>
                     </p>

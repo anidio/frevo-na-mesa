@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext.jsx';
 
 const LampiaoHatIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -53,40 +53,36 @@ const HomePage = () => {
 
     const renderProfileCards = () => {
         if (isLoggedIn && loadingProfile) {
-            return <p className="text-tema-text-muted">Carregando seu perfil...</p>;
+            return <p className="text-tema-text-muted dark:text-tema-text-muted-dark md:col-span-3 text-center">Carregando seu perfil...</p>;
         }
 
         if (isLoggedIn && userProfile) {
-            switch (userProfile.tipo) {
-                case 'APENAS_MESAS':
-                    return (
-                        <>
-                            <ProfileCard title="App do Garçom" description="Gerencie mesas e faça pedidos." features={["Layout visual das mesas", "Cardápio completo", "Envio para a cozinha"]} icon={<LampiaoHatIcon />} linkText="Acessar Painel" linkTo="/mesas" />
-                            <ProfileCard title="App do Caixa" description="Feche contas e veja relatórios." features={["Controle de contas", "Processar pagamentos", "Relatório de vendas"]} icon={<CactusIcon />} linkText="Acessar Painel" linkTo="/caixa" />
-                        </>
-                    );
-                case 'APENAS_DELIVERY':
-                    return (
-                        <div className="md:col-span-2 lg:col-span-3 flex justify-center">
-                            <div className="w-full max-w-sm">
-                                <ProfileCard title="Painel de Delivery" description="Receba e gerencie seus pedidos." features={["Painel Kanban", "Notificações de pedidos", "Controle de status"]} icon={<SmartphoneIcon />} linkText="Acessar Painel" linkTo="/delivery" />
-                            </div>
-                        </div>
-                    );
-                case 'MESAS_E_DELIVERY':
-                    return (
-                        <>
-                            <ProfileCard title="App do Garçom" description="Gerencie mesas e faça pedidos." features={["Layout visual das mesas", "Cardápio completo", "Envio para a cozinha"]} icon={<LampiaoHatIcon />} linkText="Acessar Painel" linkTo="/mesas" />
-                            <ProfileCard title="Painel de Delivery" description="Receba e gerencie seus pedidos." features={["Painel Kanban", "Notificações de pedidos", "Controle de status"]} icon={<SmartphoneIcon />} linkText="Acessar Painel" linkTo="/delivery" />
-                            <ProfileCard title="App do Caixa" description="Feche contas e veja relatórios." features={["Controle de contas", "Processar pagamentos", "Relatório de vendas"]} icon={<CactusIcon />} linkText="Acessar Painel" linkTo="/caixa" />
-                        </>
-                    );
-                default:
-                    return <p className="text-tema-text-muted">Nenhum perfil de negócio configurado.</p>;
+            // <<< NOVA LÓGICA BASEADA NAS FLAGS E PLANO >>>
+            const cards = [];
+            const isGratuito = userProfile.plano === 'GRATUITO';
+
+            // Mostra módulos de Salão se isSalaoPro for true OU se o plano for Gratuito
+            const mostrarModuloSalao = userProfile.isSalaoPro || isGratuito;
+            // Mostra módulo Delivery se isDeliveryPro for true OU se o plano for Gratuito
+            const mostrarModuloDelivery = userProfile.isDeliveryPro || isGratuito;
+
+            if (mostrarModuloSalao) {
+                cards.push(<ProfileCard key="garcom" title="App do Garçom" description="Gerencie mesas e faça pedidos." features={["Layout visual das mesas", "Cardápio completo", "Envio para a cozinha"]} icon={<LampiaoHatIcon />} linkText="Acessar Painel" linkTo="/mesas" />);
+                cards.push(<ProfileCard key="caixa" title="App do Caixa" description="Feche contas e veja relatórios." features={["Controle de contas", "Processar pagamentos", "Relatório de vendas"]} icon={<CactusIcon />} linkText="Acessar Painel" linkTo="/caixa" />);
             }
+
+            if (mostrarModuloDelivery) {
+                cards.push(<ProfileCard key="delivery" title="Painel de Delivery" description="Receba e gerencie seus pedidos." features={["Painel Kanban", "Notificações de pedidos", "Controle de status"]} icon={<SmartphoneIcon />} linkText="Acessar Painel" linkTo="/delivery" />);
+            }
+
+            if (cards.length === 0) {
+                 return <p className="text-tema-text-muted dark:text-tema-text-muted-dark md:col-span-3 text-center">Nenhum módulo ativo. Visite a seção Admin para gerenciar seus planos.</p>;
+            }
+
+            return <>{cards}</>;
         }
 
-        // Conteúdo para o usuário deslogado
+        // Conteúdo para o usuário deslogado (permanece o mesmo)
         return (
             <>
                 <ProfileCard

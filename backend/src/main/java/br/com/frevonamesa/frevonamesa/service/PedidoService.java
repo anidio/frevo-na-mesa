@@ -151,7 +151,7 @@ public class PedidoService {
 
         // VERIFICAÇÃO DE LIMITE ATUALIZADA:
         // O limite só é verificado se o plano for GRATUITO, e o usuário NÃO for Legacy Free NEM Beta Tester.
-        boolean shouldCheckLimit = restaurante.getPlano().equals("GRATUITO")
+        boolean shouldCheckLimit = !restaurante.isDeliveryPro()
                 && !restaurante.isLegacyFree()
                 && !restaurante.isBetaTester();
 
@@ -392,8 +392,8 @@ public class PedidoService {
         // --- 1. Lógica de Monetização de Limite para Plano GRATUITO ---
         int hardLimit = 2; // Limite do plano gratuito
         boolean isLimitedPlan = restaurante.getPlano().equals("GRATUITO");
-        boolean shouldCheckLimit = !restaurante.isLegacyFree() && !restaurante.isBetaTester() && isLimitedPlan;
-        boolean limitReached = shouldCheckLimit && restaurante.getPedidosMesAtual() >= hardLimit;
+        boolean shouldCheckLimit = !restaurante.isDeliveryPro() && !restaurante.isLegacyFree() && !restaurante.isBetaTester();
+        boolean limitReached = shouldCheckLimit && isLimitedPlan && restaurante.getPedidosMesAtual() >= hardLimit; // Só lança exceção se for gratuito E limite atingido
 
         if (limitReached) {
             // Se o limite foi atingido, LANÇA EXCEÇÃO (Para o ADMIN liberar)
@@ -586,8 +586,7 @@ public class PedidoService {
 
         // 2. Incrementa o contador (regra de monetização)
         Restaurante restaurante = pedido.getRestaurante();
-        boolean isLimitedPlan = restaurante.getPlano().equals("GRATUITO");
-        boolean shouldCheckLimit = !restaurante.isLegacyFree() && !restaurante.isBetaTester() && isLimitedPlan;
+        boolean shouldCheckLimit = !restaurante.isDeliveryPro() && !restaurante.isLegacyFree() && !restaurante.isBetaTester();
 
         if (shouldCheckLimit) {
             restaurante.setPedidosMesAtual(restaurante.getPedidosMesAtual() + 1);

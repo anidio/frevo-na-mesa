@@ -21,10 +21,9 @@ const NavItem = ({ icon, label, to, isHiddenOnMobile = false }) => {
   const location = useLocation();
   const isActive = location.pathname === to || (to !== "/" && location.pathname.startsWith(to));
 
-  // CORREÇÃO APLICADA AQUI: flex-row para PC, flex-col para celular
   const baseClasses = "flex flex-col md:flex-row items-center justify-center p-2 rounded-full transition-all duration-300 min-w-[60px] md:min-w-fit md:gap-2 md:px-4 md:py-2";
   const activeClasses = "bg-tema-primary text-white shadow-md";
-  const inactiveClasses = "text-tema-text-muted hover:bg-gray-200 dark:hover:bg-gray-700";
+  const inactiveClasses = "text-tema-text-muted dark:text-tema-text-muted-dark hover:bg-gray-200 dark:hover:bg-gray-700"; // <<< CORREÇÃO DARK MODE HOVER
 
   return (
     <Link
@@ -32,7 +31,6 @@ const NavItem = ({ icon, label, to, isHiddenOnMobile = false }) => {
       className={`${baseClasses} ${isActive ? activeClasses : inactiveClasses} ${isHiddenOnMobile ? 'hidden md:flex' : 'flex'}`}
     >
       {icon}
-      {/* A classe para o nome também foi ajustada */}
       <span className="text-xs mt-1 md:mt-0 md:text-sm">{label}</span>
     </Link>
   );
@@ -45,27 +43,35 @@ const BottomNav = () => {
 
   if (!userProfile) return null;
 
-  const temMesas = userProfile.tipo === 'APENAS_MESAS' || userProfile.tipo === 'MESAS_E_DELIVERY';
-  const temDelivery = userProfile.tipo === 'APENAS_DELIVERY' || userProfile.tipo === 'MESAS_E_DELIVERY';
+  // <<< NOVA LÓGICA BASEADA NAS FLAGS E PLANO >>>
+  const isGratuito = userProfile.plano === 'GRATUITO';
+  // Mostra módulos de Salão se isSalaoPro for true OU se o plano for Gratuito
+  const mostrarModuloSalao = userProfile.isSalaoPro || isGratuito;
+  // Mostra módulo Delivery se isDeliveryPro for true OU se o plano for Gratuito
+  const mostrarModuloDelivery = userProfile.isDeliveryPro || isGratuito;
+  // Verifica se o usuário logado tem a role ADMIN (ajuste se a role vier diferente no seu userProfile)
+  // Se a role não vier no userProfile, você pode assumir que se está logado, pode ver Admin,
+  // mas o ideal é ter a role. Se não tiver, remova essa variável e mostre Admin sempre.
+  const isAdmin = userProfile.role === 'ADMIN'; // <<< VERIFIQUE SE A ROLE VEM NO userProfile
 
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-10">
       <div className="flex items-center gap-2 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm p-2 rounded-full shadow-lg border dark:border-gray-700">
         <NavItem icon={<HomeIcon />} label="Home" to="/" />
 
-        {temMesas && <NavItem icon={<UserIcon />} label="Garçom" to="/mesas" />}
-        
-        {temDelivery && <NavItem icon={<DeliveryIcon />} label="Delivery" to="/delivery" />}
-        
-        {/* BOTÕES VISÍVEIS APENAS EM TELAS GRANDES */}
-        {temMesas && <NavItem icon={<CalculatorIcon />} label="Caixa" to="/caixa" isHiddenOnMobile={true} />}
-        <NavItem icon={<SettingsIcon />} label="Admin" to="/admin" isHiddenOnMobile={true} />
+        {/* Usa a nova lógica */}
+        {mostrarModuloSalao && <NavItem icon={<UserIcon />} label="Garçom" to="/mesas" />}
+        {mostrarModuloDelivery && <NavItem icon={<DeliveryIcon />} label="Delivery" to="/delivery" />}
 
-        {/* BOTÃO PARA MOSTRAR MAIS OPÇÕES, VISÍVEL APENAS EM TELAS PEQUENAS */}
+        {/* Botões desktop usam a nova lógica */}
+        {mostrarModuloSalao && <NavItem icon={<CalculatorIcon />} label="Caixa" to="/caixa" isHiddenOnMobile={true} />}
+        {isAdmin && <NavItem icon={<SettingsIcon />} label="Admin" to="/admin" isHiddenOnMobile={true} />} {/* Só mostra Admin se for ADMIN */}
+
+        {/* Botão "Mais" para mobile */}
         <div className="relative md:hidden">
-          <button 
+          <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="flex flex-col items-center justify-center p-2 rounded-full transition-all duration-300 min-w-[60px] text-tema-text-muted hover:bg-gray-200 dark:hover:bg-gray-700"
+            className="flex flex-col items-center justify-center p-2 rounded-full transition-all duration-300 min-w-[60px] text-tema-text-muted dark:text-tema-text-muted-dark hover:bg-gray-200 dark:hover:bg-gray-700" // <<< CORREÇÃO DARK MODE HOVER
           >
             <MoreIcon />
             <span className="text-xs mt-1">Mais</span>
@@ -73,14 +79,17 @@ const BottomNav = () => {
 
           {isMenuOpen && (
             <div className="absolute bottom-full mb-2 right-0 bg-white dark:bg-gray-800 rounded-lg shadow-xl border dark:border-gray-700 p-2 min-w-[150px] space-y-1">
-              {temMesas && (
-                <Link to="/caixa" className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+              {/* Menu "Mais" usa a nova lógica */}
+              {mostrarModuloSalao && (
+                <Link to="/caixa" className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-tema-text dark:text-tema-text-dark"> {/* <<< CORREÇÃO DARK MODE TEXT */}
                   <CalculatorIcon /> Caixa
                 </Link>
               )}
-              <Link to="/admin" className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
-                <SettingsIcon /> Admin
-              </Link>
+              {isAdmin && ( /* Só mostra Admin se for ADMIN */
+                <Link to="/admin" className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-tema-text dark:text-tema-text-dark"> {/* <<< CORREÇÃO DARK MODE TEXT */}
+                  <SettingsIcon /> Admin
+                </Link>
+              )}
             </div>
           )}
         </div>

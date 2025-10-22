@@ -43,7 +43,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         // 1. Rotas Abertas (Login, Público, H2 Console)
-                        .requestMatchers("/api/auth/**", "/h2-console/**", "/api/publico/**").permitAll()
+                        .requestMatchers("/api/auth/**", "/h2-console/**", "/api/publico/**", "/api/financeiro/webhook/stripe").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                         // 2. Rotas de Perfil

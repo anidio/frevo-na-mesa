@@ -121,7 +121,7 @@ public class MesaService {
         long mesasAtuais = mesaRepository.findByRestauranteId(restauranteId).size();
 
         // Verifica se o restaurante NÃO é LEGADO (piloto) E se atingiu o limite do plano.
-        if (!restaurante.isLegacyFree() && !restaurante.isBetaTester() && mesasAtuais >= restaurante.getLimiteMesas()) {
+        if (!restaurante.isSalaoPro() && !restaurante.isLegacyFree() && !restaurante.isBetaTester() && mesasAtuais >= restaurante.getLimiteMesas()) {
             throw new RuntimeException("Limite de " + restaurante.getLimiteMesas() + " mesas atingido para o seu plano! Atualize para o plano Salão PDV.");
         }
 

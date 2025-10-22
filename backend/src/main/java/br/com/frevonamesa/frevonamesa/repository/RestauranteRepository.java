@@ -11,4 +11,6 @@ public interface RestauranteRepository extends JpaRepository<Restaurante, Long> 
     Optional<Restaurante> findByEmail(String email);
 
     List<Restaurante> findAllByIsDeliveryProTrueOrIsSalaoProTrue();
+
+    Optional<Restaurante> findByStripeCustomerId(String stripeCustomerId);
 }

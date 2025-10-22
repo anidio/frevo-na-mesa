@@ -9,5 +9,4 @@ public class RestauranteDTO {
     private String email;
     private String senha;
     private String endereco;
-    private TipoEstabelecimento tipo;
 }

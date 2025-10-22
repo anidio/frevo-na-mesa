@@ -65,7 +65,7 @@ public class RestauranteService {
                 restauranteDTO.getNome(),
                 restauranteDTO.getEmail(),
                 senhaCriptografada,
-                restauranteDTO.getTipo()
+                TipoEstabelecimento.MESAS_E_DELIVERY
         );
         novoRestaurante.setEndereco(restauranteDTO.getEndereco());
         Restaurante restauranteSalvo = restauranteRepository.save(novoRestaurante);
