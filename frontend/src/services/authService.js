@@ -14,16 +14,16 @@ export const login = async (email, senha) => {
         throw new Error(errorText || 'Falha no login');
     }
 
-    return response.json(); // Retorna { token: "..." }
+    return response.json();
 };
 
-export const registrar = async (nome, email, senha, tipo, endereco) => {
+export const registrar = async (nome, email, senha, endereco) => {
     const response = await fetch(`${API_URL}/api/auth/registrar`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ nome, email, senha, tipo, endereco }),
+        body: JSON.stringify({ nome, email, senha, endereco }),
     });
 
     if (!response.ok) {
@@ -31,5 +31,5 @@ export const registrar = async (nome, email, senha, tipo, endereco) => {
         throw new Error(errorText || 'Falha no registro');
     }
 
-    return response.text(); // Retorna a mensagem de sucesso
+    return response.text();
 };

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom'; // Link não está sendo usado, mas mantido por precaução
 import { toast } from 'react-toastify';
 import PagamentoModal from '../components/PagamentoModal';
 import apiClient from '../services/apiClient';
 import { useAuth } from '../contexts/AuthContext';
 
-// --- Ícones ---
+// --- Ícones (sem alterações) ---
 const HeaderIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>);
 const ClockIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>);
 const PaymentIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>);
@@ -54,24 +54,39 @@ const CaixaPage = () => {
     const [mesaParaPagamento, setMesaParaPagamento] = useState(null);
     const [pedidosParaImprimir, setPedidosParaImprimir] = useState([]);
 
+    // **AJUSTE AQUI:** Usa as flags para decidir se busca dados de mesa
+    const isGratuito = userProfile?.plano === 'GRATUITO';
+    const mostrarModuloSalao = userProfile?.isSalaoPro || isGratuito;
+
     const fetchData = async () => {
         try {
             const promises = [apiClient.get('/api/caixa/dashboard')];
 
-            if (userProfile && (userProfile.tipo === 'APENAS_MESAS' || userProfile.tipo === 'MESAS_E_DELIVERY')) {
+            // **AJUSTE AQUI:** Condição baseada em mostrarModuloSalao
+            if (userProfile && mostrarModuloSalao) {
                 promises.push(apiClient.get('/api/mesas'));
+                // Busca pedidos pendentes apenas se a impressão estiver ativa E o módulo salão estiver visível
                 if (userProfile.impressaoMesaAtivada) {
                     promises.push(apiClient.get('/api/pedidos/mesa/pendentes'));
                 }
             }
+
             const results = await Promise.all(promises);
             setDashboardData(results[0]);
-            if (userProfile && (userProfile.tipo === 'APENAS_MESAS' || userProfile.tipo === 'MESAS_E_DELIVERY')) {
-                setMesas(results[1]);
-                if (userProfile.impressaoMesaAtivada) {
-                    setPedidosParaImprimir(results[2] || []);
+
+            // **AJUSTE AQUI:** Condição baseada em mostrarModuloSalao
+            if (userProfile && mostrarModuloSalao) {
+                setMesas(results[1] || []); // Garante que mesas seja um array
+                if (userProfile.impressaoMesaAtivada && results.length > 2) {
+                    setPedidosParaImprimir(results[2] || []); // Garante que seja array
+                } else {
+                     setPedidosParaImprimir([]); // Zera se a impressão não estiver ativa ou não buscou
                 }
+            } else {
+                 setMesas([]); // Zera se o módulo não deve ser mostrado
+                 setPedidosParaImprimir([]);
             }
+
         } catch (error) {
             console.error("Erro ao buscar dados do caixa:", error);
             toast.error("Não foi possível carregar os dados do caixa.");
@@ -81,30 +96,47 @@ const CaixaPage = () => {
     };
 
     useEffect(() => {
-        if (userProfile) {
+        // Roda fetchData apenas se o perfil estiver carregado
+        if (!loadingProfile && userProfile) {
             fetchData();
+            // Configura o intervalo apenas depois da primeira busca
             const intervalId = setInterval(fetchData, 15000);
-            return () => clearInterval(intervalId);
-        } else {
-            setLoading(false);
+            return () => clearInterval(intervalId); // Limpa o intervalo ao desmontar
+        } else if (!loadingProfile && !userProfile) {
+             // Se terminou de carregar e não tem perfil (não logado?)
+             setLoading(false); // Para o loading da página
+             toast.error("Usuário não autenticado."); // Ou redireciona para login
         }
-    }, [userProfile]);
+    }, [userProfile, loadingProfile]); // Re-executa se userProfile ou loadingProfile mudar
 
-    if (loadingProfile) {
-        return <div className="p-8 text-center text-tema-text-muted">Carregando...</div>;
-    }
-    
-    if (loading) {
-        return <div className="p-8 text-center text-tema-text-muted">Carregando dados do painel...</div>;
+    // Exibe loading enquanto o perfil está carregando OU enquanto os dados do caixa estão carregando
+    if (loadingProfile || loading) {
+        return <div className="p-8 text-center text-tema-text-muted dark:text-tema-text-muted-dark">Carregando...</div>;
     }
 
+    // Se não for mostrar o módulo salão (ex: plano Delivery Pro puro), exibe mensagem
+    if (!mostrarModuloSalao) {
+         return (
+             <div className="w-full p-4 md:p-8 max-w-7xl mx-auto space-y-8 text-center">
+                 <h1 className="text-2xl font-bold text-tema-text dark:text-tema-text-dark">Módulo Caixa</h1>
+                 <p className="text-tema-text-muted dark:text-tema-text-muted-dark">
+                     Este módulo requer o plano Salão PDV ou Premium.
+                     <Link to="/admin/financeiro" className="text-tema-primary ml-2 hover:underline">Ver planos</Link>
+                 </p>
+            </div>
+         );
+    }
+
+    // Se o módulo deve ser mostrado, mas os dados não carregaram
     if (!dashboardData) {
-        return <div className="p-8 text-center text-tema-accent">Não foi possível carregar os dados do painel.</div>
+        return <div className="p-8 text-center text-tema-accent dark:text-red-400">Não foi possível carregar os dados do painel.</div>
     }
 
     const mesasOcupadas = mesas.filter(m => m.status === 'OCUPADA');
     const mesasPagas = mesas.filter(m => m.status === 'PAGA');
 
+    // Funções handleImprimirPedido, handleAbrirModal, handleCloseModal, handleConfirmarPagamento
+    // permanecem EXATAMENTE as mesmas que você forneceu.
     const handleImprimirPedido = async (pedido) => {
         const conteudoImpressao = `
             <html><head><title>Pedido Mesa ${pedido.mesa.numero}</title>
@@ -142,7 +174,7 @@ const CaixaPage = () => {
             toast.error("Não foi possível marcar o pedido como impresso.");
         }
     };
-    
+
     const handleAbrirModal = (mesa) => {
         if (mesa.status === 'OCUPADA') setMesaParaPagamento(mesa);
         else if (mesa.status === 'PAGA') toast.info(`A Mesa ${mesa.numero} já foi paga e está aguardando liberação do garçom.`);
@@ -174,50 +206,51 @@ const CaixaPage = () => {
                 <DashboardCard icon={<SummaryDollarIcon />} title="Em Aberto" value={`R$ ${dashboardData.totalEmAberto.toFixed(2).replace('.', ',')}`} colorClass="text-tema-accent" />
                 <DashboardCard icon={<SummaryCheckIcon />} title="Mesas Pagas" value={dashboardData.mesasPagas} colorClass="text-tema-success" />
             </div>
-            
-            {(userProfile.tipo === 'APENAS_MESAS' || userProfile.tipo === 'MESAS_E_DELIVERY') && (
+
+            {/* **AJUSTE AQUI:** Renderização condicional baseada em mostrarModuloSalao */}
+            {mostrarModuloSalao && (
                 <>
-                {userProfile.impressaoMesaAtivada && (
+                    {userProfile.impressaoMesaAtivada && (
+                        <div className="space-y-4">
+                            <h2 className="text-xl font-semibold text-tema-text dark:text-tema-text-dark flex items-center gap-2">
+                                <PrinterIcon /> Fila de Impressão ({pedidosParaImprimir.length})
+                            </h2>
+                            <FilaDeImpressao pedidos={pedidosParaImprimir} onImprimir={handleImprimirPedido} />
+                        </div>
+                    )}
+
                     <div className="space-y-4">
-                    <h2 className="text-xl font-semibold text-tema-text dark:text-tema-text-dark flex items-center gap-2">
-                        <PrinterIcon /> Fila de Impressão ({pedidosParaImprimir.length})
-                    </h2>
-                    <FilaDeImpressao pedidos={pedidosParaImprimir} onImprimir={handleImprimirPedido} />
+                        <h2 className="text-xl font-semibold text-tema-text dark:text-tema-text-dark flex items-center gap-2">
+                            <ClockIcon /> Mesas com Contas Abertas ({mesasOcupadas.length})
+                        </h2>
+                        {mesasOcupadas.length > 0 ? (
+                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+                                {mesasOcupadas.map(mesa => (
+                                    <div key={mesa.id} onClick={() => handleAbrirModal(mesa)} className="bg-white dark:bg-tema-surface-dark border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-center cursor-pointer hover:border-tema-primary transition-colors">
+                                        <p className="font-bold text-tema-text dark:text-tema-text-dark truncate">Mesa {mesa.numero}</p>
+                                        {mesa.nomeCliente && <p className="text-xs text-tema-text-muted dark:text-tema-text-muted-dark truncate" title={mesa.nomeCliente}>{mesa.nomeCliente}</p>}
+                                        <p className="font-semibold text-sm text-tema-text dark:text-tema-text-dark">R$ {mesa.valorTotal.toFixed(2).replace('.', ',')}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (<div className="bg-white dark:bg-tema-surface-dark p-6 rounded-lg text-center text-tema-text-muted dark:text-tema-text-muted-dark border dark:border-gray-700">Nenhuma mesa aberta no momento.</div>)}
                     </div>
-                )}
 
-                <div className="space-y-4">
-                    <h2 className="text-xl font-semibold text-tema-text dark:text-tema-text-dark flex items-center gap-2">
-                        <ClockIcon /> Mesas com Contas Abertas ({mesasOcupadas.length})
-                    </h2>
-                    {mesasOcupadas.length > 0 ? (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
-                        {mesasOcupadas.map(mesa => (
-                        <div key={mesa.id} onClick={() => handleAbrirModal(mesa)} className="bg-white dark:bg-tema-surface-dark border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-center cursor-pointer hover:border-tema-primary transition-colors">
-                            <p className="font-bold text-tema-text dark:text-tema-text-dark truncate">Mesa {mesa.numero}</p>
-                            {mesa.nomeCliente && <p className="text-xs text-tema-text-muted dark:text-tema-text-muted-dark truncate" title={mesa.nomeCliente}>{mesa.nomeCliente}</p>}
-                            <p className="font-semibold text-sm text-tema-text dark:text-tema-text-dark">R$ {mesa.valorTotal.toFixed(2).replace('.', ',')}</p>
-                        </div>
-                        ))}
+                    <div className="space-y-4">
+                        <h2 className="text-xl font-semibold text-tema-text dark:text-tema-text-dark flex items-center gap-2">
+                            <PaymentIcon /> Mesas Pagas - Aguardando Liberação ({mesasPagas.length})
+                        </h2>
+                        {mesasPagas.length > 0 ? (
+                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+                                {mesasPagas.map(mesa => (
+                                    <div key={mesa.id} onClick={() => handleAbrirModal(mesa)} className="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-center cursor-pointer hover:border-gray-400 transition-colors">
+                                        <p className="font-bold text-gray-600 dark:text-gray-300 truncate">Mesa {mesa.numero}</p>
+                                        {mesa.nomeCliente && <p className="text-xs text-gray-500 dark:text-gray-400 truncate" title={mesa.nomeCliente}>{mesa.nomeCliente}</p>}
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (<div className="bg-white dark:bg-tema-surface-dark p-6 rounded-lg text-center text-tema-text-muted dark:text-tema-text-muted-dark border dark:border-gray-700">Nenhuma mesa aguardando liberação.</div>)}
                     </div>
-                    ) : (<div className="bg-white dark:bg-tema-surface-dark p-6 rounded-lg text-center text-tema-text-muted dark:text-tema-text-muted-dark border">Nenhuma mesa aberta no momento.</div>)}
-                </div>
-
-                <div className="space-y-4">
-                    <h2 className="text-xl font-semibold text-tema-text dark:text-tema-text-dark flex items-center gap-2">
-                        <PaymentIcon /> Mesas Pagas - Aguardando Liberação ({mesasPagas.length})
-                    </h2>
-                    {mesasPagas.length > 0 ? (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
-                        {mesasPagas.map(mesa => (
-                        <div key={mesa.id} onClick={() => handleAbrirModal(mesa)} className="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-center cursor-pointer hover:border-gray-400 transition-colors">
-                            <p className="font-bold text-gray-600 dark:text-gray-300 truncate">Mesa {mesa.numero}</p>
-                            {mesa.nomeCliente && <p className="text-xs text-gray-500 dark:text-gray-400 truncate" title={mesa.nomeCliente}>{mesa.nomeCliente}</p>}
-                        </div>
-                        ))}
-                    </div>
-                    ) : (<div className="bg-white dark:bg-tema-surface-dark p-6 rounded-lg text-center text-tema-text-muted dark:text-tema-text-muted-dark border">Nenhuma mesa aguardando liberação.</div>)}
-                </div>
                 </>
             )}
 

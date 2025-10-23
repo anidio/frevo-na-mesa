@@ -12,7 +12,7 @@ import java.util.List;
 
 @Entity
 @Data
-@NoArgsConstructor
+@NoArgsConstructor // Mantém o construtor sem argumentos exigido pelo JPA
 public class Restaurante {
 
     @Id
@@ -30,50 +30,50 @@ public class Restaurante {
 
     @OneToMany(mappedBy = "restaurante", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference("restaurante-usuario")
-    private List<Usuario> usuarios;
+    private List<Usuario> usuarios = new ArrayList<>(); // Inicializa a lista
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private TipoEstabelecimento tipo;
+    // **AJUSTE:** Define o valor padrão diretamente na declaração do campo
+    private TipoEstabelecimento tipo = TipoEstabelecimento.MESAS_E_DELIVERY;
+
     private boolean impressaoDeliveryAtivada = true;
     private boolean impressaoMesaAtivada = true;
 
     @OneToMany(mappedBy = "restaurante", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference("restaurante-pedido")
-    private List<Pedido> pedidos;
+    private List<Pedido> pedidos = new ArrayList<>(); // Inicializa a lista
 
     @Column(nullable = false)
-    private String plano = "GRATUITO"; // Ex: GRATUITO, DELIVERY_PRO, PREMIUM
+    private String plano = "GRATUITO"; // Padrão
 
     @Column(nullable = false)
-    private boolean isBetaTester = false; // NOVO: Flag para Beta Tester
+    private boolean isBetaTester = false;
 
     @Column(nullable = false)
-    private boolean isLegacyFree = false; // TRUE para clientes piloto (Grandfathering)
+    private boolean isLegacyFree = false;
 
     @Column(nullable = false)
-    private boolean isDeliveryPro = false; // Permite pedidos ilimitados
+    private boolean isDeliveryPro = false; // Padrão
     @Column(nullable = false)
-    private boolean isSalaoPro = false;
+    private boolean isSalaoPro = false; // Padrão
 
-    // Limites de uso do plano GRATUITO/FREE
+    // Limites de uso do plano GRATUITO/FREE (padrões)
     private Integer limiteMesas = 10;
-    private Integer limiteUsuarios = 4;
-    private Integer pedidosMesAtual = 0; // Contador de pedidos para Pay-per-Use
+    private Integer limiteUsuarios = 4; // Ajustado para incluir o admin + 3 (total 4)
+    private Integer pedidosMesAtual = 0;
 
     private String whatsappNumber;
-    private BigDecimal taxaEntrega = BigDecimal.ZERO;
+    private BigDecimal taxaEntrega = BigDecimal.ZERO; // Padrão
 
-    private String stripeCustomerId;      // ID do Cliente no Stripe (cus_...)
+    private String stripeCustomerId;
     private String stripeSubscriptionId;
 
     private LocalDateTime dataExpiracaoPlano;
 
-    public Restaurante(String nome, String email, String senha, TipoEstabelecimento tipo) {
+    public Restaurante(String nome, String email, String senha) {
         this.nome = nome;
         this.email = email;
         this.senha = senha;
-        this.tipo = tipo;
-        this.usuarios = new ArrayList<>();
     }
 }
