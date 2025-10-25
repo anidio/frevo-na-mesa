@@ -12,7 +12,7 @@ import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer; // Correção no nome do import
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -24,7 +24,7 @@ import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity(prePostEnabled = true) // NOVO: Habilita as anotações @PreAuthorize nos Controllers
+@EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
     @Autowired
@@ -42,27 +42,33 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        // 1. Rotas Abertas (Login, Público, H2 Console)
+                        // Rotas Abertas
                         .requestMatchers("/api/auth/**", "/h2-console/**", "/api/publico/**", "/api/financeiro/webhook/stripe").permitAll()
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Permite pre-flight requests
 
-                        // 2. Rotas de Perfil
+                        // Rotas Autenticadas Gerais
                         .requestMatchers("/api/restaurante/meu-perfil").authenticated()
+                        .requestMatchers("/api/categorias/**", "/api/produtos/**", "/api/adicionais/**").authenticated() // Permitido para qualquer autenticado (ADMIN fará a trava no controller)
+                        .requestMatchers("/api/mesas/**", "/api/pedidos/**").authenticated() // Rotas de Garçom/Caixa
+                        .requestMatchers("/api/caixa/dashboard").authenticated() // Dashboard do Caixa
 
-                        // 3. Rotas ADMIN (CRUDs)
-                        .requestMatchers("/api/categorias/**", "/api/produtos/**", "/api/adicionais/**").authenticated()
-
-                        // Outras Rotas de Gestão
+                        // Rotas Exclusivas ADMIN (RBAC mais granular nos Controllers com @PreAuthorize)
                         .requestMatchers("/api/usuarios/**").hasRole("ADMIN")
                         .requestMatchers("/api/restaurante/configuracoes").hasRole("ADMIN")
-                        .requestMatchers("/api/caixa/**").hasRole("ADMIN")
+                        .requestMatchers("/api/restaurante/perfil").hasRole("ADMIN") // Atualizar perfil geral
+                        .requestMatchers("/api/caixa/fechar").hasRole("ADMIN") // Fechar caixa é Admin
+                        .requestMatchers("/api/relatorios/**").hasRole("ADMIN") // Relatórios são Admin
+                        .requestMatchers("/api/areas-entrega/**").hasRole("ADMIN") // Gerenciar áreas é Admin
 
-                        // 🚨 ATUALIZADO: Rotas para o FinanceiroController
-                        .requestMatchers("/api/financeiro/status-plano").hasRole("ADMIN") // <-- ADICIONADO
+                        // Rotas Financeiras - ADMIN tem acesso a tudo
+                        .requestMatchers("/api/financeiro/status-plano").hasRole("ADMIN")
+                        .requestMatchers("/api/financeiro/upgrade/**").hasRole("ADMIN") // Todos os upgrades
+                        .requestMatchers("/api/financeiro/portal-session").hasRole("ADMIN") // <<< NOVO ENDPOINT DO PORTAL
+
+                        // Rota Financeira - PayPerUse (Admin ou Caixa)
                         .requestMatchers("/api/financeiro/iniciar-pagamento").hasAnyRole("ADMIN", "CAIXA")
-                        .requestMatchers("/api/financeiro/upgrade-pro").hasRole("ADMIN")
 
-                        // 4. O resto das requisições
+                        // Qualquer outra requisição precisa estar autenticada
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
@@ -71,8 +77,8 @@ public class SecurityConfig {
                 .authenticationProvider(authenticationProvider)
                 .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 
-        // Permite que o H2 Console funcione em iframe
-        http.headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable));
+        // Permite H2 Console em iframe (apenas para dev/local)
+        http.headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin)); // Use sameOrigin em vez de disable para mais segurança
 
         return http.build();
     }
@@ -80,13 +86,17 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
+        // Garante que as origins da variável de ambiente sejam usadas
         configuration.setAllowedOrigins(Arrays.asList(allowedOrigins));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("*"));
-        configuration.setAllowCredentials(true);
+        configuration.setAllowedHeaders(Arrays.asList("*")); // Permite todos os headers comuns
+        configuration.setAllowCredentials(true); // Necessário para cookies/tokens
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        // Aplica a configuração CORS para todas as rotas da API
         source.registerCorsConfiguration("/api/**", configuration);
+        // Pode ser necessário registrar para /h2-console/** se acessado de origem diferente
+        // source.registerCorsConfiguration("/h2-console/**", configuration);
         return source;
     }
 }

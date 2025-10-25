@@ -102,7 +102,6 @@ public class RestauranteService {
         return restauranteSalvo;
     }
 
-    // Método getPerfilLogado permanece igual, pois já retorna as flags
     public RestaurantePerfilDTO getPerfilLogado() {
         Restaurante restaurante = getRestauranteLogado();
 
@@ -111,7 +110,7 @@ public class RestauranteService {
         perfilDto.setNome(restaurante.getNome());
         perfilDto.setEmail(restaurante.getEmail());
         perfilDto.setEndereco(restaurante.getEndereco());
-        perfilDto.setTipo(restaurante.getTipo()); // Mantém o tipo para fins informativos, se necessário
+        perfilDto.setTipo(restaurante.getTipo());
         perfilDto.setImpressaoDeliveryAtivada(restaurante.isImpressaoDeliveryAtivada());
         perfilDto.setImpressaoMesaAtivada(restaurante.isImpressaoMesaAtivada());
         perfilDto.setWhatsappNumber(restaurante.getWhatsappNumber());
@@ -120,12 +119,15 @@ public class RestauranteService {
         perfilDto.setLimiteMesas(restaurante.getLimiteMesas());
         perfilDto.setLegacyFree(restaurante.isLegacyFree());
         perfilDto.setBetaTester(restaurante.isBetaTester());
-        perfilDto.setDeliveryPro(restaurante.isDeliveryPro()); // Flag essencial
-        perfilDto.setSalaoPro(restaurante.isSalaoPro());       // Flag essencial
+        perfilDto.setDeliveryPro(restaurante.isDeliveryPro());
+        perfilDto.setSalaoPro(restaurante.isSalaoPro());
         perfilDto.setTaxaEntrega(restaurante.getTaxaEntrega());
-
         perfilDto.setLogoUrl(restaurante.getLogoUrl());
         perfilDto.setCepRestaurante(restaurante.getCepRestaurante());
+
+        perfilDto.setStripeSubscriptionId(restaurante.getStripeSubscriptionId()); // <<< Adicionar esta linha
+        perfilDto.setStripeCustomerId(restaurante.getStripeCustomerId());       // <<< Adicionar esta linha
+
 
         return perfilDto;
     }
