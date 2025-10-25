@@ -10,4 +10,5 @@ public class RestauranteSettingsDTO {
     private boolean impressaoDeliveryAtivada;
     private String whatsappNumber;
     private BigDecimal taxaEntrega;
+    private boolean isCalculoHaversineAtivo;
 }

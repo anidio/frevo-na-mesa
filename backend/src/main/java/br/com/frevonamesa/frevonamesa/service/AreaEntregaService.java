@@ -5,17 +5,9 @@ import br.com.frevonamesa.frevonamesa.model.AreaEntrega;
 import br.com.frevonamesa.frevonamesa.model.Restaurante;
 import br.com.frevonamesa.frevonamesa.repository.AreaEntregaRepository;
 import br.com.frevonamesa.frevonamesa.repository.RestauranteRepository;
-import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -34,45 +26,25 @@ public class AreaEntregaService {
     @Autowired
     private RestauranteRepository restauranteRepository;
 
-    // COMENTADO: A chave da API do Google Maps não será usada por enquanto
-    //@Value("${google.maps.api.key}")
-    //private String googleMapsApiKey;
-
-    // COMENTADO: Os métodos de integração externa também serão desativados
-    // private final RestTemplate restTemplate = new RestTemplate();
-    // private static final String GOOGLE_GEOCODING_URL = "https://maps.googleapis.com/maps/api/geocode/json";
+    // [NOVO] Injeção do serviço de Geocodificação
+    @Autowired
+    private CepGeocodingService cepGeocodingService;
 
     /**
-     * COMENTADO: O cálculo Haversine não é mais usado na taxa fixa.
+     * Calcula a distância Haversine.
      */
     private double calcularDistanciaHaversine(double lat1, double lon1, double lat2, double lon2) {
-        final int R = 6371;
+        final int R = 6371; // Raio da Terra em km
         double latDistance = Math.toRadians(lat2 - lat1);
         double lonDistance = Math.toRadians(lon2 - lon1);
         double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
                 + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
                 * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
+        return R * c; // Distância em km
     }
 
-    /**
-     * COMENTADO: A busca de coordenadas foi desativada.
-     */
-    private double[] fetchCoordinates(String cep) {
-        // Implementação removida/comentada para desativar a dependência externa.
-        return null;
-    }
-
-
-    /**
-     * COMENTADO: O cálculo de distância real foi desativado.
-     */
-    private Double obterDistanciaRealKm(String cepRestaurante, String cepCliente) {
-        // Implementação removida/comentada para desativar a dependência externa.
-        return 0.0;
-    }
-
+    // ... (Métodos de CRUD omitidos por brevidade) ...
 
     public List<AreaEntrega> listarTodas() {
         Restaurante restaurante = restauranteService.getRestauranteLogado();
@@ -121,10 +93,8 @@ public class AreaEntregaService {
         areaEntregaRepository.delete(existente);
     }
 
-
     /**
-     * LÓGICA FINAL: Revertido para retornar a taxa FIXA cadastrada.
-     * As faixas de distância (AreaEntrega) podem ser mantidas, mas serão ignoradas para o cálculo do frete.
+     * [NOVA LÓGICA CONDICIONAL] Calcula a taxa de entrega.
      */
     public BigDecimal calcularTaxa(Long restauranteId, String cepCliente) {
 
@@ -134,7 +104,51 @@ public class AreaEntregaService {
         }
         Restaurante restaurante = restauranteOpt.get();
 
-        // Retorna a taxa fixa que está salva no modelo do Restaurante.
-        return restaurante.getTaxaEntrega();
+        // 1. [CRÍTICO] Se o cálculo Haversine estiver DESATIVADO, retorna a Taxa Fixa e ignora o CEP.
+        if (!restaurante.isCalculoHaversineAtivo()) {
+            return restaurante.getTaxaEntrega();
+        }
+
+
+        // 2. Continua para o cálculo Haversine (Se Ativo)
+        String cepRestaurante = restaurante.getCepRestaurante();
+
+        if (cepRestaurante == null || cepRestaurante.isBlank()) {
+            throw new RuntimeException("O CEP do restaurante não está configurado para cálculo de distância.");
+        }
+
+        // 3. Obtém as coordenadas (pode lançar RuntimeException se o CEP for inválido/não encontrado)
+        double[] coordRestaurante = cepGeocodingService.buscarCoordenadas(cepRestaurante);
+        double[] coordCliente = cepGeocodingService.buscarCoordenadas(cepCliente);
+
+        // 4. Calcula a distância real em linha reta (Haversine)
+        double distanciaKm = calcularDistanciaHaversine(
+                coordRestaurante[0],
+                coordRestaurante[1],
+                coordCliente[0],
+                coordCliente[1]
+        );
+
+        // 5. Busca e ordena as áreas de entrega pela distância máxima (ascendente)
+        List<AreaEntrega> areas = areaEntregaRepository.findByRestauranteId(restauranteId);
+
+        if (areas.isEmpty()) {
+            // Se o Haversine está ativo, mas não há faixas, retorna 0.00
+            return BigDecimal.ZERO;
+        }
+
+        areas.sort(Comparator.comparing(AreaEntrega::getMaxDistanceKm));
+
+        // 6. Encontra a primeira faixa que a distância se encaixa
+        Optional<AreaEntrega> areaEncontrada = areas.stream()
+                .filter(area -> distanciaKm <= area.getMaxDistanceKm())
+                .findFirst();
+
+        if (areaEncontrada.isPresent()) {
+            return areaEncontrada.get().getValorEntrega();
+        }
+
+        // 7. Se a distância for maior que todas as áreas configuradas
+        throw new RuntimeException("Entrega indisponível para este CEP (fora de área de cobertura). Distância calculada: " + String.format("%.2f", distanciaKm) + " km.");
     }
 }

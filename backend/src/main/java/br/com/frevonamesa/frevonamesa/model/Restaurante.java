@@ -66,6 +66,10 @@ public class Restaurante {
     private String whatsappNumber;
     private BigDecimal taxaEntrega = BigDecimal.ZERO; // Padrão
 
+    // [CORREÇÃO CRÍTICA] Renomeado de 'isCalculoHaversineAtivo' para forçar o JPA a gravar.
+    @Column(nullable = false)
+    private boolean calculoHaversineAtivo = false;
+
     private String stripeCustomerId;
     private String stripeSubscriptionId;
 
@@ -75,5 +79,14 @@ public class Restaurante {
         this.nome = nome;
         this.email = email;
         this.senha = senha;
+    }
+
+    // [ADICIONAL] Métodos explícitos para leitura do Frontend (isXxx) e persistência (setXxx)
+    public boolean isCalculoHaversineAtivo() {
+        return this.calculoHaversineAtivo;
+    }
+
+    public void setCalculoHaversineAtivo(boolean calculoHaversineAtivo) {
+        this.calculoHaversineAtivo = calculoHaversineAtivo;
     }
 }

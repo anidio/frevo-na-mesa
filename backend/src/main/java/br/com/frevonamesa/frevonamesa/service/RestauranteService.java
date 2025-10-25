@@ -124,6 +124,7 @@ public class RestauranteService {
         perfilDto.setTaxaEntrega(restaurante.getTaxaEntrega());
         perfilDto.setLogoUrl(restaurante.getLogoUrl());
         perfilDto.setCepRestaurante(restaurante.getCepRestaurante());
+        perfilDto.setCalculoHaversineAtivo(restaurante.isCalculoHaversineAtivo());
 
         perfilDto.setStripeSubscriptionId(restaurante.getStripeSubscriptionId()); // <<< Adicionar esta linha
         perfilDto.setStripeCustomerId(restaurante.getStripeCustomerId());       // <<< Adicionar esta linha
@@ -140,6 +141,9 @@ public class RestauranteService {
         restaurante.setImpressaoDeliveryAtivada(settingsDTO.isImpressaoDeliveryAtivada());
         restaurante.setWhatsappNumber(settingsDTO.getWhatsappNumber());
         restaurante.setTaxaEntrega(settingsDTO.getTaxaEntrega());
+
+        restaurante.setCalculoHaversineAtivo(settingsDTO.isCalculoHaversineAtivo());
+
         restauranteRepository.save(restaurante);
         return getPerfilLogado(); // Retorna o perfil atualizado
     }

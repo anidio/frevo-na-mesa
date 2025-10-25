@@ -24,6 +24,7 @@ public class RestaurantePerfilDTO {
     private boolean isDeliveryPro;
     private boolean isSalaoPro;
     private BigDecimal taxaEntrega;
+    private boolean isCalculoHaversineAtivo;
     private String stripeSubscriptionId;
     private String stripeCustomerId;
 }
