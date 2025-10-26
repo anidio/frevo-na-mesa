@@ -1,7 +1,7 @@
 package br.com.frevonamesa.frevonamesa.model;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
-import jakarta.persistence.*;
+import jakarta.persistence.*; // Certifique-se que usa jakarta.persistence
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -12,7 +12,7 @@ import java.util.List;
 
 @Entity
 @Data
-@NoArgsConstructor // Mantém o construtor sem argumentos exigido pelo JPA
+@NoArgsConstructor
 public class Restaurante {
 
     @Id
@@ -30,11 +30,10 @@ public class Restaurante {
 
     @OneToMany(mappedBy = "restaurante", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference("restaurante-usuario")
-    private List<Usuario> usuarios = new ArrayList<>(); // Inicializa a lista
+    private List<Usuario> usuarios = new ArrayList<>();
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    // **AJUSTE:** Define o valor padrão diretamente na declaração do campo
     private TipoEstabelecimento tipo = TipoEstabelecimento.MESAS_E_DELIVERY;
 
     private boolean impressaoDeliveryAtivada = true;
@@ -42,10 +41,10 @@ public class Restaurante {
 
     @OneToMany(mappedBy = "restaurante", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference("restaurante-pedido")
-    private List<Pedido> pedidos = new ArrayList<>(); // Inicializa a lista
+    private List<Pedido> pedidos = new ArrayList<>();
 
     @Column(nullable = false)
-    private String plano = "GRATUITO"; // Padrão
+    private String plano = "GRATUITO";
 
     @Column(nullable = false)
     private boolean isBetaTester = false;
@@ -54,36 +53,36 @@ public class Restaurante {
     private boolean isLegacyFree = false;
 
     @Column(nullable = false)
-    private boolean isDeliveryPro = false; // Padrão
+    private boolean isDeliveryPro = false;
     @Column(nullable = false)
-    private boolean isSalaoPro = false; // Padrão
+    private boolean isSalaoPro = false;
 
-    // Limites de uso do plano GRATUITO/FREE (padrões)
     private Integer limiteMesas = 10;
-    private Integer limiteUsuarios = 4; // Ajustado para incluir o admin + 3 (total 4)
+    private Integer limiteUsuarios = 4;
     private Integer pedidosMesAtual = 0;
 
     private String whatsappNumber;
-    private BigDecimal taxaEntrega = BigDecimal.ZERO; // Padrão
+    private BigDecimal taxaEntrega = BigDecimal.ZERO;
 
-    // [CORREÇÃO CRÍTICA] Renomeado de 'isCalculoHaversineAtivo' para forçar o JPA a gravar.
-    @Column(nullable = false)
+    // --- MUDANÇA AQUI: Adiciona @Column com nome explícito ---
+    @Column(name = "calculo_haversine_ativo", nullable = false) // Mapeia para a coluna snake_case
     private boolean calculoHaversineAtivo = false;
+    // --- FIM DA MUDANÇA ---
 
     private String stripeCustomerId;
     private String stripeSubscriptionId;
 
     private LocalDateTime dataExpiracaoPlano;
 
+    // Construtor principal
     public Restaurante(String nome, String email, String senha) {
         this.nome = nome;
         this.email = email;
         this.senha = senha;
     }
 
-    // [ADICIONAL] Métodos explícitos para leitura do Frontend (isXxx) e persistência (setXxx)
     public boolean isCalculoHaversineAtivo() {
-        return this.calculoHaversineAtivo;
+        return calculoHaversineAtivo;
     }
 
     public void setCalculoHaversineAtivo(boolean calculoHaversineAtivo) {

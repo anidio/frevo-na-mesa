@@ -1,4 +1,5 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+// frontend/src/contexts/AuthContext.jsx
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react'; // Adicionar useCallback
 import * as authService from '../services/authService';
 import * as restauranteService from '../services/restauranteService';
 
@@ -7,74 +8,71 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
     const [token, setToken] = useState(localStorage.getItem('authToken'));
     const [userProfile, setUserProfile] = useState(null);
-    const [loadingProfile, setLoadingProfile] = useState(true); // Começa true
+    const [loadingProfile, setLoadingProfile] = useState(true);
 
-    const fetchProfile = async (isRefreshing = false) => { // Adiciona parâmetro opcional
+    // Usar useCallback para memoizar a função fetchProfile
+    const fetchProfile = useCallback(async (isRefreshing = false) => {
         if (!token) {
-            setLoadingProfile(false);
             setUserProfile(null);
-            console.log("AuthContext: Sem token, perfil definido como null.");
+            setLoadingProfile(false); // Define loading como false se não houver token
+            console.log("AuthContext: No token, profile set to null, loading stopped.");
             return;
         }
 
-        // Se for um refresh manual (botão), força o estado de loading
-        if (isRefreshing) {
-            setLoadingProfile(true);
-        }
+        // Define loading como true no início da busca (se for refresh ou inicial)
+        setLoadingProfile(true);
+        console.log("AuthContext: Starting profile fetch...");
 
-        console.log("AuthContext: Iniciando busca de perfil...");
         try {
-            // setLoadingProfile(true); // Removido daqui, controlado pelo isRefreshing ou carga inicial
             const profileData = await restauranteService.getMeuPerfil();
-            // --- LOG 1: Dados recebidos da API ---
-            console.log(">>> AuthContext - Dados RECEBIDOS da API:", JSON.stringify(profileData, null, 2));
-            setUserProfile(profileData);
-            // --- LOG 2: Estado após setUserProfile ---
-            // Este log pode mostrar o estado *antes* da atualização assíncrona do React,
-            // mas confirma que setUserProfile foi chamado com os dados corretos.
-            console.log(">>> AuthContext - setUserProfile CHAMADO com:", JSON.stringify(profileData, null, 2));
+            console.log(">>> AuthContext - Data RECEIVED from API:", JSON.stringify(profileData, null, 2));
+            setUserProfile(profileData); // Atualiza o perfil com os novos dados
+            console.log(">>> AuthContext - setUserProfile CALLED with:", JSON.stringify(profileData, null, 2));
         } catch (error) {
-            console.error("AuthContext - Falha ao buscar perfil, fazendo logout.", error);
-            logout(); // Se o token for inválido ou API falhar, desloga
+            console.error("AuthContext - Failed to fetch profile, logging out.", error);
+            // Considerar não fazer logout automaticamente em refresh, talvez só notificar
+            // logout();
+            setUserProfile(null); // Limpa o perfil em caso de erro
         } finally {
-            setLoadingProfile(false); // Garante que loading termine
-            console.log("AuthContext: Busca de perfil finalizada.");
+            setLoadingProfile(false); // Define loading como false APÓS tentar buscar e setar o perfil
+            console.log("AuthContext: Profile fetch finished.");
         }
-    };
+    }, [token]); // Depende apenas do token
 
-    // Efeito para buscar o perfil quando o token muda (login/logout) ou na carga inicial
+    // Efeito para buscar o perfil quando o token muda ou na carga inicial
     useEffect(() => {
-        console.log("AuthContext: useEffect [token] disparado. Token:", token ? "existe" : "não existe");
+        console.log("AuthContext: useEffect [token] triggered. Token:", token ? "exists" : "does not exist");
         fetchProfile(); // Busca o perfil inicial
-    }, [token]);
+    }, [fetchProfile]); // Agora depende da função memoizada
 
     const login = async (email, senha) => {
         try {
              const data = await authService.login(email, senha);
              localStorage.setItem('authToken', data.token);
-             setToken(data.token); // Atualiza o token, o que dispara o useEffect acima
-             console.log("AuthContext: Login bem-sucedido, token atualizado.");
+             setToken(data.token); // Atualiza o token, disparando o useEffect acima
+             console.log("AuthContext: Login successful, token updated.");
              // fetchProfile será chamado pelo useEffect
         } catch(error) {
-             console.error("AuthContext: Erro no login:", error);
-             logout(); // Garante limpeza em caso de erro no login
-             throw error; // Re-lança o erro para o LoginPage tratar
+             console.error("AuthContext: Login error:", error);
+             logout();
+             throw error;
         }
     };
 
     const logout = () => {
-        console.log("AuthContext: Iniciando logout...");
+        console.log("AuthContext: Starting logout...");
         localStorage.removeItem('authToken');
         setToken(null);
         setUserProfile(null);
-        console.log("AuthContext: Logout concluído.");
+        setLoadingProfile(false); // Garante que o loading pare no logout
+        console.log("AuthContext: Logout complete.");
     };
 
     // Função exposta para atualização manual
-    const refreshProfileManually = async () => {
-        console.log("AuthContext: refreshProfileManually chamado.");
-        await fetchProfile(true); // Chama fetchProfile indicando que é um refresh manual
-    }
+    const refreshProfileManually = useCallback(async () => {
+        console.log("AuthContext: refreshProfileManually called.");
+        await fetchProfile(true); // Chama fetchProfile indicando refresh manual
+    }, [fetchProfile]); // Depende da função memoizada
 
     const authValue = {
         token,
@@ -83,7 +81,7 @@ export const AuthProvider = ({ children }) => {
         loadingProfile,
         login,
         logout,
-        refreshProfile: refreshProfileManually, // Expõe a função de refresh manual
+        refreshProfile: refreshProfileManually,
     };
 
     return (
