@@ -12,4 +12,5 @@ public class CardapioPublicoDTO {
     private List<CategoriaCardapioDTO> categorias;
     private BigDecimal taxaEntrega;
     private String logoUrl;
+    private boolean isCalculoHaversineAtivo;
 }

@@ -288,7 +288,7 @@ public class RestauranteService {
         cardapioDTO.setLogoUrl(restaurante.getLogoUrl());
 
         // Se o DTO tiver o campo:
-        // cardapioDTO.setCalculoHaversineAtivo(restaurante.isCalculoHaversineAtivo());
+        cardapioDTO.setCalculoHaversineAtivo(restaurante.isCalculoHaversineAtivo());
 
         List<CategoriaCardapioDTO> categoriasDTO = categorias.stream().map(categoria -> {
             CategoriaCardapioDTO categoriaDTO = new CategoriaCardapioDTO();
