@@ -1,548 +1,665 @@
-// anidio/frevo-na-mesa/frevo-na-mesa-8b115646b81a772561fa6372e54dd8820f175b8a/frontend/src/Pages/CardapioClientePage.jsx
+// frontend/src/Pages/CardapioClientePage.jsx
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom'; // Adicionar useLocation
 import apiClient from '../services/apiClient';
 import { toast, ToastContainer } from 'react-toastify';
 
-// --- Componente do Modal do Produto (Completo) ---
+// --- Componente do Modal do Produto (sem alterações) ---
 const ProdutoModal = ({ produto, onClose, onAddToCart }) => {
-    const [quantidade, setQuantidade] = useState(1);
-    const [observacao, setObservacao] = useState('');
+    const [quantidade, setQuantidade] = useState(1);
+    const [observacao, setObservacao] = useState('');
 
-    const handleAddItem = () => {
-        if (quantidade <= 0) {
-            toast.warn('A quantidade deve ser maior que zero.');
-            return;
-        }
-        // Chamada para adicionar ao carrinho, que está no componente pai
-        onAddToCart(produto, quantidade, observacao);
-        onClose();
-    };
+    const handleAddItem = () => {
+        if (quantidade <= 0) {
+            toast.warn('A quantidade deve ser maior que zero.');
+            return;
+        }
+        onAddToCart(produto, quantidade, observacao);
+        onClose();
+    };
 
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50" onClick={onClose}>
-            <div className="bg-white dark:bg-tema-surface-dark rounded-lg shadow-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
-                {/* Exibir Imagem do Produto */}
-                <div className="w-full h-48 bg-gray-200 dark:bg-gray-700 rounded-t-lg flex items-center justify-center overflow-hidden">
-                    {produto.imageUrl ? (
-                         <img src={produto.imageUrl} alt={produto.nome} className="w-full h-full object-cover" />
-                    ) : (
-                        <span className="text-gray-400">Imagem do Produto</span>
-                    )}
-                </div>
-                <div className="p-6">
-                    <h2 className="text-2xl font-bold text-tema-text dark:text-tema-text-dark">{produto.nome}</h2>
-                    <p className="text-tema-text-muted dark:text-tema-text-muted-dark mt-2">{produto.descricao}</p>
-                    <p className="text-2xl font-bold text-tema-text dark:text-tema-text-dark my-4">R$ {produto.preco.toFixed(2).replace('.', ',')}</p>
-                    
-                    <textarea 
-                        value={observacao} 
-                        onChange={(e) => setObservacao(e.target.value)} 
-                        placeholder="Alguma observação? Ex: sem cebola, ponto da carne, etc." 
-                        className="w-full p-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600 dark:text-tema-text-dark text-sm" 
-                        rows="2"
-                    ></textarea>
-                    
-                    <div className="flex justify-between items-center mt-6">
-                        <div className="flex items-center gap-3">
-                            <button onClick={() => setQuantidade(q => Math.max(1, q - 1))} className="bg-gray-200 dark:bg-gray-700 dark:text-tema-text-dark rounded-full w-10 h-10 font-bold text-xl">-</button>
-                            <span className="w-10 text-center font-bold text-xl dark:text-tema-text-dark">{quantidade}</span>
-                            <button onClick={() => setQuantidade(q => q + 1)} className="bg-gray-200 dark:bg-gray-700 dark:text-tema-text-dark rounded-full w-10 h-10 font-bold text-xl">+</button>
-                        </div>
-                        <button onClick={handleAddItem} className="bg-tema-primary text-white font-bold py-3 px-6 rounded-lg hover:bg-opacity-80 transition-colors">
-                            Adicionar R$ {(produto.preco * quantidade).toFixed(2).replace('.', ',')}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4" onClick={onClose}>
+            <div className="bg-white dark:bg-tema-surface-dark rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                {/* Imagem */}
+                <div className="w-full h-48 bg-gray-200 dark:bg-gray-700 rounded-t-lg flex items-center justify-center overflow-hidden">
+                    {produto.imageUrl ? (
+                           <img src={produto.imageUrl} alt={produto.nome} className="w-full h-full object-cover" />
+                    ) : (
+                           <span className="text-gray-400">Imagem Indisponível</span>
+                    )}
+                </div>
+                {/* Conteúdo */}
+                <div className="p-6">
+                    <h2 className="text-2xl font-bold text-tema-text dark:text-tema-text-dark">{produto.nome}</h2>
+                    <p className="text-tema-text-muted dark:text-tema-text-muted-dark mt-2">{produto.descricao}</p>
+                    <p className="text-2xl font-bold text-tema-text dark:text-tema-text-dark my-4">R$ {produto.preco.toFixed(2).replace('.', ',')}</p>
+
+                    <textarea
+                        value={observacao}
+                        onChange={(e) => setObservacao(e.target.value)}
+                        placeholder="Alguma observação? Ex: sem cebola, ponto da carne, etc."
+                        className="w-full p-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600 dark:text-tema-text-dark text-sm mb-4"
+                        rows="2"
+                    ></textarea>
+
+                    <div className="flex justify-between items-center mt-6">
+                        <div className="flex items-center gap-3">
+                            <button onClick={() => setQuantidade(q => Math.max(1, q - 1))} className="bg-gray-200 dark:bg-gray-700 dark:text-tema-text-dark rounded-full w-10 h-10 font-bold text-xl">-</button>
+                            <span className="w-10 text-center font-bold text-xl dark:text-tema-text-dark">{quantidade}</span>
+                            <button onClick={() => setQuantidade(q => q + 1)} className="bg-gray-200 dark:bg-gray-700 dark:text-tema-text-dark rounded-full w-10 h-10 font-bold text-xl">+</button>
+                        </div>
+                        <button onClick={handleAddItem} className="bg-tema-primary text-white font-bold py-3 px-6 rounded-lg hover:bg-opacity-80 transition-colors">
+                            Adicionar R$ {(produto.preco * quantidade).toFixed(2).replace('.', ',')}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 };
 
 
 // --- Componente Principal da Página ---
 const CardapioClientePage = () => {
-    const { restauranteId } = useParams();
-    const [cardapio, setCardapio] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [carrinho, setCarrinho] = useState([]);
-    const [isCarrinhoOpen, setIsCarrinhoOpen] = useState(false);
-    
-    // [MODIFICADO] cepCliente existe para registro
-    const [dadosCliente, setDadosCliente] = useState({ nomeCliente: '', telefoneCliente: '', enderecoCliente: '', pontoReferencia: '', cepCliente: '' });
-    const [produtoSelecionado, setProdutoSelecionado] = useState(null);
-    const [abaAtiva, setAbaAtiva] = useState('cardapio'); 
-    const [pedidosDoDia, setPedidosDoDia] = useState([]); 
-    const [tipoPagamentoSelecionado, setTipoPagamentoSelecionado] = useState('ONLINE'); 
-    
-    // Estados para o cálculo dinâmico de frete
-    const [taxaEntrega, setTaxaEntrega] = useState(0); 
-    const [statusFrete, setStatusFrete] = useState('Aguardando CEP'); 
-    const navigate = useNavigate();
-    
-    // CORREÇÃO #1: Leitura robusta da flag do backend (isCalculoHaversineAtivo OU calculoHaversineAtivo)
-    const isHaversineAtivo = cardapio?.calculoHaversineAtivo || cardapio?.isCalculoHaversineAtivo || false; 
+    const { restauranteId } = useParams();
+    const navigate = useNavigate();
+    const location = useLocation(); // Para ler parâmetros da URL de retorno do Stripe
 
-    // Função para buscar o frete dinamicamente
-    const buscarFrete = async () => {
-        // Esta função só é chamada se isHaversineAtivo for true.
-        const cepLimpo = dadosCliente.cepCliente.replace(/\D/g, '');
-        
-        if (!cepLimpo || cepLimpo.length !== 8) {
-            setStatusFrete('CEP inválido');
-            setTaxaEntrega(-1.00); 
-            toast.warn('Por favor, insira um CEP de 8 dígitos.');
-            return;
-        }
-        
-        setDadosCliente(prev => ({ ...prev, cepCliente: cepLimpo }));
+    const [cardapioInfo, setCardapioInfo] = useState(null); // Renomeado para evitar conflito
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [carrinho, setCarrinho] = useState([]);
+    const [isCarrinhoOpen, setIsCarrinhoOpen] = useState(false);
+    const [dadosCliente, setDadosCliente] = useState({ nomeCliente: '', telefoneCliente: '', enderecoCliente: '', pontoReferencia: '', cepCliente: '' });
+    const [produtoSelecionado, setProdutoSelecionado] = useState(null);
+    const [abaAtiva, setAbaAtiva] = useState('cardapio');
+    const [pedidosDoDia, setPedidosDoDia] = useState([]);
+    const [tipoPagamentoSelecionado, setTipoPagamentoSelecionado] = useState('ONLINE'); // Default para online se disponível
 
-        try {
-            setStatusFrete('Calculando...');
-            // O endpoint /frete usa a lógica condicional do backend (Haversine ou Taxa Fixa)
-            const response = await apiClient.get(`/api/publico/frete/${restauranteId}/${cepLimpo}`);
-            
-            const taxa = response.taxaEntrega; 
-            
-            setTaxaEntrega(taxa);
-            setStatusFrete(`Entrega: R$ ${taxa.toFixed(2).replace('.', ',')}`);
-            toast.success("Taxa de entrega calculada!");
+    // Estados para frete
+    const [taxaEntrega, setTaxaEntrega] = useState(0);
+    const [statusFrete, setStatusFrete] = useState('Aguardando CEP');
+    const [loadingFrete, setLoadingFrete] = useState(false); // Loading para o cálculo
+    const [loadingPedido, setLoadingPedido] = useState(false); // Loading para envio do pedido
 
-        } catch (err) {
-            const errorMsg = err.message || "Erro desconhecido ao calcular frete.";
-            
-            if (errorMsg.includes("CEP inválido") || errorMsg.includes("Verifique o número")) {
-                 setStatusFrete("CEP inválido ou não encontrado.");
-            } else if (errorMsg.includes("fora de área")) {
-                 setStatusFrete("Entrega Indisponível (Fora de Área)");
-            } else if (errorMsg.includes("não está configurado")) {
-                 setStatusFrete("Erro: CEP do Restaurante não configurado.");
-            } else {
-                 setStatusFrete('Erro ao calcular');
-            }
-            
-            setTaxaEntrega(-1.00); // Bloqueia o pedido
-            toast.error(errorMsg);
-        }
-    };
+    // Flags derivadas dos dados do cardápio
+    const isHaversineAtivo = cardapioInfo?.calculoHaversineAtivo || false;
+    const isPagamentoOnlineAtivo = cardapioInfo?.pagamentoOnlineAtivo || false;
 
-    // Busca o cardápio público
-    useEffect(() => {
-        const fetchCardapio = async () => {
-            try {
-                const data = await apiClient.get(`/api/publico/cardapio/${restauranteId}`);
-                setCardapio(data);
-                
-                // CORREÇÃO #2: Leitura robusta da flag do backend no useEffect
-                const isHaversine = data.calculoHaversineAtivo || data.isCalculoHaversineAtivo || false;
-                
-                // Inicializa a taxa com 0 se for Haversine, ou com a Taxa Fixa se for o modo fixo
-                setTaxaEntrega(isHaversine ? 0 : data.taxaEntrega || 0); 
-                setStatusFrete(isHaversine ? 'Aguardando Cálculo por CEP' : 'Taxa Fixa Ativa');
-                
-            } catch (err) {
-                setError("Cardápio não encontrado ou indisponível.");
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchCardapio();
-    }, [restauranteId]);
-    
-    // Carrega pedidos do dia do localStorage na inicialização
-    useEffect(() => {
-        const storedPedidos = localStorage.getItem(`pedidosDia_${restauranteId}`);
-        if (storedPedidos) {
-            setPedidosDoDia(JSON.parse(storedPedidos));
-        }
-    }, [restauranteId]);
+    // Busca o cardápio público e trata retorno do Stripe
+    useEffect(() => {
+        const fetchCardapio = async () => {
+            try {
+                setLoading(true);
+                const data = await apiClient.get(`/api/publico/cardapio/${restauranteId}`);
+                setCardapioInfo(data); // Armazena todas as infos
 
-    const handleAddToCart = (produto, quantidade, observacao) => {
-        // Cria um ID composto para diferenciar itens com a mesma observação
-        const itemId = `${produto.id}-${observacao}`;
-        setCarrinho(prev => {
-            const itemExistente = prev.find(item => item.itemId === itemId);
-            if (itemExistente) {
-                return prev.map(item => item.itemId === itemId ? { ...item, quantidade: item.quantidade + quantidade } : item);
-            }
-            // Usa o ID real do produto para enviar à API e o itemId para o carrinho
-            return [...prev, { ...produto, produtoId: produto.id, itemId, quantidade, observacao }];
-        });
-        toast.success(`${quantidade}x ${produto.nome} adicionado ao pedido!`);
-    };
+                // Inicializa taxa de entrega e status
+                const haversine = data.calculoHaversineAtivo || false;
+                setTaxaEntrega(haversine ? -3.00 : data.taxaEntrega || 0); // -3 indica que precisa calcular
+                setStatusFrete(haversine ? 'Informe o CEP para calcular' : 'Taxa Fixa');
 
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        
-        // Reseta a taxa e o status SOMENTE se o Haversine estiver ativo
-        if (name === 'cepCliente' && isHaversineAtivo) {
-            setTaxaEntrega(0);
-            setStatusFrete('Aguardando Recálculo');
-        }
-        
-        setDadosCliente(prev => ({ ...prev, [name]: value }));
-    };
-    
-    // CALCULA O SUBTOTAL (Itens * Preço)
-    const subtotalCarrinho = useMemo(() => {
-        return carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0);
-    }, [carrinho]);
+                // Define pagamento ONLINE como padrão apenas se estiver ativo
+                if (data.pagamentoOnlineAtivo) {
+                    setTipoPagamentoSelecionado('ONLINE');
+                } else {
+                    setTipoPagamentoSelecionado('DINHEIRO'); // Fallback se online não estiver ativo
+                }
 
-    // CALCULA O TOTAL GERAL (Subtotal + Taxa de Entrega)
-    const totalCarrinho = useMemo(() => {
-        // Se Haversine está ativo E taxa for negativa (erro/fora de área), o frete é 0, mas o pedido será bloqueado
-        if (isHaversineAtivo && taxaEntrega < 0) return subtotalCarrinho; 
-        return subtotalCarrinho + taxaEntrega;
-    }, [subtotalCarrinho, taxaEntrega, isHaversineAtivo]);
+            } catch (err) {
+                setError("Cardápio não encontrado ou indisponível.");
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchCardapio();
 
+         // Trata retorno do Stripe (sucesso ou cancelamento)
+         const queryParams = new URLSearchParams(location.search);
+         const paymentStatus = queryParams.get('payment');
+         const pedidoUuid = queryParams.get('pedido_uuid');
 
-    const totalItensCarrinho = useMemo(() => {
-        return carrinho.reduce((acc, item) => acc + item.quantidade, 0);
-    }, [carrinho]);
+         if (paymentStatus === 'success' && pedidoUuid) {
+             toast.success(`Pagamento do pedido #${pedidoUuid.substring(0,8)}... confirmado! Acompanhe na aba 'Pedidos'.`);
+             setAbaAtiva('acompanhar'); // Muda para a aba de acompanhamento
+             // Limpa os parâmetros da URL
+             navigate(`/cardapio/${restauranteId}`, { replace: true });
+         } else if (paymentStatus === 'cancel') {
+              toast.warn("Pagamento cancelado. Seu pedido não foi finalizado.");
+              // Limpa os parâmetros da URL
+              navigate(`/cardapio/${restauranteId}`, { replace: true });
+         }
 
-    const handleEnviarPedido = async () => {
-        // Validações básicas (Endereço é obrigatório, CEP é condicional)
-        if (!dadosCliente.nomeCliente || !dadosCliente.telefoneCliente || !dadosCliente.enderecoCliente) {
-            toast.warn("Por favor, preencha seu nome, telefone e endereço.");
-            return;
-        }
-        if (carrinho.length === 0) {
-            toast.warn("Adicione itens ao carrinho.");
-            return;
-        }
-        if (totalCarrinho <= 0) {
-            toast.warn("O valor total do pedido deve ser maior que zero.");
-            return;
-        }
-        
-        // Validação para Haversine Ativo (Se Haversine está ativo, precisa de CEP, cálculo e área)
-        if (isHaversineAtivo) {
-            if (!dadosCliente.cepCliente) {
-                toast.warn("O CEP é obrigatório para o cálculo de frete.");
-                return;
-            }
-            if (taxaEntrega < 0) {
-                toast.error("Entrega indisponível para o CEP informado. Corrija o CEP.");
-                return;
-            }
-            // Impede o envio se o cliente digitou o CEP mas não clicou em calcular.
-            if (statusFrete.includes('Aguardando')) {
-                 toast.warn("Por favor, clique em 'Calcular Frete' para confirmar o valor da entrega.");
-                 return;
-            }
-        }
+    }, [restauranteId, location.search, navigate]); // Adiciona location e navigate
 
+    // Carrega pedidos do dia do localStorage
+    useEffect(() => {
+        const storedPedidos = localStorage.getItem(`pedidosDia_${restauranteId}`);
+        if (storedPedidos) {
+            try {
+                setPedidosDoDia(JSON.parse(storedPedidos));
+            } catch (e) {
+                console.error("Erro ao carregar pedidos do dia do localStorage:", e);
+                localStorage.removeItem(`pedidosDia_${restauranteId}`); // Limpa dados inválidos
+            }
+        }
+    }, [restauranteId]);
 
-        const pedidoParaApi = {
-            restauranteId: Number(restauranteId), 
-            ...dadosCliente,
-            itens: carrinho.map(item => ({
-                produtoId: item.produtoId, 
-                quantidade: item.quantidade,
-                observacao: item.observacao,
-                adicionaisIds: [], 
-            }))
-        };
-        
-        try {
-            if (tipoPagamentoSelecionado === 'ONLINE') {
-                // FLUXO 1: PAGAR AGORA (Redireciona para o Mercado Pago/Stripe)
-                const response = await apiClient.post('/api/publico/pagar/delivery', pedidoParaApi);
-                const { paymentUrl } = response;
-                
-                toast.info("Redirecionando para o pagamento seguro...");
-                
-                // O pedido é salvo no backend em status AGUARDANDO_PGTO_LIMITE
-                const placeholderPedido = { 
-                    uuid: 'pending', 
-                    data: new Date().toLocaleTimeString('pt-BR'), 
-                    total: totalCarrinho,
-                    itens: carrinho.map(item => `${item.quantidade}x ${item.nome}`)
-                };
-                
-                // 1. Salva o novo pedido na lista do dia no localStorage
-                const updatedPedidos = [placeholderPedido, ...pedidosDoDia];
-                setPedidosDoDia(updatedPedidos);
-                localStorage.setItem(`pedidosDia_${restauranteId}`, JSON.stringify(updatedPedidos));
+    // Função para adicionar ao carrinho (sem alterações)
+     const handleAddToCart = (produto, quantidade, observacao) => {
+        const itemId = `${produto.id}-${observacao || 'semObs'}`; // ID único no carrinho
+        setCarrinho(prev => {
+            const itemExistente = prev.find(item => item.itemId === itemId);
+            if (itemExistente) {
+                return prev.map(item => item.itemId === itemId ? { ...item, quantidade: item.quantidade + quantidade } : item);
+            }
+            // produtoId é o ID real para a API
+            return [...prev, { ...produto, produtoId: produto.id, itemId, quantidade, observacao }];
+        });
+        toast.success(`${quantidade}x ${produto.nome} adicionado!`);
+    };
 
-                setCarrinho([]);
-                setIsCarrinhoOpen(false);
+    // Função para remover do carrinho (nova)
+    const handleRemoveFromCart = (itemId) => {
+         setCarrinho(prev => prev.filter(item => item.itemId !== itemId));
+         toast.info("Item removido.");
+    };
 
-                // REDIRECIONAMENTO CRÍTICO PARA O CHECKOUT
-                window.location.href = paymentUrl;
+    // Handler para inputs do cliente
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        // Limpa CEP
+        const cleanedValue = name === 'cepCliente' ? value.replace(/\D/g, '') : value;
 
-            } else {
-                // FLUXO 2: PAGAR NA ENTREGA 
-                
-                const endpoint = `/api/publico/pedido/delivery?pagamento=${tipoPagamentoSelecionado}`;
-                
-                const novoPedido = await apiClient.post(endpoint, pedidoParaApi);
-                
-                toast.success(`Pedido #${novoPedido.id} enviado! Pagamento na entrega: ${tipoPagamentoSelecionado}`);
-                
-                if (novoPedido && novoPedido.uuid) {
-                    const novoPedidoComDetalhes = { 
-                        uuid: novoPedido.uuid, 
-                        data: new Date().toLocaleTimeString('pt-BR'), 
-                        total: totalCarrinho,
-                        itens: carrinho.map(item => `${item.quantidade}x ${item.nome}`)
-                    };
-                    const updatedPedidos = [novoPedidoComDetalhes, ...pedidosDoDia];
-                    setPedidosDoDia(updatedPedidos);
-                    localStorage.setItem(`pedidosDia_${restauranteId}`, JSON.stringify(updatedPedidos));
-                }
+        setDadosCliente(prev => ({ ...prev, [name]: cleanedValue }));
 
-                setCarrinho([]);
-                setIsCarrinhoOpen(false);
-                setAbaAtiva('acompanhar');
-            }
+        // Reseta taxa se Haversine ativo e CEP mudou
+        if (name === 'cepCliente' && isHaversineAtivo) {
+            setTaxaEntrega(-3.00); // -3 indica que precisa calcular
+            setStatusFrete('CEP alterado, recalcule o frete');
+        }
+    };
+
+    // --- >> NOVA FUNÇÃO: Buscar Frete << ---
+    const buscarFrete = async () => {
+        if (!isHaversineAtivo) return; // Só executa se Haversine estiver ativo
+
+        const cepLimpo = dadosCliente.cepCliente; // Já está limpo pelo handleInputChange
+        if (!cepLimpo || cepLimpo.length !== 8) {
+            setStatusFrete('CEP inválido (8 dígitos)');
+            setTaxaEntrega(-1.00); // -1 indica erro de CEP
+            toast.warn('Por favor, insira um CEP válido com 8 dígitos.');
+            return;
+        }
+
+        setLoadingFrete(true);
+        setStatusFrete('Calculando...');
+        try {
+            // Chama o endpoint de cálculo de frete
+            const response = await apiClient.get(`/api/publico/frete/${restauranteId}/${cepLimpo}`);
+            const taxa = response.taxaEntrega; // O backend retorna a taxa correta
+
+            setTaxaEntrega(taxa);
+            setStatusFrete(`Entrega: R$ ${taxa.toFixed(2).replace('.', ',')}`);
+            toast.success("Taxa de entrega calculada!");
+
+        } catch (err) {
+            const errorMsg = err.message || "Erro ao calcular frete.";
+            console.error("Erro buscarFrete:", err); // Log detalhado
+            if (errorMsg.includes("fora de área")) {
+                setStatusFrete("Entrega Indisponível (Fora de Área)");
+                setTaxaEntrega(-2.00); // -2 indica fora de área
+            } else if (errorMsg.includes("inválido") || errorMsg.includes("não encontrado")) {
+                 setStatusFrete("CEP inválido ou não encontrado");
+                 setTaxaEntrega(-1.00); // -1 indica erro de CEP
+            } else {
+                 setStatusFrete('Erro no cálculo');
+                 setTaxaEntrega(-1.00); // Erro genérico
+            }
+            toast.error(errorMsg);
+        } finally {
+            setLoadingFrete(false);
+        }
+    };
+
+    // Cálculos de totais (useMemo)
+    const subtotalCarrinho = useMemo(() => {
+        return carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0);
+    }, [carrinho]);
+
+    const totalCarrinho = useMemo(() => {
+        // Só soma a taxa se ela for válida (>= 0)
+        const taxaValida = taxaEntrega >= 0 ? taxaEntrega : 0;
+        return subtotalCarrinho + taxaValida;
+    }, [subtotalCarrinho, taxaEntrega]);
+
+    const totalItensCarrinho = useMemo(() => {
+        return carrinho.reduce((acc, item) => acc + item.quantidade, 0);
+    }, [carrinho]);
 
 
-        } catch (err) {
-            const errorMsg = err.message || "Houve um erro ao enviar seu pedido. Tente novamente.";
-            toast.error(errorMsg);
-        }
-    };
+    // --- >> FUNÇÃO ATUALIZADA: Enviar Pedido << ---
+    const handleEnviarPedido = async () => {
+        // Validações básicas
+        if (carrinho.length === 0) {
+            toast.warn("Sua sacola está vazia.");
+            return;
+        }
+        if (!dadosCliente.nomeCliente || !dadosCliente.telefoneCliente || !dadosCliente.enderecoCliente) {
+            toast.warn("Por favor, preencha seu nome, telefone e endereço de entrega.");
+            return;
+        }
+         // Validação do valor mínimo do pedido (se houver taxa calculada e valor mínimo definido)
+         if (taxaEntrega >= 0 && cardapioInfo?.valorMinimoPedido > 0 && subtotalCarrinho < cardapioInfo.valorMinimoPedido) {
+             toast.warn(`O valor mínimo para entrega é R$ ${cardapioInfo.valorMinimoPedido.toFixed(2).replace('.', ',')}.`);
+             return;
+         }
 
 
-    const renderContent = () => {
-        if (abaAtiva === 'cardapio') {
-            return (
-                <main className="max-w-6xl mx-auto p-4 md:p-6 space-y-8 pb-32">
-                    <div className="flex gap-3 overflow-x-auto pb-2">
-                        {cardapio.categorias.map(categoria => (
-                            <a href={`#${categoria.nome}`} key={categoria.nome} className="px-5 py-2 rounded-lg font-semibold text-sm whitespace-nowrap transition-colors bg-white dark:bg-tema-surface-dark text-gray-700 dark:text-gray-300 shadow-sm border dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700">
-                                {categoria.nome}
-                            </a>
-                        ))}
-                    </div>
+        // Validação de Frete (especialmente se Haversine ativo)
+        if (isHaversineAtivo) {
+            if (!dadosCliente.cepCliente || dadosCliente.cepCliente.length !== 8) {
+                toast.warn("Por favor, informe um CEP válido (8 dígitos) e calcule o frete.");
+                return;
+            }
+            if (taxaEntrega === -3.00) { // -3 significa que não foi calculado ainda
+                 toast.warn("Por favor, clique em 'Calcular Frete' antes de finalizar.");
+                 return;
+            }
+            if (taxaEntrega < 0) { // -1 (CEP inválido) ou -2 (Fora de área)
+                toast.error(`Entrega indisponível para o CEP informado (${statusFrete}).`);
+                return;
+            }
+        }
 
-                    {cardapio.categorias.map(categoria => (
-                        categoria.produtos.length > 0 && (
-                            <section id={categoria.nome} key={categoria.nome}>
-                                <h2 className="text-2xl font-bold text-tema-text dark:text-tema-text-dark mb-4">{categoria.nome}</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {categoria.produtos.map(produto => (
-                                        <div 
-                                            key={produto.id} 
-                                            onClick={() => setProdutoSelecionado(produto)} 
-                                            className="bg-white dark:bg-tema-surface-dark p-4 rounded-lg shadow-sm border dark:border-gray-700 flex gap-4 cursor-pointer hover:border-tema-primary"
-                                        >
-                                            <div className="flex-grow">
-                                                <h3 className="font-semibold text-tema-text dark:text-tema-text-dark">{produto.nome}</h3>
-                                                <p className="text-sm text-tema-text-muted dark:text-tema-text-muted-dark mt-1">{produto.descricao}</p>
-                                                <p className="font-semibold text-tema-text dark:text-tema-text-dark mt-2">R$ {produto.preco.toFixed(2).replace('.', ',')}</p>
-                                            </div>
-                                            {/* Exibir Imagem do Produto no Cardápio */}
-                                            <div className="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-md flex-shrink-0 flex items-center justify-center overflow-hidden">
-                                                {produto.imageUrl ? (
-                                                     <img src={produto.imageUrl} alt={produto.nome} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <span className="text-xs text-gray-400">Imagem</span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </section>
-                        )
-                    ))}
-                </main>
-            );
-        }
+        setLoadingPedido(true); // Ativa loading do botão principal
 
-        if (abaAtiva === 'acompanhar') {
-            return (
-                <main className="max-w-6xl mx-auto p-4 md:p-6 space-y-8 pb-32">
-                    <h2 className="text-2xl font-bold text-tema-text dark:text-tema-text-dark mb-6">Seus Pedidos no Dia</h2>
-                    
-                    {pedidosDoDia.length > 0 ? (
-                        <div className="space-y-4">
-                            {pedidosDoDia.map((p, index) => (
-                                <div key={p.uuid} className="bg-white dark:bg-tema-surface-dark p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                                    <div>
-                                        <p className="font-bold text-lg text-tema-text dark:text-tema-text-dark">Pedido #{pedidosDoDia.length - index} <span className="text-sm font-normal text-tema-text-muted dark:text-tema-text-muted-dark">({p.data})</span></p>
-                                        <p className="text-sm text-tema-text-muted dark:text-tema-text-muted-dark">Total: R$ {p.total.toFixed(2).replace('.', ',')}</p>
-                                        <ul className="text-xs text-tema-text-muted dark:text-tema-text-muted-dark list-disc list-inside pl-2">
-                                            {p.itens.map((item, i) => <li key={i} className="truncate max-w-[200px]">{item}</li>)}
-                                        </ul>
-                                    </div>
-                                    <button 
-                                        onClick={() => navigate(`/rastrear/${p.uuid}`)}
-                                        className="bg-tema-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-opacity-80 transition-colors text-sm"
-                                    >
-                                        Rastrear
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="p-10 text-center bg-white dark:bg-tema-surface-dark rounded-lg border dark:border-gray-700">
-                             <p className="text-lg text-tema-text-muted dark:text-tema-text-muted-dark">Você ainda não fez pedidos hoje. Comece pela aba "Cardápio".</p>
-                        </div>
-                    )}
-                </main>
-            );
-        }
-        return null;
-    }
+        const pedidoParaApi = {
+            restauranteId: Number(restauranteId),
+            nomeCliente: dadosCliente.nomeCliente,
+            telefoneCliente: dadosCliente.telefoneCliente,
+            enderecoCliente: dadosCliente.enderecoCliente,
+            pontoReferencia: dadosCliente.pontoReferencia,
+            cepCliente: dadosCliente.cepCliente, // Sempre envia o CEP
+            itens: carrinho.map(item => ({
+                produtoId: item.produtoId, // Usa o ID real do produto
+                quantidade: item.quantidade,
+                observacao: item.observacao,
+                adicionaisIds: [], // Adicionar lógica de adicionais se implementado
+            }))
+        };
+
+        try {
+            if (tipoPagamentoSelecionado === 'ONLINE') {
+                // --- FLUXO PAGAMENTO ONLINE ---
+                logger.debug("Iniciando fluxo de pagamento online...");
+                // Chama o endpoint que GERA a URL de pagamento
+                const response = await apiClient.post('/api/publico/pagar/delivery', pedidoParaApi);
+                const { paymentUrl } = response;
+
+                if (!paymentUrl) {
+                     throw new Error("Não foi possível obter o link de pagamento.");
+                }
+
+                toast.info("Redirecionando para o pagamento seguro...");
+
+                // Salva um placeholder no localStorage ANTES de redirecionar
+                 const placeholderPedido = {
+                     uuid: 'aguardando_pagamento_' + Date.now(), // ID temporário
+                     data: new Date().toLocaleTimeString('pt-BR'),
+                     total: totalCarrinho,
+                     itens: carrinho.map(item => `${item.quantidade}x ${item.nome}`),
+                     status: 'Aguardando Pagamento' // Status visual
+                 };
+                 const updatedPedidos = [placeholderPedido, ...pedidosDoDia];
+                 setPedidosDoDia(updatedPedidos);
+                 localStorage.setItem(`pedidosDia_${restauranteId}`, JSON.stringify(updatedPedidos));
+
+                // Limpa o carrinho localmente
+                setCarrinho([]);
+                setIsCarrinhoOpen(false);
+
+                // REDIRECIONA para a URL do Stripe
+                window.location.href = paymentUrl;
+                // O setLoadingPedido(false) não será chamado aqui devido ao redirecionamento
+
+            } else {
+                // --- FLUXO PAGAMENTO NA ENTREGA ---
+                logger.debug("Iniciando fluxo de pagamento na entrega...");
+                // Chama o endpoint que SALVA o pedido offline
+                const endpoint = `/api/publico/pedido/delivery?pagamento=${tipoPagamentoSelecionado}`;
+                const novoPedido = await apiClient.post(endpoint, pedidoParaApi);
+
+                toast.success(`Pedido #${novoPedido.id} enviado! Pagamento na entrega: ${tipoPagamentoSelecionado.replace('_', ' ')}`);
+
+                // Salva pedido no localStorage para acompanhamento
+                if (novoPedido && novoPedido.uuid) {
+                    const novoPedidoComDetalhes = {
+                        uuid: novoPedido.uuid,
+                        id: novoPedido.id, // Guarda o ID real se precisar
+                        data: new Date(novoPedido.dataHora).toLocaleTimeString('pt-BR'), // Usa data do backend
+                        total: novoPedido.total, // Usa total do backend
+                        itens: novoPedido.itens.map(item => `${item.quantidade}x ${item.produto.nome}`), // Mapeia itens do backend
+                        status: 'Enviado' // Status inicial visual
+                    };
+                    const updatedPedidos = [novoPedidoComDetalhes, ...pedidosDoDia];
+                    setPedidosDoDia(updatedPedidos);
+                    localStorage.setItem(`pedidosDia_${restauranteId}`, JSON.stringify(updatedPedidos));
+                }
+
+                setCarrinho([]);
+                setIsCarrinhoOpen(false);
+                setAbaAtiva('acompanhar'); // Muda para a aba de acompanhamento
+            }
+
+        } catch (err) {
+            const errorMsg = err.message || "Houve um erro ao enviar seu pedido. Tente novamente.";
+            console.error("Erro handleEnviarPedido:", err); // Log detalhado
+            toast.error(errorMsg);
+        } finally {
+             // Garante que o loading para, exceto se foi redirecionado
+             if (tipoPagamentoSelecionado !== 'ONLINE') {
+                 setLoadingPedido(false);
+             }
+        }
+    };
 
 
-    if (loading) return <div className="text-center p-10 text-lg font-semibold text-gray-500">Carregando cardápio...</div>;
-    if (error) return <div className="text-center p-10 text-lg font-semibold text-red-500">{error}</div>;
+    // --- Renderização das Abas ---
+    const renderContent = () => {
+        if (abaAtiva === 'cardapio') {
+            return (
+                <main className="max-w-6xl mx-auto p-4 md:p-6 space-y-8 pb-32"> {/* Aumenta padding bottom */}
+                    {/* Filtros de Categoria */}
+                    <div className="flex gap-3 overflow-x-auto pb-2 sticky top-16 z-10 bg-gray-100 dark:bg-tema-fundo-dark py-2 -mx-4 px-4"> {/* Sticky Nav */}
+                        {cardapioInfo.categorias.map(categoria => (
+                            <a href={`#categoria-${categoria.id}`} key={categoria.id} className="px-5 py-2 rounded-lg font-semibold text-sm whitespace-nowrap transition-colors bg-white dark:bg-tema-surface-dark text-gray-700 dark:text-gray-300 shadow-sm border dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                {categoria.nome}
+                            </a>
+                        ))}
+                    </div>
 
-    return (
-        <div className="w-full min-h-screen bg-gray-100 dark:bg-tema-fundo-dark">
-            <header className="bg-white dark:bg-tema-surface-dark shadow-md p-4 sticky top-0 z-20">
-                <div className="max-w-6xl mx-auto">
-                    {/* Exibir Logo do Restaurante se existir */}
-                    {cardapio.logoUrl ? (
-                         <img src={cardapio.logoUrl} alt={cardapio.nomeRestaurante} className="h-10 mb-2 object-contain mx-auto md:mx-0" />
-                    ) : (
-                        <h1 className="text-2xl font-bold text-tema-text dark:text-tema-text-dark">{cardapio.nomeRestaurante}</h1>
-                    )}
-                    <p className="text-sm text-tema-text-muted dark:text-tema-text-muted-dark">{cardapio.enderecoRestaurante}</p>
-                    
-                    <div className="flex gap-4 mt-3 border-b dark:border-gray-700">
-                        <button 
-                            onClick={() => setAbaAtiva('cardapio')} 
-                            className={`pb-2 font-semibold text-lg transition-colors ${abaAtiva === 'cardapio' ? 'text-tema-primary border-b-2 border-tema-primary dark:text-tema-link-dark dark:border-tema-link-dark' : 'text-tema-text-muted dark:text-tema-text-muted-dark hover:text-tema-primary dark:hover:text-tema-link-dark'}`}
-                        >
-                            Cardápio
-                        </button>
-                        <button 
-                            onClick={() => setAbaAtiva('acompanhar')} 
-                            className={`pb-2 font-semibold text-lg transition-colors ${abaAtiva === 'acompanhar' ? 'text-tema-primary border-b-2 border-tema-primary dark:text-tema-link-dark dark:border-tema-link-dark' : 'text-tema-text-muted dark:text-tema-text-muted-dark hover:text-tema-primary dark:hover:text-tema-link-dark'}`}
-                        >
-                            Acompanhar Pedido ({pedidosDoDia.length})
-                        </button>
-                    </div>
+                    {/* Seções de Produtos por Categoria */}
+                    {cardapioInfo.categorias.map(categoria => (
+                        categoria.produtos.length > 0 && (
+                            <section id={`categoria-${categoria.id}`} key={categoria.id} className="pt-4"> {/* pt-4 para espaço do sticky nav */}
+                                <h2 className="text-2xl font-bold text-tema-text dark:text-tema-text-dark mb-4">{categoria.nome}</h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {categoria.produtos.map(produto => (
+                                        <div
+                                            key={produto.id}
+                                            onClick={() => setProdutoSelecionado(produto)}
+                                            className="bg-white dark:bg-tema-surface-dark p-4 rounded-lg shadow-sm border dark:border-gray-700 flex gap-4 cursor-pointer hover:border-tema-primary transition-all duration-200"
+                                        >
+                                            <div className="flex-grow">
+                                                <h3 className="font-semibold text-tema-text dark:text-tema-text-dark">{produto.nome}</h3>
+                                                <p className="text-sm text-tema-text-muted dark:text-tema-text-muted-dark mt-1 line-clamp-2">{produto.descricao}</p>
+                                                <p className="font-semibold text-tema-text dark:text-tema-text-dark mt-2">R$ {produto.preco.toFixed(2).replace('.', ',')}</p>
+                                            </div>
+                                            {/* Imagem */}
+                                            <div className="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-md flex-shrink-0 flex items-center justify-center overflow-hidden">
+                                                {produto.imageUrl ? (
+                                                    <img src={produto.imageUrl} alt={produto.nome} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span className="text-xs text-gray-400">Sem Foto</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+                        )
+                    ))}
+                </main>
+            );
+        }
 
-                </div>
-            </header>
+        if (abaAtiva === 'acompanhar') {
+            return (
+                <main className="max-w-6xl mx-auto p-4 md:p-6 space-y-8 pb-32">
+                    <h2 className="text-2xl font-bold text-tema-text dark:text-tema-text-dark mb-6">Seus Pedidos no Dia</h2>
 
-            {renderContent()}
+                    {pedidosDoDia.length > 0 ? (
+                        <div className="space-y-4">
+                            {pedidosDoDia.map((p, index) => (
+                                <div key={p.uuid || index} className="bg-white dark:bg-tema-surface-dark p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex justify-between items-center flex-wrap gap-2">
+                                    <div>
+                                        <p className="font-bold text-lg text-tema-text dark:text-tema-text-dark">Pedido #{pedidosDoDia.length - index} <span className="text-sm font-normal text-tema-text-muted dark:text-tema-text-muted-dark">({p.data})</span></p>
+                                        <p className="text-sm text-tema-text-muted dark:text-tema-text-muted-dark">Total: R$ {p.total.toFixed(2).replace('.', ',')}</p>
+                                        <ul className="text-xs text-tema-text-muted dark:text-tema-text-muted-dark list-disc list-inside pl-2 mt-1">
+                                            {p.itens.slice(0, 3).map((item, i) => <li key={i} className="truncate max-w-[200px]">{item}</li>)}
+                                            {p.itens.length > 3 && <li className="text-xs italic">... e mais itens</li>}
+                                        </ul>
+                                        {/* Mostra status visual */}
+                                        {p.status && <p className="text-xs font-semibold mt-1 text-blue-600 dark:text-blue-400">{p.status}</p>}
+                                    </div>
+                                    {/* Botão de rastrear só aparece se tiver UUID real */}
+                                    {!p.uuid.startsWith('aguardando_') && (
+                                         <button
+                                             onClick={() => navigate(`/rastrear/${p.uuid}`)}
+                                             className="bg-tema-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-opacity-80 transition-colors text-sm"
+                                         >
+                                             Rastrear
+                                         </button>
+                                     )}
+                                     {/* Mensagem para pagamentos pendentes */}
+                                     {p.uuid.startsWith('aguardando_') && (
+                                         <span className="text-sm font-semibold text-orange-500">Aguardando Pagamento...</span>
+                                     )}
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="p-10 text-center bg-white dark:bg-tema-surface-dark rounded-lg border dark:border-gray-700">
+                             <p className="text-lg text-tema-text-muted dark:text-tema-text-muted-dark">Você ainda não fez pedidos hoje. Comece pela aba "Cardápio".</p>
+                        </div>
+                    )}
+                </main>
+            );
+        }
+        return null;
+    }
 
-            {produtoSelecionado && <ProdutoModal produto={produtoSelecionado} onClose={() => setProdutoSelecionado(null)} onAddToCart={handleAddToCart} />}
-            
-            {/* Footer flutuante (apenas se a aba Cardápio estiver ativa e tiver itens) */}
-            {carrinho.length > 0 && abaAtiva === 'cardapio' && (
-                <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-tema-surface-dark shadow-lg border-t dark:border-gray-700 p-4 z-30">
-                    <div className="max-w-6xl mx-auto">
-                        <button onClick={() => setIsCarrinhoOpen(true)} className="w-full bg-tema-primary text-white font-bold py-3 rounded-lg flex justify-between items-center px-4">
-                            <span>Ver Sacola</span>
-                            <span>{totalItensCarrinho} itens - R$ {subtotalCarrinho.toFixed(2).replace('.', ',')}</span>
-                        </button>
-                    </div>
-                </div>
-            )}
 
-            {isCarrinhoOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-60 z-40" onClick={() => setIsCarrinhoOpen(false)}>
-                    <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-tema-surface-dark p-6 rounded-t-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-                        <h2 className="text-2xl font-bold mb-4 dark:text-tema-text-dark">Finalizar Pedido</h2>
-                        <div className="space-y-2 max-h-40 overflow-y-auto mb-4 border-b pb-4 dark:border-gray-700">
-                            {carrinho.map(item => <p key={item.itemId} className="dark:text-tema-text-dark">{item.quantidade}x {item.nome} {item.observacao && `(${item.observacao})`}</p>)}
-                        </div>
-                        
-                        {/* SEÇÃO DE FRETE CONDICIONAL */}
-                        <div className="mt-6">
-                            <label className="block text-sm font-bold text-tema-text dark:text-tema-text-dark mb-2">
-                                {/* CORREÇÃO NO RÓTULO */}
-                                {isHaversineAtivo ? 'CEP para Cálculo (Haversine)' : 'CEP para Entrega (Apenas Registro)'}
-                            </label>
-                            <div className="flex gap-2">
-                                <input 
-                                    type="text" 
-                                    name="cepCliente"
-                                    value={dadosCliente.cepCliente || ''} 
-                                    onChange={handleInputChange} 
-                                    placeholder={isHaversineAtivo ? "Aguardando 8 dígitos para calcular" : "Opcional"}
-                                    maxLength={8}
-                                    className="w-full p-3 border rounded-lg" 
-                                />
-                                {/* CORREÇÃO: Renderiza o botão 'Calcular' APENAS se isHaversineAtivo for TRUE */}
-                                {isHaversineAtivo && (
-                                     <button
-                                         type="button"
-                                         onClick={buscarFrete}
-                                         disabled={!dadosCliente.cepCliente || dadosCliente.cepCliente.replace(/\D/g, '').length !== 8 || statusFrete.includes('Calculando')}
-                                         className="bg-tema-primary text-white font-bold px-4 py-2 rounded-lg hover:bg-opacity-80 transition-colors disabled:bg-gray-400"
-                                     >
-                                         Calcular
-                                     </button>
-                                )}
-                            </div>
-                            <p className={`text-sm mt-2 font-semibold ${isHaversineAtivo && statusFrete.includes('Entrega') && taxaEntrega >= 0 ? 'text-tema-success dark:text-green-400' : 'text-tema-text-muted dark:text-tema-text-muted-dark'}`}>
-                                {/* CORREÇÃO: Mostra o status/taxa conforme o modo ativo */}
-                                {isHaversineAtivo ? `Status: ${statusFrete}` : `Taxa Fixa: R$ ${taxaEntrega.toFixed(2).replace('.', ',')}`}
-                            </p>
-                        </div>
-                        
-                        {/* DETALHES DE PREÇO */}
-                        <div className="text-sm dark:text-tema-text-dark mt-4 pt-2 border-t dark:border-gray-700">
-                            <div className="flex justify-between">
-                                <span>Subtotal:</span>
-                                <span>R$ {subtotalCarrinho.toFixed(2).replace('.',',')}</span>
-                            </div>
-                            
-                            {/* LINHA DE TAXA DE ENTREGA */}
-                            {taxaEntrega >= 0 && (
-                                <div className={`flex justify-between text-lg pt-1 font-bold ${taxaEntrega > 0 ? 'text-gray-500' : 'text-tema-success'}`}>
-                                    <span>Taxa de Entrega:</span>
-                                    <span>R$ {taxaEntrega.toFixed(2).replace('.',',')}</span>
-                                </div>
-                            )}
-                            {/* Mensagem de Erro de Cálculo/Bloqueio (Exclusiva Haversine) */}
-                            {isHaversineAtivo && taxaEntrega < 0 && (
-                                <div className={`flex justify-between text-lg pt-1 font-bold text-red-500 dark:text-red-400`}>
-                                    <span>Taxa de Entrega:</span>
-                                    <span>R$ 0,00 (Indisponível)</span>
-                                </div>
-                            )}
-                        </div>
-                        
-                        {/* TOTAL GERAL SEMPRE NO FINAL */}
-                        <p className="text-xl font-bold mt-4 text-right dark:text-tema-text-dark border-t dark:border-gray-700 pt-2">Total Geral: R$ {totalCarrinho.toFixed(2).replace('.',',')}</p>
-                        
-                        <div className="mt-6 space-y-4">
-                            <input type="text" name="nomeCliente" value={dadosCliente.nomeCliente} onChange={handleInputChange} placeholder="* Seu Nome" className="w-full p-3 border rounded-lg" />
-                            <input type="text" name="telefoneCliente" value={dadosCliente.telefoneCliente} onChange={handleInputChange} placeholder="* Telefone / WhatsApp" className="w-full p-3 border rounded-lg" />
-                            <input type="text" name="enderecoCliente" value={dadosCliente.enderecoCliente} onChange={handleInputChange} placeholder="* Endereço para Entrega" className="w-full p-3 border rounded-lg" />
-                            <input type="text" name="pontoReferencia" value={dadosCliente.pontoReferencia} onChange={handleInputChange} placeholder="Ponto de referência (opcional)" className="w-full p-3 border rounded-lg" />
-                            
-                            {/* SELETOR DE PAGAMENTO */}
-                            <div className="mt-6">
-                                <label className="block text-sm font-bold text-tema-text dark:text-tema-text-dark mb-2">Forma de Pagamento:</label>
-                                <select
-                                    value={tipoPagamentoSelecionado}
-                                    onChange={(e) => setTipoPagamentoSelecionado(e.target.value)}
-                                    className="w-full p-3 border rounded-lg bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-tema-text-dark"
-                                >
-                                    <option value="ONLINE">💳 PIX ou Cartão AGORA</option>
-                                    <option value="DINHEIRO">💰 Dinheiro na Entrega</option>
-                                    <option value="CARTAO_DEBITO">📳 Cartão/Maquineta (Débito)</option>
-                                    <option value="CARTAO_CREDITO">📳 Cartão/Maquineta (Crédito)</option>
-                                    <option value="PIX">Pix na Entrega (Informar Chave)</option>
-                                </select>
-                            </div>
-                        </div>
-                        <button 
-                            onClick={handleEnviarPedido} 
-                            disabled={totalCarrinho <= 0 || (isHaversineAtivo && taxaEntrega < 0) || (isHaversineAtivo && statusFrete.includes('Aguardando'))} 
-                            className="w-full mt-6 py-3 rounded-lg font-bold text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                        >
-                            {/* TEXTO CONDICIONAL */}
-                            {tipoPagamentoSelecionado === 'ONLINE' ? 'Pagar e Finalizar Agora' : 'Enviar Pedido (Pagar na Entrega)'}
-                        </button>
-                    </div>
-                </div>
-            )}
-            <ToastContainer position="bottom-center" autoClose={3000} />
-        </div>
-    );
+    if (loading) return <div className="text-center p-10 text-lg font-semibold text-gray-500 dark:text-gray-400">Carregando cardápio...</div>;
+    if (error) return <div className="text-center p-10 text-lg font-semibold text-red-500">{error}</div>;
+    if (!cardapioInfo) return <div className="text-center p-10 text-lg font-semibold text-gray-500 dark:text-gray-400">Cardápio indisponível.</div>; // Fallback
+
+
+    return (
+        <div className="w-full min-h-screen bg-gray-100 dark:bg-tema-fundo-dark">
+            {/* Header */}
+            <header className="bg-white dark:bg-tema-surface-dark shadow-md p-4 sticky top-0 z-20">
+                <div className="max-w-6xl mx-auto">
+                    {cardapioInfo.logoUrl ? (
+                           <img src={cardapioInfo.logoUrl} alt={cardapioInfo.nomeRestaurante} className="h-10 mb-2 object-contain mx-auto md:mx-0" />
+                    ) : (
+                           <h1 className="text-2xl font-bold text-tema-text dark:text-tema-text-dark text-center md:text-left">{cardapioInfo.nomeRestaurante}</h1>
+                    )}
+                    <p className="text-sm text-tema-text-muted dark:text-tema-text-muted-dark text-center md:text-left">{cardapioInfo.enderecoRestaurante}</p>
+
+                    {/* Abas */}
+                    <div className="flex gap-4 mt-3 border-b dark:border-gray-700">
+                        <button
+                            onClick={() => setAbaAtiva('cardapio')}
+                            className={`pb-2 font-semibold text-lg transition-colors ${abaAtiva === 'cardapio' ? 'text-tema-primary border-b-2 border-tema-primary dark:text-tema-link-dark dark:border-tema-link-dark' : 'text-tema-text-muted dark:text-tema-text-muted-dark hover:text-tema-primary dark:hover:text-tema-link-dark'}`}
+                        >
+                            Cardápio
+                        </button>
+                        <button
+                            onClick={() => setAbaAtiva('acompanhar')}
+                            className={`pb-2 font-semibold text-lg transition-colors relative ${abaAtiva === 'acompanhar' ? 'text-tema-primary border-b-2 border-tema-primary dark:text-tema-link-dark dark:border-tema-link-dark' : 'text-tema-text-muted dark:text-tema-text-muted-dark hover:text-tema-primary dark:hover:text-tema-link-dark'}`}
+                        >
+                            Meus Pedidos
+                            {/* Badge com contador */}
+                            {pedidosDoDia.length > 0 && (
+                                 <span className="absolute top-0 right-0 transform translate-x-1/2 -translate-y-1/2 bg-red-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                                     {pedidosDoDia.length}
+                                 </span>
+                             )}
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            {/* Conteúdo da Aba */}
+            {renderContent()}
+
+            {/* Modal do Produto */}
+            {produtoSelecionado && <ProdutoModal produto={produtoSelecionado} onClose={() => setProdutoSelecionado(null)} onAddToCart={handleAddToCart} />}
+
+            {/* Footer Flutuante (Sacola) - Só na aba Cardápio */}
+            {carrinho.length > 0 && abaAtiva === 'cardapio' && (
+                <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-tema-surface-dark shadow-lg border-t dark:border-gray-700 p-4 z-30">
+                    <div className="max-w-6xl mx-auto">
+                        <button onClick={() => setIsCarrinhoOpen(true)} className="w-full bg-tema-primary text-white font-bold py-3 rounded-lg flex justify-between items-center px-4 hover:bg-opacity-90 transition-colors">
+                            <span>Ver Sacola ({totalItensCarrinho} {totalItensCarrinho === 1 ? 'item' : 'itens'})</span>
+                            <span>R$ {subtotalCarrinho.toFixed(2).replace('.', ',')}</span>
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal da Sacola/Checkout */}
+            {isCarrinhoOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-60 z-40 flex items-end md:items-center justify-center" onClick={() => setIsCarrinhoOpen(false)}>
+                    {/* Conteúdo do Modal */}
+                    <div className="bg-white dark:bg-tema-surface-dark p-6 rounded-t-2xl md:rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                        <h2 className="text-2xl font-bold mb-4 dark:text-tema-text-dark text-center">Finalizar Pedido</h2>
+
+                        {/* Itens do Carrinho */}
+                        <div className="space-y-3 max-h-40 overflow-y-auto mb-4 border-b pb-4 dark:border-gray-700 pr-2">
+                             {carrinho.length > 0 ? carrinho.map(item => (
+                                 <div key={item.itemId} className="flex justify-between items-start text-sm">
+                                     <div className="flex-grow mr-2">
+                                         <p className="dark:text-tema-text-dark font-semibold">{item.quantidade}x {item.nome}</p>
+                                         {item.observacao && <p className="text-xs text-gray-500 dark:text-gray-400 italic">Obs: {item.observacao}</p>}
+                                     </div>
+                                     <div className="flex items-center flex-shrink-0">
+                                          <span className='font-semibold dark:text-tema-text-dark mr-2'>R$ {(item.preco * item.quantidade).toFixed(2).replace('.', ',')}</span>
+                                          <button type="button" onClick={() => handleRemoveFromCart(item.itemId)} className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-500 text-lg font-bold leading-none">&times;</button>
+                                     </div>
+                                 </div>
+                            )) : <p className="text-center text-gray-500 dark:text-gray-400">Sacola vazia.</p>}
+                        </div>
+
+                        {/* Dados do Cliente */}
+                         <div className="space-y-4 mb-6">
+                            <input type="text" name="nomeCliente" value={dadosCliente.nomeCliente} onChange={handleInputChange} placeholder="* Seu Nome Completo" className="w-full p-3 border rounded-lg dark:bg-gray-800 dark:border-gray-600 dark:text-white" required />
+                            <input type="tel" name="telefoneCliente" value={dadosCliente.telefoneCliente} onChange={handleInputChange} placeholder="* Telefone / WhatsApp (com DDD)" className="w-full p-3 border rounded-lg dark:bg-gray-800 dark:border-gray-600 dark:text-white" required />
+                             {/* Mostra CEP sempre, mas a label e o botão mudam */}
+                             <div>
+                                 <label className="block text-sm font-bold text-tema-text dark:text-tema-text-dark mb-1">
+                                      {isHaversineAtivo ? '* CEP (para cálculo do frete)' : 'CEP (opcional)'}
+                                 </label>
+                                 <div className="flex gap-2 items-center">
+                                      <input
+                                          type="text" // Use text para facilitar a máscara no futuro
+                                          name="cepCliente"
+                                          value={dadosCliente.cepCliente}
+                                          onChange={handleInputChange}
+                                          placeholder="Apenas números"
+                                          maxLength={8}
+                                          className={`flex-grow p-3 border rounded-lg dark:bg-gray-800 dark:border-gray-600 dark:text-white ${isHaversineAtivo && taxaEntrega < 0 && taxaEntrega !== -3.00 ? 'border-red-500' : ''}`}
+                                          required={isHaversineAtivo}
+                                      />
+                                      {isHaversineAtivo && (
+                                          <button
+                                              type="button"
+                                              onClick={buscarFrete}
+                                              disabled={loadingFrete || !dadosCliente.cepCliente || dadosCliente.cepCliente.length !== 8}
+                                              className="bg-tema-primary text-white font-bold px-4 py-3 rounded-lg hover:bg-opacity-80 transition-colors disabled:bg-gray-400 whitespace-nowrap"
+                                          >
+                                              {loadingFrete ? '...' : 'Calcular'}
+                                          </button>
+                                      )}
+                                 </div>
+                                 {/* Mensagem de Status/Erro do Frete */}
+                                 <p className={`text-sm mt-1 font-semibold ${
+                                     taxaEntrega >= 0 ? 'text-green-600 dark:text-green-400' :
+                                     taxaEntrega === -3.00 ? 'text-gray-500 dark:text-gray-400' :
+                                     'text-red-600 dark:text-red-400'
+                                 }`}>
+                                     {statusFrete}
+                                </p>
+                             </div>
+
+                             <input type="text" name="enderecoCliente" value={dadosCliente.enderecoCliente} onChange={handleInputChange} placeholder="* Endereço Completo (Rua, Nº, Bairro)" className="w-full p-3 border rounded-lg dark:bg-gray-800 dark:border-gray-600 dark:text-white" required />
+                             <input type="text" name="pontoReferencia" value={dadosCliente.pontoReferencia} onChange={handleInputChange} placeholder="Ponto de referência (opcional)" className="w-full p-3 border rounded-lg dark:bg-gray-800 dark:border-gray-600 dark:text-white" />
+                         </div>
+
+                        {/* Resumo Financeiro */}
+                        <div className="text-sm dark:text-tema-text-dark mt-4 pt-4 border-t dark:border-gray-700 space-y-1">
+                            <div className="flex justify-between">
+                                <span>Subtotal:</span>
+                                <span>R$ {subtotalCarrinho.toFixed(2).replace('.',',')}</span>
+                            </div>
+                            {/* Mostra taxa apenas se calculada com sucesso ou fixa */}
+                            {taxaEntrega >= 0 && (
+                                <div className="flex justify-between">
+                                    <span>Taxa de Entrega:</span>
+                                    <span>R$ {taxaEntrega.toFixed(2).replace('.',',')}</span>
+                                </div>
+                            )}
+                             {/* Mensagem se frete inválido/fora de área */}
+                             {taxaEntrega < 0 && taxaEntrega !== -3.00 && (
+                                 <div className="flex justify-between text-red-600 dark:text-red-400 font-semibold">
+                                     <span>Taxa de Entrega:</span>
+                                     <span>Indisponível</span>
+                                 </div>
+                             )}
+                            <div className="flex justify-between font-bold text-lg pt-2 mt-2 border-t dark:border-gray-600">
+                                <span>Total:</span>
+                                <span>R$ {totalCarrinho.toFixed(2).replace('.',',')}</span>
+                            </div>
+                        </div>
+
+                        {/* Seletor de Pagamento */}
+                         <div className="mt-6">
+                             <label className="block text-sm font-bold text-tema-text dark:text-tema-text-dark mb-2">Forma de Pagamento:</label>
+                             <select
+                                 value={tipoPagamentoSelecionado}
+                                 onChange={(e) => setTipoPagamentoSelecionado(e.target.value)}
+                                 className="w-full p-3 border rounded-lg bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                             >
+                                 {/* Opção Online SÓ aparece se ativa */}
+                                 {isPagamentoOnlineAtivo && <option value="ONLINE">💳 Pagar Online Agora (Pix ou Cartão)</option>}
+                                 <option value="DINHEIRO">💰 Dinheiro na Entrega</option>
+                                 <option value="CARTAO_DEBITO">📲 Maquineta na Entrega (Débito)</option>
+                                 <option value="CARTAO_CREDITO">📲 Maquineta na Entrega (Crédito)</option>
+                                 <option value="PIX">🤳 Pix na Entrega (Solicitar Chave)</option>
+                             </select>
+                         </div>
+
+                        {/* Botão Finalizar */}
+                        <button
+                            onClick={handleEnviarPedido}
+                            disabled={loadingPedido || subtotalCarrinho <= 0 || (isHaversineAtivo && taxaEntrega < 0)} // Desabilita se carregando, carrinho vazio ou frete inválido
+                            className={`w-full mt-6 py-3 rounded-lg font-bold text-white transition-colors ${
+                                loadingPedido || subtotalCarrinho <= 0 || (isHaversineAtivo && taxaEntrega < 0)
+                                ? 'bg-gray-400 cursor-not-allowed'
+                                : 'bg-green-600 hover:bg-green-700'
+                            }`}
+                        >
+                            {loadingPedido ? 'Enviando...' : (tipoPagamentoSelecionado === 'ONLINE' ? 'Ir para Pagamento Online' : 'Confirmar Pedido (Pagar na Entrega)')}
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            <ToastContainer position="bottom-center" autoClose={3500} theme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'} />
+        </div>
+    );
 };
 
 export default CardapioClientePage;
+
+// Adiciona um logger simples para debug no console do navegador
+const logger = {
+    debug: (...args) => console.debug('[DEBUG]', ...args),
+    info: (...args) => console.info('[INFO]', ...args),
+    warn: (...args) => console.warn('[WARN]', ...args),
+    error: (...args) => console.error('[ERROR]', ...args),
+};

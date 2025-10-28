@@ -64,17 +64,15 @@ public class Restaurante {
     private String whatsappNumber;
     private BigDecimal taxaEntrega = BigDecimal.ZERO;
 
-    // --- MUDANÇA AQUI: Adiciona @Column com nome explícito ---
     @Column(name = "calculo_haversine_ativo", nullable = false) // Mapeia para a coluna snake_case
     private boolean calculoHaversineAtivo = false;
-    // --- FIM DA MUDANÇA ---
 
     private String stripeCustomerId;
     private String stripeSubscriptionId;
+    private String stripeConnectAccountId;
 
     private LocalDateTime dataExpiracaoPlano;
 
-    // Construtor principal
     public Restaurante(String nome, String email, String senha) {
         this.nome = nome;
         this.email = email;

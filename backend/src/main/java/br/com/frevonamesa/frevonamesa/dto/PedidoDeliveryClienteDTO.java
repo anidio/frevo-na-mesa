@@ -10,5 +10,6 @@ public class PedidoDeliveryClienteDTO {
     private String telefoneCliente;
     private String enderecoCliente;
     private String pontoReferencia;
+    private String cepCliente;
     private List<ItemPedidoRequestDTO> itens;
 }

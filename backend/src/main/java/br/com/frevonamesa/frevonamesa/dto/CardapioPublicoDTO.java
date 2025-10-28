@@ -13,4 +13,5 @@ public class CardapioPublicoDTO {
     private BigDecimal taxaEntrega;
     private String logoUrl;
     private boolean isCalculoHaversineAtivo;
+    private boolean pagamentoOnlineAtivo;
 }

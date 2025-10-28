@@ -13,4 +13,6 @@ public interface RestauranteRepository extends JpaRepository<Restaurante, Long> 
     List<Restaurante> findAllByIsDeliveryProTrueOrIsSalaoProTrue();
 
     Optional<Restaurante> findByStripeCustomerId(String stripeCustomerId);
+
+    Optional<Restaurante> findByStripeConnectAccountId(String stripeConnectAccountId);
 }

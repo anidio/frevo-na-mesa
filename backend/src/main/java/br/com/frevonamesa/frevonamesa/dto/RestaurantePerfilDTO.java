@@ -27,4 +27,5 @@ public class RestaurantePerfilDTO {
     private boolean calculoHaversineAtivo;
     private String stripeSubscriptionId;
     private String stripeCustomerId;
+    private String stripeConnectAccountId;
 }

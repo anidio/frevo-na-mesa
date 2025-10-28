@@ -38,3 +38,14 @@ export const abrirPortalCliente = async () => {
     const response = await apiClient.post('/api/financeiro/portal-session', {});
     return response.portalUrl; // Retorna a URL do portal vinda do backend
 };
+
+/**
+ * Busca no backend a URL segura para iniciar o processo de
+ * onboarding/conexão da conta Stripe Express do restaurante.
+ */
+export const getConnectOnboardingLink = async () => {
+    // Chama o novo endpoint no backend
+    const response = await apiClient.post('/api/financeiro/connect/onboard', {});
+    // O backend retorna a URL gerada pelo Stripe
+    return response.onboardingUrl;
+};
