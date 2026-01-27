@@ -168,18 +168,17 @@ public class PedidoService {
     public Pedido criarPedidoDelivery(PedidoDeliveryRequestDTO dto) throws PedidoLimitException { // Adiciona throws
         Restaurante restaurante = restauranteService.getRestauranteLogado();
 
-        // Limite padrão (pode vir de config futuramente)
-        int hardLimit = 30; // Exemplo de limite para planos limitados
+        int limiteBase = 30;
+        int limiteTotal = limiteBase + restaurante.getPedidosExtrasContratados();
 
-        // VERIFICAÇÃO DE LIMITE ATUALIZADA:
         boolean isGratuitoLimitado = restaurante.getPlano().equals("GRATUITO")
                 && !restaurante.isDeliveryPro()
                 && !restaurante.isLegacyFree()
                 && !restaurante.isBetaTester();
 
-        if (isGratuitoLimitado && restaurante.getPedidosMesAtual() >= hardLimit) {
-            // Lança a exceção específica para o frontend tratar
-            throw new PedidoLimitException("Limite de pedidos mensais atingido! O pedido não pode ser salvo até que o limite seja liberado.", restaurante.getPedidosMesAtual(), hardLimit);
+        if (isGratuitoLimitado && restaurante.getPedidosMesAtual() >= limiteTotal) {
+            throw new PedidoLimitException("Limite de pedidos atingido! Compre mais créditos ou faça upgrade.",
+                    restaurante.getPedidosMesAtual(), limiteTotal);
         }
 
         Pedido novoPedido = new Pedido();
@@ -437,17 +436,17 @@ public class PedidoService {
         Restaurante restaurante = restauranteRepository.findById(dto.getRestauranteId())
                 .orElseThrow(() -> new RuntimeException("Restaurante não encontrado!"));
 
-        // --- Lógica de Monetização ---
-        int hardLimit = 30; // Exemplo de limite
+        int limiteBase = 30;
+        int limiteTotal = limiteBase + restaurante.getPedidosExtrasContratados();
+
         boolean isGratuitoLimitado = restaurante.getPlano().equals("GRATUITO")
                 && !restaurante.isDeliveryPro()
                 && !restaurante.isLegacyFree()
                 && !restaurante.isBetaTester();
 
-        if (isGratuitoLimitado && restaurante.getPedidosMesAtual() >= hardLimit) {
-            logger.warn("Limite de pedidos atingido para Restaurante ID {} (Plano Gratuito)", restaurante.getId());
-            // Lança exceção para o controller tratar (retornar erro para o cliente)
-            throw new PedidoLimitException("Limite de pedidos atingido para este restaurante.", restaurante.getPedidosMesAtual(), hardLimit);
+        if (isGratuitoLimitado && restaurante.getPedidosMesAtual() >= limiteTotal) {
+            logger.warn("Limite atingido para Restaurante ID {}", restaurante.getId());
+            throw new PedidoLimitException("Limite atingido.", restaurante.getPedidosMesAtual(), limiteTotal);
         }
 
         // --- Criação e Cálculo do Total ---

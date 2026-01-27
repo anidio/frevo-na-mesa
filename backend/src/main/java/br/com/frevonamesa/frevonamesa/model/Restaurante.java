@@ -56,6 +56,10 @@ public class Restaurante {
     private boolean isDeliveryPro = false;
     @Column(nullable = false)
     private boolean isSalaoPro = false;
+    @Column(nullable = false)
+    private Integer pedidosExtrasContratados = 0;
+    @Column(nullable = false)
+    private Integer mesasExtrasContratadas = 0;
 
     private Integer limiteMesas = 10;
     private Integer limiteUsuarios = 4;

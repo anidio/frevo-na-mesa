@@ -74,7 +74,7 @@ public class FinanceiroService {
     // IDs de Preço (mantidos como antes)
     private final Map<String, String> priceIds = Map.of(
             "PAY_PER_USE", "price_1SKMQ2C1ubUDyMdQIs3JhxLP",
-            "DELIVERY_PRO_MENSAL", "price_1SKMPEC1ubUDyMdQQkAPocBf",
+            "DELIVERY_PRO_MENSAL", "price_1SW8cUCLmB0z3MHgiZjKeORZ",
             "SALAO_PDV_MENSAL", "price_1SKMPTC1ubUDyMdQyuHgkYrO",
             "PREMIUM_MENSAL", "price_1SKMPmC1ubUDyMdQBnvegHTd",
             "PREMIUM_ANUAL", "price_1SKMQOC1ubUDyMdQHMWKSjMK"

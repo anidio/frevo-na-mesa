@@ -170,7 +170,7 @@ const FinanceiroPage = () => {
     // Usa o limitePedidosGratuito que veio do backend (ou o default)
     const limitePedidosConfig = userProfile.limitePedidosGratuito ?? LIMITE_PEDIDOS_GRATUITO_CONFIG;
     const limiteAtingido = aplicaLimitePedidos && (pedidosMesAtual >= limitePedidosConfig);
-    const pedidosRestantes = aplicaLimitePedidos ? Math.max(0, limitePedidosConfig - pedidosAtuais) : Infinity;
+    const pedidosRestantes = aplicaLimitePedidos ? Math.max(0, limitePedidosConfig - pedidosMesAtual) : Infinity;
 
     let planoExibido = planoAtualNomeBase.replace('_', ' '); // Formatação básica
     if (planoAtualNomeBase === 'PREMIUM') planoExibido = 'PREMIUM (Salão + Delivery)';
@@ -300,7 +300,7 @@ const FinanceiroPage = () => {
                               {aplicaLimitePedidos && ( // Mostra contador apenas se o limite se aplica
                                   <p>Uso Atual (Este Mês):
                                       <span className={`font-semibold ml-1 ${limiteAtingido ? 'text-red-600 dark:text-red-400' : 'text-tema-text dark:text-tema-text-dark'}`}>
-                                          {pedidosAtuais} / {limitePedidosConfig}
+                                          {pedidosMesAtual} / {limitePedidosConfig}
                                       </span>
                                       {limiteAtingido && <span className="text-red-600 dark:text-red-400 ml-1">(Limite Atingido!)</span>}
                                   </p>

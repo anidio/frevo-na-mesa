@@ -115,18 +115,27 @@ public class MesaService {
     @Transactional
     public Mesa criarMesa(MesaRequestDTO dto) {
         Restaurante restaurante = restauranteService.getRestauranteLogado();
-        Long restauranteId = restaurante.getId(); // Usado para clareza
+        Long restauranteId = restaurante.getId();
 
-        // --- LÓGICA DE TRAVA DE MONETIZAÇÃO (CORREÇÃO) ---
-        long mesasAtuais = mesaRepository.findByRestauranteId(restauranteId).size();
+        // 1. Contamos quantas mesas o restaurante já tem
+        long mesasAtuais = mesaRepository.countByRestauranteId(restauranteId);
 
-        // Verifica se o restaurante NÃO é LEGADO (piloto) E se atingiu o limite do plano.
-        if (!restaurante.isSalaoPro() && !restaurante.isLegacyFree() && !restaurante.isBetaTester() && mesasAtuais >= restaurante.getLimiteMesas()) {
-            throw new RuntimeException("Limite de " + restaurante.getLimiteMesas() + " mesas atingido para o seu plano! Atualize para o plano Salão PDV.");
+        // 2. Calculamos o limite real (Limite do Plano + Mesas Extras Compradas)
+        int limiteTotalPermitido = restaurante.getLimiteMesas() + restaurante.getMesasExtrasContratadas();
+
+        // 3. Aplicamos a trava de monetização atualizada
+        boolean precisaValidarLimite = !restaurante.isSalaoPro()
+                && !restaurante.isLegacyFree()
+                && !restaurante.isBetaTester();
+
+        if (precisaValidarLimite && mesasAtuais >= limiteTotalPermitido) {
+            throw new RuntimeException("Limite de " + limiteTotalPermitido + " mesas atingido! " +
+                    "Compre mais créditos de mesas ou assine o plano Salão PDV para ter mesas ilimitadas.");
         }
 
-        if (mesaRepository.existsByNumeroAndRestauranteId(dto.getNumero(), restaurante.getId())) {
-            throw new RuntimeException("Já existe uma mesa com o número " + dto.getNumero() + " para este restaurante.");
+        // 4. Verificação de duplicidade (já existente no seu código)
+        if (mesaRepository.existsByNumeroAndRestauranteId(dto.getNumero(), restauranteId)) {
+            throw new RuntimeException("Já existe uma mesa com o número " + dto.getNumero());
         }
 
         Mesa novaMesa = new Mesa();

@@ -11,6 +11,8 @@ import java.util.Optional;
 @Repository
 public interface MesaRepository extends JpaRepository<Mesa, Long> {
 
+    long countByRestauranteId(Long restauranteId);
+
     long countByStatusAndRestauranteId(StatusMesa status, Long restauranteId);
 
     List<Mesa> findAllByStatusAndRestauranteId(StatusMesa status, Long restauranteId);
@@ -19,12 +21,9 @@ public interface MesaRepository extends JpaRepository<Mesa, Long> {
 
     boolean existsByNumero(int numero);
 
-    // NOVO: Busca todas as mesas de um restaurante específico
     List<Mesa> findByRestauranteId(Long restauranteId);
 
-    // NOVO: Verifica se uma mesa com um certo número já existe para um restaurante específico
     boolean existsByNumeroAndRestauranteId(int numero, Long restauranteId);
 
     Optional<Mesa> findByNumeroAndRestauranteId(int numero, Long restauranteId);
-
 }

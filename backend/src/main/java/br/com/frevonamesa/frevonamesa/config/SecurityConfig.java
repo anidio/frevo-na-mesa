@@ -1,10 +1,6 @@
-// backend/src/main/java/br/com/frevonamesa/frevonamesa/config/SecurityConfig.java
-
 package br.com.frevonamesa.frevonamesa.config;
 
 import br.com.frevonamesa.frevonamesa.config.jwt.JwtRequestFilter;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -12,15 +8,18 @@ import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer; // Correção no nome do import
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
+import org.springframework.beans.factory.annotation.Autowired; // Necessário
 import java.util.Arrays;
+import java.util.List;
+import java.util.ArrayList;
 
 @Configuration
 @EnableWebSecurity
@@ -33,8 +32,19 @@ public class SecurityConfig {
     @Autowired
     private AuthenticationProvider authenticationProvider;
 
-    @Value("${app.cors.allowed-origins}")
-    private String[] allowedOrigins;
+    // A variável @Value foi removida, e a origem é definida diretamente no corsConfigurationSource.
+
+    /**
+     * Exclui o Webhook, H2 e a rota raiz (que não precisam de CORS).
+     */
+    @Bean
+    public WebSecurityCustomizer webSecurityCustomizer() {
+        return (web) -> web.ignoring().requestMatchers(
+                "/", // Rota principal
+                "/h2-console/**", // Console H2
+                "/api/financeiro/webhook/stripe" // Webhook (CRÍTICO: Deve ser ignorado para evitar 403)
+        );
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -42,28 +52,30 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        // Rotas Abertas
-                        .requestMatchers("/api/auth/**", "/h2-console/**", "/api/publico/**", "/api/financeiro/webhook/stripe").permitAll()
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Permite pre-flight requests
+
+                        // Rotas ABERTAS / PÚBLICAS (MOVEMOS DE VOLTA AQUI para forçar o filtro CORS)
+                        // OPTIONS é o preflight do CORS
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/api/auth/**", "/api/publico/**").permitAll()
 
                         // Rotas Autenticadas Gerais
                         .requestMatchers("/api/restaurante/meu-perfil").authenticated()
-                        .requestMatchers("/api/categorias/**", "/api/produtos/**", "/api/adicionais/**").authenticated() // Permitido para qualquer autenticado (ADMIN fará a trava no controller)
-                        .requestMatchers("/api/mesas/**", "/api/pedidos/**").authenticated() // Rotas de Garçom/Caixa
-                        .requestMatchers("/api/caixa/dashboard").authenticated() // Dashboard do Caixa
+                        .requestMatchers("/api/categorias/**", "/api/produtos/**", "/api/adicionais/**").authenticated()
+                        .requestMatchers("/api/mesas/**", "/api/pedidos/**").authenticated()
+                        .requestMatchers("/api/caixa/dashboard").authenticated()
 
                         // Rotas Exclusivas ADMIN (RBAC mais granular nos Controllers com @PreAuthorize)
                         .requestMatchers("/api/usuarios/**").hasRole("ADMIN")
                         .requestMatchers("/api/restaurante/configuracoes").hasRole("ADMIN")
-                        .requestMatchers("/api/restaurante/perfil").hasRole("ADMIN") // Atualizar perfil geral
-                        .requestMatchers("/api/caixa/fechar").hasRole("ADMIN") // Fechar caixa é Admin
-                        .requestMatchers("/api/relatorios/**").hasRole("ADMIN") // Relatórios são Admin
-                        .requestMatchers("/api/areas-entrega/**").hasRole("ADMIN") // Gerenciar áreas é Admin
+                        .requestMatchers("/api/restaurante/perfil").hasRole("ADMIN")
+                        .requestMatchers("/api/caixa/fechar").hasRole("ADMIN")
+                        .requestMatchers("/api/relatorios/**").hasRole("ADMIN")
+                        .requestMatchers("/api/areas-entrega/**").hasRole("ADMIN")
 
                         // Rotas Financeiras - ADMIN tem acesso a tudo
                         .requestMatchers("/api/financeiro/status-plano").hasRole("ADMIN")
-                        .requestMatchers("/api/financeiro/upgrade/**").hasRole("ADMIN") // Todos os upgrades
-                        .requestMatchers("/api/financeiro/portal-session").hasRole("ADMIN") // <<< NOVO ENDPOINT DO PORTAL
+                        .requestMatchers("/api/financeiro/upgrade/**").hasRole("ADMIN")
+                        .requestMatchers("/api/financeiro/portal-session").hasRole("ADMIN")
 
                         // Rota Financeira - PayPerUse (Admin ou Caixa)
                         .requestMatchers("/api/financeiro/iniciar-pagamento").hasAnyRole("ADMIN", "CAIXA")
@@ -78,7 +90,7 @@ public class SecurityConfig {
                 .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 
         // Permite H2 Console em iframe (apenas para dev/local)
-        http.headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin)); // Use sameOrigin em vez de disable para mais segurança
+        http.headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin));
 
         return http.build();
     }
@@ -86,17 +98,23 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Garante que as origins da variável de ambiente sejam usadas
-        configuration.setAllowedOrigins(Arrays.asList(allowedOrigins));
+
+        // CORREÇÃO FINAL DO CORS: Define explicitamente as origens necessárias para o desenvolvimento local
+        List<String> origins = new ArrayList<>();
+
+        // 1. Origem Local (essencial para o seu dev)
+        origins.add("http://localhost:5173");
+
+        // 2. Você pode adicionar a origem de produção aqui se necessário, ex: origins.add("https://seusite.com");
+
+        configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("*")); // Permite todos os headers comuns
-        configuration.setAllowCredentials(true); // Necessário para cookies/tokens
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         // Aplica a configuração CORS para todas as rotas da API
         source.registerCorsConfiguration("/api/**", configuration);
-        // Pode ser necessário registrar para /h2-console/** se acessado de origem diferente
-        // source.registerCorsConfiguration("/h2-console/**", configuration);
         return source;
     }
 }

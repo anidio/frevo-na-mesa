@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService; // MUDANÇA AQUI
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -20,10 +20,23 @@ import java.io.IOException;
 public class JwtRequestFilter extends OncePerRequestFilter {
 
     @Autowired
-    private UserDetailsService userDetailsService; // MUDANÇA AQUI
+    private UserDetailsService userDetailsService;
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    /**
+     * Define quais caminhos de requisição não devem ser filtrados pelo JWT.
+     * Isso é essencial para rotas públicas (como webhooks e a raiz da aplicação).
+     */
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        String path = request.getServletPath();
+
+        // Exclui a rota principal (/) e a rota do webhook do Stripe para evitar o erro 403
+        return path.equals("/") ||
+                path.equals("/api/financeiro/webhook/stripe");
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
