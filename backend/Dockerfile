@@ -1,26 +1,26 @@
-# Usa uma imagem base oficial do Java 17
-FROM eclipse-temurin:17-jdk-alpine
-
-# Define o diretório de trabalho dentro do contêiner
+# Estágio 1: Build
+FROM eclipse-temurin:17-jdk AS build
 WORKDIR /app
 
-# Copia os arquivos necessários para o Maven Wrapper e o build
-COPY ./src ./src
-COPY ./mvnw ./mvnw
-COPY ./pom.xml ./pom.xml
-COPY ./.mvn ./.mvn
-
-# Dá permissão de execução para o script do Maven Wrapper
-RUN chmod +x ./mvnw
-
-# Baixa todas as dependências do projeto
+# Copia apenas o necessário para baixar as dependências (melhora o cache)
+COPY mvnw .
+COPY .mvn .mvn
+COPY pom.xml .
+RUN chmod +x mvnw
 RUN ./mvnw dependency:go-offline
 
-# Executa o build do Maven para gerar o arquivo .jar
+# Copia o código e gera o JAR
+COPY src ./src
 RUN ./mvnw clean package -DskipTests
 
-# Expõe a porta 8080 para que o mundo exterior possa acessá-la
+# Estágio 2: Runtime (Gera uma imagem muito menor e mais segura)
+FROM eclipse-temurin:17-jre-alpine
+WORKDIR /app
+
+# Copia apenas o JAR gerado no estágio anterior
+COPY --from=build /app/target/*.jar app.jar
+
 EXPOSE 8080
 
-# O comando para iniciar a aplicação quando o contêiner rodar
-CMD ["java", "-jar", "target/*.jar"]
+# Comando otimizado para rodar o JAR
+ENTRYPOINT ["java", "-jar", "app.jar"]
