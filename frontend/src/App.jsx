@@ -41,8 +41,6 @@ const App = () => {
             <Route path="delivery" element={<DeliveryPage />} />
             <Route path="delivery/novo" element={<NovoPedidoDeliveryPage />} />
             <Route path="admin" element={<AdminPage />} />
-            
-            {/* [NOVA ROTA HUB] */}
             <Route path="admin/gestao-administrativa" element={<SettingsHubPage />} /> 
 
             {/* Rotas Antigas (Mantidas, agora acessadas via Hub) */}

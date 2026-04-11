@@ -6,6 +6,7 @@ import br.com.frevonamesa.frevonamesa.dto.*;
 import br.com.frevonamesa.frevonamesa.exception.PedidoLimitException;
 import br.com.frevonamesa.frevonamesa.model.*;
 import br.com.frevonamesa.frevonamesa.repository.*;
+import com.stripe.exception.StripeException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -165,32 +166,18 @@ public class PedidoService {
     }
 
     @Transactional
-    public Pedido criarPedidoDelivery(PedidoDeliveryRequestDTO dto) throws PedidoLimitException { // Adiciona throws
+    public Pedido criarPedidoDelivery(PedidoDeliveryRequestDTO dto) throws PedidoLimitException {
         Restaurante restaurante = restauranteService.getRestauranteLogado();
 
-        int limiteBase = 30;
-        int limiteTotal = limiteBase + restaurante.getPedidosExtrasContratados();
-
-        boolean isGratuitoLimitado = restaurante.getPlano().equals("GRATUITO")
-                && !restaurante.isDeliveryPro()
-                && !restaurante.isLegacyFree()
-                && !restaurante.isBetaTester();
-
-        if (isGratuitoLimitado && restaurante.getPedidosMesAtual() >= limiteTotal) {
-            throw new PedidoLimitException("Limite de pedidos atingido! Compre mais créditos ou faça upgrade.",
-                    restaurante.getPedidosMesAtual(), limiteTotal);
-        }
+        validarCotaDelivery(restaurante); // Validação Centralizada
 
         Pedido novoPedido = new Pedido();
         novoPedido.setRestaurante(restaurante);
         novoPedido.setDataHora(LocalDateTime.now());
         novoPedido.setItens(new ArrayList<>());
         novoPedido.setTipo(TipoPedido.DELIVERY);
-        novoPedido.setUuid(UUID.randomUUID()); // Gera UUID para rastreio
-
-        // Status inicial depende da configuração de impressão
+        novoPedido.setUuid(UUID.randomUUID());
         novoPedido.setStatus(restaurante.isImpressaoDeliveryAtivada() ? StatusPedido.PENDENTE : StatusPedido.EM_PREPARO);
-
         novoPedido.setNomeClienteDelivery(dto.getNomeCliente());
         novoPedido.setTelefoneClienteDelivery(dto.getTelefoneCliente());
         novoPedido.setEnderecoClienteDelivery(dto.getEnderecoCliente());
@@ -200,47 +187,32 @@ public class PedidoService {
         BigDecimal subtotalPedido = BigDecimal.ZERO;
 
         for (var itemDto : dto.getItens()) {
-            Produto produto = produtoRepository.findById(itemDto.getProdutoId()).orElseThrow(() -> new RuntimeException("Produto não encontrado!"));
-            if (!produto.getRestaurante().getId().equals(restaurante.getId())) {
-                throw new SecurityException("Acesso negado: produto inválido.");
-            }
+            Produto produto = produtoRepository.findById(itemDto.getProdutoId())
+                    .orElseThrow(() -> new RuntimeException("Produto não encontrado!"));
             ItemPedido itemPedido = new ItemPedido();
             itemPedido.setProduto(produto);
             itemPedido.setQuantidade(itemDto.getQuantidade());
             itemPedido.setPrecoUnitario(produto.getPreco());
             itemPedido.setObservacao(itemDto.getObservacao());
-            itemPedido.setPedido(novoPedido); // Associa ao pedido
+            itemPedido.setPedido(novoPedido);
 
             if (itemDto.getAdicionaisIds() != null && !itemDto.getAdicionaisIds().isEmpty()) {
-                itemPedido.setAdicionais(new ArrayList<>()); // Inicializa
+                itemPedido.setAdicionais(new ArrayList<>());
                 for (Long adicionalId : itemDto.getAdicionaisIds()) {
                     Adicional adicional = adicionaisDisponiveis.stream()
-                            .filter(a -> a.getId().equals(adicionalId))
-                            .findFirst()
-                            .orElseThrow(() -> new RuntimeException("Adicional inválido: ID " + adicionalId));
+                            .filter(a -> a.getId().equals(adicionalId)).findFirst()
+                            .orElseThrow(() -> new RuntimeException("Adicional inválido"));
                     itemPedido.getAdicionais().add(new ItemPedidoAdicional(itemPedido, adicional));
                 }
-            } else {
-                itemPedido.setAdicionais(new ArrayList<>());
             }
-            subtotalPedido = subtotalPedido.add(itemPedido.getSubtotal()); // Acumula subtotal do item
+            subtotalPedido = subtotalPedido.add(itemPedido.getSubtotal());
             novoPedido.getItens().add(itemPedido);
         }
 
-        // Calcula total com frete (usando taxa fixa, pois este método é interno do painel)
-        BigDecimal totalComFrete = calcularTotalComFrete(restaurante, subtotalPedido);
-        novoPedido.setTotal(totalComFrete);
+        novoPedido.setTotal(calcularTotalComFrete(restaurante, subtotalPedido));
+        Pedido pedidoSalvo = pedidoRepository.save(novoPedido);
 
-        Pedido pedidoSalvo = pedidoRepository.save(novoPedido); // Salva pedido e itens
-
-        // INCREMENTO ATUALIZADO: Contabiliza APENAS se for plano gratuito limitado
-        if (isGratuitoLimitado) {
-            restaurante.setPedidosMesAtual(restaurante.getPedidosMesAtual() + 1);
-            restauranteRepository.save(restaurante); // Atualiza contador
-            logger.info("Contador de pedidos incrementado para Restaurante ID {}: {}", restaurante.getId(), restaurante.getPedidosMesAtual());
-        }
-
-        logger.info("Pedido Delivery (interno) criado com sucesso: ID {}", pedidoSalvo.getId());
+        incrementarContadorDelivery(restaurante); // Incremento Centralizado
         return pedidoSalvo;
     }
 
@@ -427,6 +399,42 @@ public class PedidoService {
         return novoPedido;
     }
 
+    private void validarCotaDelivery(Restaurante restaurante) {
+        // Definição do limite para testes (mudar para 30 em produção)
+        int limiteBase = 2;
+        int limiteTotal = limiteBase + restaurante.getPedidosExtrasContratados();
+
+        // Verificação de isenção baseada nas suas flags existentes
+        boolean isIsento = restaurante.isDeliveryPro() ||
+                restaurante.isLegacyFree() ||
+                restaurante.isBetaTester() ||
+                !"GRATUITO".equals(restaurante.getPlano());
+
+        if (isIsento) return;
+
+        if (restaurante.getPedidosMesAtual() >= limiteTotal) {
+            logger.warn("Bloqueio de cota: Restaurante ID {} atingiu {}/{}",
+                    restaurante.getId(), restaurante.getPedidosMesAtual(), limiteTotal);
+            throw new PedidoLimitException("Limite de pedidos atingido! Faça upgrade para continuar recebendo.",
+                    restaurante.getPedidosMesAtual(), limiteTotal);
+        }
+    }
+
+    private void incrementarContadorDelivery(Restaurante restaurante) {
+        // Só incrementa se for uma conta com limites (Gratuita e sem flags de isenção)
+        boolean isGratuitoLimitado = "GRATUITO".equals(restaurante.getPlano())
+                && !restaurante.isDeliveryPro()
+                && !restaurante.isLegacyFree()
+                && !restaurante.isBetaTester();
+
+        if (isGratuitoLimitado) {
+            restaurante.setPedidosMesAtual(restaurante.getPedidosMesAtual() + 1);
+            restauranteRepository.save(restaurante);
+            logger.info("Contador incrementado para Restaurante ID {}: Novo valor {}",
+                    restaurante.getId(), restaurante.getPedidosMesAtual());
+        }
+    }
+
 
     /**
      * Salva um pedido de cliente final com pagamento offline (DINHEIRO/CARTAO/PIX na entrega)
@@ -436,20 +444,8 @@ public class PedidoService {
         Restaurante restaurante = restauranteRepository.findById(dto.getRestauranteId())
                 .orElseThrow(() -> new RuntimeException("Restaurante não encontrado!"));
 
-        int limiteBase = 30;
-        int limiteTotal = limiteBase + restaurante.getPedidosExtrasContratados();
+        validarCotaDelivery(restaurante); // Agora o link público também barra!
 
-        boolean isGratuitoLimitado = restaurante.getPlano().equals("GRATUITO")
-                && !restaurante.isDeliveryPro()
-                && !restaurante.isLegacyFree()
-                && !restaurante.isBetaTester();
-
-        if (isGratuitoLimitado && restaurante.getPedidosMesAtual() >= limiteTotal) {
-            logger.warn("Limite atingido para Restaurante ID {}", restaurante.getId());
-            throw new PedidoLimitException("Limite atingido.", restaurante.getPedidosMesAtual(), limiteTotal);
-        }
-
-        // --- Criação e Cálculo do Total ---
         Pedido novoPedido = new Pedido();
         novoPedido.setUuid(UUID.randomUUID());
         novoPedido.setRestaurante(restaurante);
@@ -461,79 +457,56 @@ public class PedidoService {
         novoPedido.setTelefoneClienteDelivery(dto.getTelefoneCliente());
         novoPedido.setEnderecoClienteDelivery(dto.getEnderecoCliente());
         novoPedido.setPontoReferencia(dto.getPontoReferencia());
-        novoPedido.setTipoPagamento(tipoPagamento); // Define pagamento offline AQUI
+        novoPedido.setTipoPagamento(tipoPagamento);
 
         BigDecimal subtotalPedido = BigDecimal.ZERO;
         List<Adicional> adicionaisDisponiveis = adicionalRepository.findByRestauranteId(restaurante.getId());
-        List<ItemPedido> itensParaSalvar = new ArrayList<>();
 
         for (var itemDto : dto.getItens()) {
-            Produto produto = produtoRepository.findById(itemDto.getProdutoId())
-                    .orElseThrow(() -> new RuntimeException("Produto não encontrado!"));
-
+            Produto produto = produtoRepository.findById(itemDto.getProdutoId()).orElseThrow();
             ItemPedido itemPedido = new ItemPedido();
             itemPedido.setProduto(produto);
             itemPedido.setQuantidade(itemDto.getQuantidade());
             itemPedido.setPrecoUnitario(produto.getPreco());
-            itemPedido.setObservacao(itemDto.getObservacao());
-            itemPedido.setPedido(novoPedido); // Associa
+            itemPedido.setPedido(novoPedido);
 
-            if (itemDto.getAdicionaisIds() != null && !itemDto.getAdicionaisIds().isEmpty()) {
+            if (itemDto.getAdicionaisIds() != null) {
                 itemPedido.setAdicionais(new ArrayList<>());
-                for (Long adicionalId : itemDto.getAdicionaisIds()) {
-                    Adicional adicional = adicionaisDisponiveis.stream()
-                            .filter(a -> a.getId().equals(adicionalId))
-                            .findFirst()
-                            .orElseThrow(() -> new RuntimeException("Adicional inválido: ID " + adicionalId));
-                    itemPedido.getAdicionais().add(new ItemPedidoAdicional(itemPedido, adicional));
+                for (Long aid : itemDto.getAdicionaisIds()) {
+                    Adicional a = adicionaisDisponiveis.stream().filter(ad -> ad.getId().equals(aid)).findFirst().orElseThrow();
+                    itemPedido.getAdicionais().add(new ItemPedidoAdicional(itemPedido, a));
                 }
-            } else {
-                itemPedido.setAdicionais(new ArrayList<>());
             }
-
-            subtotalPedido = subtotalPedido.add(itemPedido.getSubtotal()); // Acumula
-            itensParaSalvar.add(itemPedido);
+            subtotalPedido = subtotalPedido.add(itemPedido.getSubtotal());
+            novoPedido.getItens().add(itemPedido);
         }
 
-        // Usa a taxa de entrega calculada (passada como parâmetro)
-        BigDecimal totalComFrete = calcularTotalComFrete(restaurante, subtotalPedido, taxaEntregaCalculada);
+        novoPedido.setTotal(calcularTotalComFrete(restaurante, subtotalPedido, taxaEntregaCalculada));
+        Pedido pedidoSalvo = pedidoRepository.save(novoPedido);
 
-        if (totalComFrete.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new RuntimeException("O valor do pedido deve ser maior que zero.");
-        }
-
-        novoPedido.setTotal(totalComFrete);
-        novoPedido.setItens(itensParaSalvar); // Associa itens
-
-        Pedido pedidoSalvo = pedidoRepository.save(novoPedido); // Salva
-
-        // Incrementa o contador APENAS se for plano gratuito limitado
-        if (isGratuitoLimitado) {
-            restaurante.setPedidosMesAtual(restaurante.getPedidosMesAtual() + 1);
-            restauranteRepository.save(restaurante);
-            logger.info("Contador de pedidos (offline) incrementado para Restaurante ID {}: {}", restaurante.getId(), restaurante.getPedidosMesAtual());
-        }
-
-        logger.info("Pedido Delivery Cliente (offline) salvo com sucesso: ID {}", pedidoSalvo.getId());
+        incrementarContadorDelivery(restaurante);
         return pedidoSalvo;
     }
-
 
     /**
      * Inicia o fluxo de pagamento online para um pedido de cliente final.
      * Cria o pedido com status AGUARDANDO_PGTO_LIMITE e chama o FinanceiroService.
      */
     @Transactional
-    public String iniciarPagamentoDeliveryCliente(PedidoDeliveryClienteDTO dto, BigDecimal taxaEntregaCalculada) {
+    public String iniciarPagamentoDeliveryCliente(PedidoDeliveryClienteDTO dto, BigDecimal taxaEntregaCalculada) throws StripeException {
         Restaurante restaurante = restauranteRepository.findById(dto.getRestauranteId())
                 .orElseThrow(() -> new RuntimeException("Restaurante não encontrado!"));
 
-        // --- Criação do Pedido e Cálculo do Total ---
+        // TRAVA: Verifica se o restaurante ainda tem cota antes de iniciar o checkout
+        validarCotaDelivery(restaurante);
+
         UUID pedidoUuid = UUID.randomUUID();
         BigDecimal subtotalPedido = BigDecimal.ZERO;
         List<Adicional> adicionaisDisponiveis = adicionalRepository.findByRestauranteId(restaurante.getId());
         List<ItemPedido> itensParaSalvar = new ArrayList<>();
-        Pedido pedidoTemporario = new Pedido(); // Para cálculo de subtotal com adicionais
+
+        // Objeto temporário para associar aos itens durante o cálculo
+        Pedido pedidoTemporario = new Pedido();
 
         for (var itemDto : dto.getItens()) {
             Produto produto = produtoRepository.findById(itemDto.getProdutoId())
@@ -544,7 +517,7 @@ public class PedidoService {
             itemPedido.setQuantidade(itemDto.getQuantidade());
             itemPedido.setPrecoUnitario(produto.getPreco());
             itemPedido.setObservacao(itemDto.getObservacao());
-            itemPedido.setPedido(pedidoTemporario); // Associa temporário
+            itemPedido.setPedido(pedidoTemporario);
 
             if (itemDto.getAdicionaisIds() != null && !itemDto.getAdicionaisIds().isEmpty()) {
                 itemPedido.setAdicionais(new ArrayList<>());
@@ -552,56 +525,42 @@ public class PedidoService {
                     Adicional adicional = adicionaisDisponiveis.stream()
                             .filter(a -> a.getId().equals(adicionalId))
                             .findFirst()
-                            .orElseThrow(() -> new RuntimeException("Adicional inválido: ID " + adicionalId));
+                            .orElseThrow(() -> new RuntimeException("Adicional inválido"));
                     itemPedido.getAdicionais().add(new ItemPedidoAdicional(itemPedido, adicional));
                 }
-            } else {
-                itemPedido.setAdicionais(new ArrayList<>());
             }
-            subtotalPedido = subtotalPedido.add(itemPedido.getSubtotal()); // Acumula
+            subtotalPedido = subtotalPedido.add(itemPedido.getSubtotal());
             itensParaSalvar.add(itemPedido);
         }
 
-        // Usa a taxa de entrega calculada
         BigDecimal totalComFrete = calcularTotalComFrete(restaurante, subtotalPedido, taxaEntregaCalculada);
 
         if (totalComFrete.compareTo(BigDecimal.ZERO) <= 0) {
             throw new RuntimeException("O valor do pedido deve ser maior que zero.");
         }
 
-        // --- Salva o Pedido Pre-Pago ---
+        // Salva o pedido com status de retenção até a confirmação do Stripe
         Pedido pedidoPrePago = new Pedido();
         pedidoPrePago.setUuid(pedidoUuid);
         pedidoPrePago.setRestaurante(restaurante);
         pedidoPrePago.setDataHora(LocalDateTime.now());
         pedidoPrePago.setTipo(TipoPedido.DELIVERY);
         pedidoPrePago.setTotal(totalComFrete);
-        pedidoPrePago.setStatus(StatusPedido.AGUARDANDO_PGTO_LIMITE); // Status inicial para pagamento online
+        pedidoPrePago.setStatus(StatusPedido.AGUARDANDO_PGTO_LIMITE);
         pedidoPrePago.setNomeClienteDelivery(dto.getNomeCliente());
         pedidoPrePago.setTelefoneClienteDelivery(dto.getTelefoneCliente());
         pedidoPrePago.setEnderecoClienteDelivery(dto.getEnderecoCliente());
         pedidoPrePago.setPontoReferencia(dto.getPontoReferencia());
 
         for(ItemPedido item : itensParaSalvar) {
-            item.setPedido(pedidoPrePago); // Associa ao pedido real
+            item.setPedido(pedidoPrePago);
         }
         pedidoPrePago.setItens(itensParaSalvar);
 
-        pedidoRepository.save(pedidoPrePago); // Salva o pedido ANTES de gerar a URL
-        logger.info("Pedido Delivery Cliente (pré-pagamento) salvo com ID {} e UUID {}", pedidoPrePago.getId(), pedidoUuid);
+        pedidoRepository.save(pedidoPrePago);
+        logger.info("Checkout iniciado: Pedido #{} aguardando pagamento.", pedidoPrePago.getId());
 
-
-        // --- Geração da URL de pagamento (MODIFICADO para passar restauranteId) ---
-        try {
-            // Chama o método do FinanceiroService que agora inclui o restauranteId
-            return financeiroService.gerarUrlPagamentoPedidoPublico(pedidoUuid, totalComFrete, restaurante.getId()); // <-- AJUSTE AQUI
-        } catch (Exception e) {
-            // Captura StripeException ou RuntimeException do FinanceiroService
-            logger.error("Erro ao chamar financeiroService.gerarUrlPagamentoPedidoPublico para Pedido UUID {}: {}", pedidoUuid, e.getMessage(), e);
-            // Propaga a exceção para o controller lidar (ex: retornar 500 ou mensagem de erro)
-            throw new RuntimeException("Erro ao iniciar pagamento online: " + e.getMessage(), e);
-        }
-    }
+        return financeiroService.gerarUrlPagamentoPedidoPublico(pedidoUuid, totalComFrete, restaurante.getId());    }
 
 
     /**
@@ -613,37 +572,26 @@ public class PedidoService {
         Pedido pedido = pedidoRepository.findByUuid(pedidoUuid)
                 .orElseThrow(() -> new RuntimeException("Pedido não encontrado via webhook: " + pedidoUuid));
 
-        // Verifica se o pedido está no status correto
+        // Se o pedido já foi processado por algum motivo, ignora para não duplicar o contador
         if (pedido.getStatus() != StatusPedido.AGUARDANDO_PGTO_LIMITE) {
-            logger.warn("Webhook: Pedido #{} (UUID {}) não estava em status AGUARDANDO_PGTO_LIMITE. Status atual: {}. Ignorando.", pedido.getId(), pedidoUuid, pedido.getStatus());
-            return pedido; // Retorna o pedido sem alteração
+            return pedido;
         }
 
-        // 1. Atualiza o status e a forma de pagamento
         Restaurante restaurante = pedido.getRestaurante();
-        // Define o status inicial pós-pagamento (PENDENTE se imprime, EM_PREPARO se não)
+
+        // Define o status inicial pós-pagamento (Pendente ou Preparo conforme config de impressão)
         StatusPedido proximoStatus = restaurante.isImpressaoDeliveryAtivada() ? StatusPedido.PENDENTE : StatusPedido.EM_PREPARO;
         pedido.setStatus(proximoStatus);
-        pedido.setTipoPagamento(tipoPagamento); // Registra como foi pago
-        logger.info("Pedido #{} (UUID {}) finalizado após pagamento online. Novo status: {}", pedido.getId(), pedidoUuid, proximoStatus);
+        pedido.setTipoPagamento(tipoPagamento);
 
+        // Salva a alteração de status primeiro
+        Pedido pedidoFinalizado = pedidoRepository.save(pedido);
 
-        // 2. Incrementa o contador (regra de monetização)
-        boolean isGratuitoLimitado = restaurante.getPlano().equals("GRATUITO")
-                && !restaurante.isDeliveryPro()
-                && !restaurante.isLegacyFree()
-                && !restaurante.isBetaTester();
+        // INCREMENTO: Como o pedido foi confirmado, agora ele consome a cota do mês
+        incrementarContadorDelivery(restaurante);
 
-        if (isGratuitoLimitado) {
-            restaurante.setPedidosMesAtual(restaurante.getPedidosMesAtual() + 1);
-            restauranteRepository.save(restaurante); // Atualiza contador
-            logger.info("Contador de pedidos (online) incrementado para Restaurante ID {}: {}", restaurante.getId(), restaurante.getPedidosMesAtual());
-        }
-
-        // Notifica N8N (opcional, pode ser feito em atualizarStatusPedidoDelivery também)
-        // ... (lógica do webhook n8n pode ser adicionada aqui se necessário) ...
-
-        return pedidoRepository.save(pedido); // Salva as alterações no pedido
+        logger.info("Pedido #{} (Online) aprovado e contabilizado na cota mensal.", pedidoFinalizado.getId());
+        return pedidoFinalizado;
     }
 
     @Transactional

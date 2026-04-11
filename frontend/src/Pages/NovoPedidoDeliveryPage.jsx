@@ -159,7 +159,7 @@ const NovoPedidoDeliveryPage = () => {
     }
 
     // Se não for Delivery Pro OU Gratuito, exibe mensagem de bloqueio
-    if (!isDeliveryPro && !isGratuito) {
+    if (!isDeliveryPro && !isPlanoGratuito) {
          return (
              <div className="w-full p-4 md:p-8 max-w-6xl mx-auto text-center">
                  <h1 className="text-2xl font-bold text-tema-text dark:text-tema-text-dark">Novo Pedido Delivery</h1>

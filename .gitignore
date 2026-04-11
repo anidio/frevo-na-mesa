@@ -1,0 +1,59 @@
+# ==========================================
+# GITIGNORE UNIFICADO - FREVO NA MESA
+# ==========================================
+
+# --- IDEs e Editores ---
+frontend/.idea/
+.vscode/
+*.iws
+*.iml
+*.ipr
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# --- Arquivos Sensíveis (SEGURANÇA) ---
+.env
+*.local
+# Bloqueio específico da chave do Stripe e configs locais
+backend/src/main/resources/application-local.properties
+
+# --- Backend (Java/Maven/Gradle) ---
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+backend/build/
+backend/HELP.md
+!**/src/main/**/target/
+!**/src/test/**/target/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# --- Frontend (Node/React) ---
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/logs
+frontend/*.log
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+frontend/lerna-debug.log*
+
+# --- Outros ---
+node_modules/
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import PainelDelivery from '../components/PainelDelivery';
 import PedidoDetalhesModal from '../components/PedidoDetalhesModal';
@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import UpgradeModal from '../components/UpgradeModal'; 
 
 const DeliveryPage = () => {
+  const navigate = useNavigate();
   const { userProfile, refreshProfile } = useAuth(); 
   const [pedidos, setPedidos] = useState({});
   const [pedidosFinalizados, setPedidosFinalizados] = useState([]);
@@ -132,20 +133,23 @@ const DeliveryPage = () => {
         <div className="flex justify-between items-center">
             <h1 className="text-3xl font-bold text-tema-text dark:text-tema-text-dark">Painel de Delivery</h1>
             
-            <Link 
-              to={isLimiteAtingido ? "#" : "/delivery/novo"} 
-              className={`font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2 ${isLimiteAtingido ? 'bg-red-600 text-white cursor-not-allowed' : 'bg-tema-primary text-white hover:bg-opacity-80'}`}
+            <button
               onClick={(e) => {
                 if (isLimiteAtingido) {
-                    e.preventDefault(); 
-                    // Passamos null para o ID, pois estamos abrindo pelo botão geral
-                    handleOpenUpgradeModal(null); 
+                    handleOpenUpgradeModal(null);
                     toast.error("Limite de pedidos atingido. Faça o upgrade.");
+                } else {
+                    navigate('/delivery/novo'); // Navegação via código é mais segura aqui
                 }
               }}
+              className={`font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2 ${
+                isLimiteAtingido
+                ? 'bg-red-600 text-white cursor-not-allowed'
+                : 'bg-tema-primary text-white hover:bg-opacity-80'
+              }`}
             >
                 {isLimiteAtingido ? 'LIMITE ATINGIDO' : 'Novo Pedido'}
-            </Link>
+            </button>
         </div>
 
         {loading ? (
