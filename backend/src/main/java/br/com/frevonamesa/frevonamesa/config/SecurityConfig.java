@@ -1,6 +1,7 @@
 package br.com.frevonamesa.frevonamesa.config;
 
 import br.com.frevonamesa.frevonamesa.config.jwt.JwtRequestFilter;
+import lombok.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -21,6 +22,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.ArrayList;
 
+@Value
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
@@ -32,7 +34,8 @@ public class SecurityConfig {
     @Autowired
     private AuthenticationProvider authenticationProvider;
 
-    // A variável @Value foi removida, e a origem é definida diretamente no corsConfigurationSource.
+    @org.springframework.beans.factory.annotation.Value("${APP_CORS_ALLOWED_ORIGINS:*}")
+    private String allowedOrigins;
 
     /**
      * Exclui o Webhook, H2 e a rota raiz (que não precisam de CORS).
@@ -104,6 +107,12 @@ public class SecurityConfig {
 
         // 1. Origem Local (essencial para o seu dev)
         origins.add("http://localhost:5173");
+
+        if (!allowedOrigins.equals("*")) {
+            origins.add(allowedOrigins);
+        } else {
+            configuration.addAllowedOriginPattern("*"); // Fallback de segurança
+        }
 
         // 2. Você pode adicionar a origem de produção aqui se necessário, ex: origins.add("https://seusite.com");
 
